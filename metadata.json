@@ -1,0 +1,6 @@
+{
+  "name": "Agenda de Oitivas",
+  "description": "Sistema de gerenciamento e agendamento de oitivas com integração oficial ao Google Drive, Gmail e Google Calendar para a Delegacia Metropolitana de Maracanaú.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

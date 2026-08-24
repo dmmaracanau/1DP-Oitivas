@@ -1,0 +1,155 @@
+{
+  "entities": {
+    "oitiva": {
+      "title": "Oitiva",
+      "description": "Registro de audiência/oitiva policial na Delegacia de Maracanaú",
+      "type": "object",
+      "properties": {
+        "personName": {
+          "type": "string",
+          "description": "Nome completo da pessoa a ser ouvida",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "date": {
+          "type": "string",
+          "description": "Data da oitiva formato YYYY-MM-DD",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "time": {
+          "type": "string",
+          "description": "Horário no formato HH:mm",
+          "pattern": "^[0-9]{2}:[0-9]{2}$"
+        },
+        "procedureNumber": {
+          "type": "string",
+          "description": "Número do procedimento policial",
+          "maxLength": 100
+        },
+        "procedureType": {
+          "type": "string",
+          "description": "Tipo de procedimento policial",
+          "maxLength": 100
+        },
+        "role": {
+          "type": "string",
+          "description": "Papel da pessoa (Testemunha, Vítima, Investigado, Declarante, etc.)",
+          "maxLength": 100
+        },
+        "cpf": {
+          "type": "string",
+          "description": "CPF do depoente",
+          "maxLength": 30
+        },
+        "rg": {
+          "type": "string",
+          "description": "RG do depoente",
+          "maxLength": 50
+        },
+        "phone": {
+          "type": "string",
+          "description": "Telefone de contato",
+          "maxLength": 50
+        },
+        "email": {
+          "type": "string",
+          "description": "E-mail de contato",
+          "maxLength": 150
+        },
+        "address": {
+          "type": "string",
+          "description": "Endereço residencial ou comercial",
+          "maxLength": 300
+        },
+        "neighborhood": {
+          "type": "string",
+          "description": "Bairro",
+          "maxLength": 100
+        },
+        "city": {
+          "type": "string",
+          "description": "Cidade e estado",
+          "maxLength": 100
+        },
+        "officerName": {
+          "type": "string",
+          "description": "Autoridade Policial Delegado(a)",
+          "maxLength": 150
+        },
+        "clerkName": {
+          "type": "string",
+          "description": "Escrivão(ã) ou Inspetor responsável",
+          "maxLength": 150
+        },
+        "modality": {
+          "type": "string",
+          "description": "Presencial, Videoconferência ou Híbrida",
+          "maxLength": 50
+        },
+        "locationOrLink": {
+          "type": "string",
+          "description": "Sala ou Link do Google Meet",
+          "maxLength": 500
+        },
+        "status": {
+          "type": "string",
+          "description": "Status da oitiva",
+          "enum": ["Agendada", "Realizada", "Remarcada", "Cancelada", "Não Compareceu"]
+        },
+        "notes": {
+          "type": "string",
+          "description": "Observações e anotações do cartório",
+          "maxLength": 2000
+        },
+        "intimationSent": {
+          "type": "boolean",
+          "description": "Flag de intimação expedida ou entregue"
+        },
+        "googleCalendarEventId": {
+          "type": "string",
+          "description": "ID do evento no Google Calendar",
+          "maxLength": 255
+        },
+        "googleDriveDocId": {
+          "type": "string",
+          "description": "ID do documento do termo no Google Drive",
+          "maxLength": 255
+        },
+        "googleDriveDocUrl": {
+          "type": "string",
+          "description": "URL pública ou interna do termo no Google Drive",
+          "maxLength": 500
+        },
+        "lastGmailSentAt": {
+          "type": "number",
+          "description": "Timestamp Unix da última intimação enviada por e-mail"
+        },
+        "createdAt": {
+          "type": "number",
+          "description": "Timestamp Unix de criação"
+        },
+        "updatedAt": {
+          "type": "number",
+          "description": "Timestamp Unix de última atualização"
+        },
+        "createdBy": {
+          "type": "string",
+          "description": "Identificador do usuário ou cartório que criou",
+          "maxLength": 150
+        },
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID do usuário proprietário da oitiva",
+          "maxLength": 128
+        }
+      },
+      "required": ["personName", "status", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/oitivas/{oitivaId}": {
+      "schema": "oitiva",
+      "description": "Coleção global de oitivas e agendamentos policiais da Delegacia"
+    }
+  }
+}
