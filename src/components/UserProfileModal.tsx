@@ -16,7 +16,9 @@ import {
   AlertCircle,
   Link as LinkIcon,
   RefreshCw,
-  LogOut
+  LogOut,
+  AtSign,
+  Trash2
 } from 'lucide-react';
 import { UserProfile } from '../types/oitiva';
 import { authService } from '../services/authService';
@@ -59,6 +61,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   const [activeTab, setActiveTab] = useState<'functional' | 'account' | 'security'>('functional');
   
   // Profile Form States
+  const [username, setUsername] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [cargo, setCargo] = useState('');
   const [registrationNumber, setRegistrationNumber] = useState('');
@@ -77,11 +80,14 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   const [saving, setSaving] = useState(false);
   const [passLoading, setPassLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
+  const [cleanLoading, setCleanLoading] = useState(false);
+  const [showConfirmClean, setShowConfirmClean] = useState(false);
   const [feedback, setFeedback] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
 
   // Sync state when modal opens or user changes
   useEffect(() => {
     if (user) {
+      setUsername(user.username || '');
       setDisplayName(user.displayName || '');
       setCargo(user.cargo || 'Inspetor(a) de Polícia');
       setRegistrationNumber(user.registrationNumber || '');
@@ -115,6 +121,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     setSaving(true);
     try {
       const updated = await authService.updateUserProfile({
+        username: username.trim().toLowerCase().replace(/\s+/g, '_'),
         displayName: displayName.trim(),
         cargo: cargo.trim(),
         registrationNumber: registrationNumber.trim(),
@@ -186,6 +193,21 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
       showMsg('Conta Google / Gmail conectada ao Workspace!', 'success');
     } catch (err: any) {
       showMsg('Não foi possível conectar com o Google no momento.', 'error');
+    }
+  };
+
+  // Limpeza completa de todos os usuários do banco de dados
+  const handleClearAllUsers = async () => {
+    setCleanLoading(true);
+    try {
+      const res = await authService.clearAllUsersDatabase();
+      showMsg(`Limpeza concluída! ${res.count} usuário(s) removido(s). O sistema foi reiniciado.`, 'success');
+      setTimeout(() => {
+        window.location.reload();
+      }, 1200);
+    } catch (err: any) {
+      showMsg(err.message || 'Erro ao realizar limpeza de usuários.', 'error');
+      setCleanLoading(false);
     }
   };
 
@@ -292,8 +314,26 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
           <form onSubmit={handleSaveProfile} className="p-6 space-y-5">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               
+              {/* Nome de Usuário (Login) */}
+              <div>
+                <label className="block text-xs font-medium text-purple-200 mb-1.5">
+                  Nome de Usuário (Login)
+                </label>
+                <div className="relative">
+                  <AtSign className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-purple-400" />
+                  <input
+                    id="profile-username-input"
+                    type="text"
+                    placeholder="ex: inspetor_silva"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s+/g, '_'))}
+                    className="w-full bg-[#181328] border border-purple-900/40 focus:border-purple-500 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-purple-500 font-mono"
+                  />
+                </div>
+              </div>
+
               {/* Nome Completo */}
-              <div className="md:col-span-2">
+              <div>
                 <label className="block text-xs font-medium text-zinc-300 mb-1.5">
                   Nome Completo do Servidor / Policial *
                 </label>
@@ -625,6 +665,55 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   <span>{resetLoading ? 'Enviando link...' : 'Enviar Link de Recuperação para o E-mail'}</span>
                 </button>
               </div>
+            </div>
+
+            {/* Zona de Manutenção / Reset Geral de Usuários */}
+            <div className="bg-red-950/20 border border-red-900/40 p-5 rounded-2xl space-y-3">
+              <div className="flex items-center gap-2">
+                <Trash2 className="w-4 h-4 text-red-400" />
+                <h3 className="text-xs font-bold text-red-300">Limpeza Geral de Usuários (Reset de Contas)</h3>
+              </div>
+              <p className="text-[11px] text-zinc-300">
+                Remove permanentemente todos os registros de usuários e credenciais do banco de dados na nuvem para iniciar o sistema do zero.
+              </p>
+
+              {showConfirmClean ? (
+                <div className="p-3 bg-red-900/30 border border-red-500/40 rounded-xl space-y-2">
+                  <p className="text-xs font-semibold text-red-200">
+                    Tem certeza que deseja apagar todos os usuários cadastrados e reiniciar do zero?
+                  </p>
+                  <div className="flex items-center gap-2 justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmClean(false)}
+                      disabled={cleanLoading}
+                      className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg text-xs"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleClearAllUsers}
+                      disabled={cleanLoading}
+                      className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg text-xs flex items-center gap-1.5"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>{cleanLoading ? 'Apagando banco...' : 'Sim, Apagar Todos os Usuários'}</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="pt-1 flex items-center justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmClean(true)}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-red-950/60 hover:bg-red-900/60 text-red-300 border border-red-700/50 rounded-xl text-xs font-medium transition-colors cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Limpar Todos os Usuários Cadastrados</span>
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Close footer */}

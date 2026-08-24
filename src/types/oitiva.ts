@@ -63,6 +63,7 @@ export interface Oitiva {
 
 export interface UserProfile {
   uid: string;
+  username?: string | null; // Nome de usuário de acesso / login
   email: string | null; // E-mail da conta / Gmail pessoal para login e recuperação
   displayName: string | null; // Nome completo
   photoURL?: string | null; // Foto ou avatar do perfil

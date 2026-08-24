@@ -11,6 +11,11 @@
           "minLength": 1,
           "maxLength": 128
         },
+        "username": {
+          "type": "string",
+          "description": "Nome de usuário exclusivo para login e identificação",
+          "maxLength": 60
+        },
         "email": {
           "type": "string",
           "description": "E-mail de acesso da conta",
