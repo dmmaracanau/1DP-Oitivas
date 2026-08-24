@@ -283,10 +283,10 @@ export const GoogleWorkspaceModal = ({
 
   return (
     <div id="google-workspace-modal-overlay" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto no-print">
-      <div id="google-workspace-modal-card" className="bg-[#100D1B] border border-purple-900/50 rounded-3xl w-full max-w-3xl overflow-hidden shadow-2xl shadow-purple-950/80 my-8 flex flex-col max-h-[90vh]">
+      <div id="google-workspace-modal-card" className="bg-[#100D1B] border border-purple-900/50 rounded-3xl w-[88vw] max-w-6xl overflow-hidden shadow-2xl shadow-purple-950/80 my-8 flex flex-col max-h-[88vh]">
         
         {/* Modal Header */}
-        <div className="p-5 border-b border-purple-900/40 bg-[#151124] flex items-center justify-between">
+        <div className="p-5 border-b border-purple-900/40 bg-[#151124] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-purple-950/80 border border-purple-500/40 flex items-center justify-center text-purple-300">
               {activeTab === 'calendar' && <Calendar className="w-5 h-5" />}

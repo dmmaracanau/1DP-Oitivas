@@ -1,5 +1,73 @@
 {
   "entities": {
+    "user": {
+      "title": "UserProfile",
+      "description": "Perfil e credenciais funcionais sincronizadas do servidor policial",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Identificador único do usuário no Firebase Auth",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "email": {
+          "type": "string",
+          "description": "E-mail de acesso da conta",
+          "maxLength": 150
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Nome completo ou identificação funcional do policial",
+          "maxLength": 150
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "URL da foto ou avatar",
+          "maxLength": 500
+        },
+        "cargo": {
+          "type": "string",
+          "description": "Cargo policial (Delegado, Inspetor, Escrivão, etc.)",
+          "maxLength": 100
+        },
+        "registrationNumber": {
+          "type": "string",
+          "description": "Matrícula funcional PCCE",
+          "maxLength": 50
+        },
+        "institutionalEmail": {
+          "type": "string",
+          "description": "E-mail institucional (@policiacivil.ce.gov.br)",
+          "maxLength": 150
+        },
+        "unitName": {
+          "type": "string",
+          "description": "Lotação / Unidade Policial",
+          "maxLength": 150
+        },
+        "phone": {
+          "type": "string",
+          "description": "Telefone de contato ou WhatsApp da delegacia",
+          "maxLength": 50
+        },
+        "department": {
+          "type": "string",
+          "description": "Cartório, Plantão ou Setor responsável",
+          "maxLength": 100
+        },
+        "authProvider": {
+          "type": "string",
+          "description": "Provedor de autenticação (password, google, anonymous)",
+          "maxLength": 50
+        },
+        "updatedAt": {
+          "type": "number",
+          "description": "Timestamp Unix da última sincronização de perfil"
+        }
+      },
+      "required": ["uid"]
+    },
     "oitiva": {
       "title": "Oitiva",
       "description": "Registro de audiência/oitiva policial na Delegacia de Maracanaú",
@@ -147,9 +215,17 @@
     }
   },
   "firestore": {
+    "/users/{userId}": {
+      "schema": "user",
+      "description": "Perfis e credenciais funcionais persistidas para sincronização entre dispositivos"
+    },
+    "/users/{userId}/oitivas/{oitivaId}": {
+      "schema": "oitiva",
+      "description": "Coleção isolada de oitivas e agendamentos policiais de cada usuário"
+    },
     "/oitivas/{oitivaId}": {
       "schema": "oitiva",
-      "description": "Coleção global de oitivas e agendamentos policiais da Delegacia"
+      "description": "Coleção de oitivas e agendamentos policiais sincronizada em tempo real"
     }
   }
 }

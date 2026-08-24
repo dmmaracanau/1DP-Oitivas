@@ -74,5 +74,7 @@ export interface UserProfile {
   phone?: string | null; // Telefone / WhatsApp de contato
   department?: string | null; // Cartório / Plantão / Setor
   authProvider?: 'google' | 'password' | 'anonymous' | 'custom';
+  delegados?: any[]; // Lista personalizada de delegados sincronizada
+  defaultDelegadoId?: string;
   updatedAt?: number;
 }

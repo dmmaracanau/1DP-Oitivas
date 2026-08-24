@@ -17,7 +17,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { Oitiva, HearingStatus } from '../types/oitiva';
-import { getRoleBadgeClasses, getStatusBadgeClasses, formatDateBR } from '../utils/formatters';
+import { getRoleBadgeClasses, getStatusBadgeClasses, formatDateBR, getFirstName } from '../utils/formatters';
 
 interface CalendarDayViewProps {
   oitivas: Oitiva[];
@@ -116,8 +116,8 @@ export const CalendarDayView: React.FC<CalendarDayViewProps> = ({
 
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-base font-bold text-white tracking-tight hover:text-purple-300 transition-colors">
-                        {oitiva.personName}
+                      <h3 className="text-base font-bold text-white tracking-tight hover:text-purple-300 transition-colors" title={oitiva.personName}>
+                        {getFirstName(oitiva.personName)}
                       </h3>
                       {oitiva.role && (
                         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${getRoleBadgeClasses(oitiva.role)}`}>

@@ -65,16 +65,11 @@ export default function App() {
     return () => unsubAuth();
   }, []);
 
-  // Oitivas real-time listener restrito ao UID do usuário autenticado
+  // Oitivas real-time listener isolado por usuário no Firestore e Realtime Database
   useEffect(() => {
-    if (!user?.uid) {
-      setOitivas([]);
-      setSyncStatus('connected');
-      return;
-    }
-
+    const activeUid = user?.uid || 'guest_user';
     const unsubOitivas = oitivaService.subscribe(
-      user.uid,
+      activeUid,
       (list) => {
         setOitivas(list);
       },
@@ -119,7 +114,7 @@ export default function App() {
 
   const handleSaveOitiva = async (data: Omit<Oitiva, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
-      const currentUid = user?.uid;
+      const currentUid = user?.uid || 'cartorio_maracanau';
       if (editingOitiva) {
         await oitivaService.update(editingOitiva.id, {
           ...data,
@@ -133,7 +128,7 @@ export default function App() {
         await oitivaService.create({
           ...data,
           uid: currentUid,
-          createdBy: user?.email || user?.displayName || 'plantao'
+          createdBy: user?.displayName || user?.email || 'Cartório de Oitivas'
         }, currentUid);
         showToast(`Oitiva de "${data.personName}" agendada com sucesso!`);
       }

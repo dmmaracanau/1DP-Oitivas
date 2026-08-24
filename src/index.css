@@ -3,26 +3,61 @@
 @layer base {
   * {
     border-color: #272238;
+    scrollbar-width: thin;
+    scrollbar-color: #3b2c58 #0e0b17;
+  }
+  
+  body {
+    background-color: #0b0914;
+    color: #e4e4e7;
   }
 }
 
-/* Custom scrollbar for dark lilac theme */
+/* Custom cohesive dark purple scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0d0b14;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #382c54;
+  background: #0d0b16;
   border-radius: 9999px;
 }
 
+::-webkit-scrollbar-thumb {
+  background: #3b2c58;
+  border-radius: 9999px;
+  border: 1px solid rgba(139, 92, 246, 0.15);
+}
+
 ::-webkit-scrollbar-thumb:hover {
-  background: #6b46c1;
+  background: #6d28d9;
+  border-color: rgba(167, 139, 250, 0.4);
+}
+
+/* Custom scrollbar utility classes */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #3b2c58 #0d0b16;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(13, 11, 22, 0.5);
+  border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #3b2c58;
+  border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #7c3aed;
 }
 
 @media print {

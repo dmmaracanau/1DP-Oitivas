@@ -1,3 +1,6 @@
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { auth, db } from '../firebase';
+
 export interface DelegadoInfo {
   id: string;
   nome: string;
@@ -57,15 +60,25 @@ export const delegadoService = {
     return DELEGADOS_PADRAO;
   },
 
-  saveDelegados(delegados: DelegadoInfo[]) {
+  async saveDelegados(delegados: DelegadoInfo[], uid?: string) {
     try {
       localStorage.setItem(LOCAL_STORAGE_DELEGADOS_KEY, JSON.stringify(delegados));
     } catch (e) {
-      console.warn('Erro ao salvar lista de delegados:', e);
+      console.warn('Erro ao salvar lista de delegados no cache local:', e);
+    }
+
+    const currentUid = uid || auth.currentUser?.uid;
+    if (currentUid) {
+      try {
+        const userRef = doc(db, 'users', currentUid);
+        await setDoc(userRef, { delegados, updatedAt: Date.now() }, { merge: true });
+      } catch (err) {
+        console.warn('Erro ao persistir delegados no Firestore:', err);
+      }
     }
   },
 
-  addOrUpdateDelegado(delegado: DelegadoInfo): DelegadoInfo[] {
+  addOrUpdateDelegado(delegado: DelegadoInfo, uid?: string): DelegadoInfo[] {
     const list = this.getDelegados();
     const index = list.findIndex(d => d.id === delegado.id);
     let updatedList: DelegadoInfo[];
@@ -75,14 +88,14 @@ export const delegadoService = {
     } else {
       updatedList = [...list, delegado];
     }
-    this.saveDelegados(updatedList);
+    this.saveDelegados(updatedList, uid);
     return updatedList;
   },
 
-  removeDelegado(id: string): DelegadoInfo[] {
+  removeDelegado(id: string, uid?: string): DelegadoInfo[] {
     const list = this.getDelegados();
     const updatedList = list.filter(d => d.id !== id);
-    this.saveDelegados(updatedList);
+    this.saveDelegados(updatedList, uid);
     return updatedList;
   }
 };

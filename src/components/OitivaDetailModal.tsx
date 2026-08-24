@@ -65,10 +65,10 @@ export const OitivaDetailModal: React.FC<OitivaDetailModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto no-print">
-      <div className="bg-[#120f1e] border border-purple-900/50 rounded-3xl w-full max-w-xl overflow-hidden shadow-2xl shadow-purple-950/60 my-8">
+      <div className="bg-[#120f1e] border border-purple-900/50 rounded-3xl w-[88vw] max-w-4xl overflow-hidden shadow-2xl shadow-purple-950/60 my-8 flex flex-col max-h-[88vh]">
         
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-purple-900/40 bg-[#161226]">
+        <div className="flex items-center justify-between p-5 border-b border-purple-900/40 bg-[#161226] shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-purple-950 border border-purple-500/40 flex items-center justify-center text-purple-300">
               <User className="w-5 h-5" />

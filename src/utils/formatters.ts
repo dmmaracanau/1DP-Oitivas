@@ -2,6 +2,13 @@ import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { HearingRole, HearingStatus } from '../types/oitiva';
 
+export function getFirstName(fullName?: string): string {
+  if (!fullName) return '';
+  const clean = fullName.trim();
+  if (!clean) return '';
+  return clean.split(/\s+/)[0];
+}
+
 export function formatCPF(value: string): string {
   const clean = value.replace(/\D/g, '').slice(0, 11);
   if (clean.length <= 3) return clean;
