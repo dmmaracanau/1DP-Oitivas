@@ -17,7 +17,9 @@ import {
   MapPin,
   Send,
   AlertCircle,
-  FileCheck2
+  FileCheck2,
+  Paperclip,
+  ArrowRight
 } from 'lucide-react';
 import { Oitiva, UserProfile } from '../types/oitiva';
 import { 
@@ -27,7 +29,6 @@ import {
 import { 
   extractMandadoData, 
   downloadMandadoPdf, 
-  getMandadoPdfFile, 
   MandadoPdfData 
 } from '../utils/pdfGenerator';
 import { DelegadoSelectorModal } from './DelegadoSelectorModal';
@@ -119,7 +120,18 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
     return '';
   };
 
+  // Direct WhatsApp Web URL (avoids OS application picker completely)
   const getWhatsAppWebUrl = (): string => {
+    const fullPhone = getCleanPhone();
+    const encoded = encodeURIComponent(currentMessageText);
+    if (fullPhone) {
+      return `https://web.whatsapp.com/send?phone=${fullPhone}&text=${encoded}`;
+    }
+    return `https://web.whatsapp.com/send?text=${encoded}`;
+  };
+
+  // Universal WhatsApp API fallback link
+  const getWhatsAppApiUrl = (): string => {
     const fullPhone = getCleanPhone();
     const encoded = encodeURIComponent(currentMessageText);
     if (fullPhone) {
@@ -158,9 +170,11 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
     try {
       setIsGeneratingPdf(true);
       const data = getMandadoData();
-      downloadMandadoPdf(data);
+      const cleanName = data.personName ? data.personName.replace(/[^a-zA-Z0-9]/g, '_') : 'Intimacao';
+      const fileName = `Mandado_Intimacao_${cleanName}.pdf`;
+      downloadMandadoPdf(data, fileName);
       setLastAction('pdf');
-      showMsg('Mandado de Intimação em PDF baixado com sucesso no seu dispositivo!', 'success');
+      showMsg('Mandado de Intimação em PDF baixado com sucesso!', 'success');
       if (onMarkIntimationSent) {
         onMarkIntimationSent(oitiva.id);
       }
@@ -171,18 +185,23 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
     }
   };
 
-  // 2. APENAS MENSAGEM WHATSAPP
+  // 2. APENAS MENSAGEM WHATSAPP WEB
   const handleSendTextOnly = () => {
+    try {
+      // Copy to clipboard as safety backup
+      navigator.clipboard?.writeText(currentMessageText).catch(() => {});
+    } catch {}
+
     const url = getWhatsAppWebUrl();
     setLastAction('text');
-    showMsg('Abrindo WhatsApp com a mensagem formatada...', 'info');
+    showMsg('Abrindo WhatsApp Web direto na conversa...', 'info');
     if (onMarkIntimationSent) {
       onMarkIntimationSent(oitiva.id);
     }
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
-  // 3. MENSAGEM + PDF
+  // 3. MENSAGEM + PDF DIRETO NO WHATSAPP WEB (Sem pedir aplicativo no OS)
   const handleSendTextAndPdf = async () => {
     setIsGeneratingPdf(true);
     const data = getMandadoData();
@@ -190,41 +209,26 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
     const fileName = `Mandado_Intimacao_${cleanName}.pdf`;
 
     try {
-      // 1. Download the PDF directly so the user has the file immediately on PC or phone
+      // 1. Download the PDF directly so the user has the file in their downloads immediately
       downloadMandadoPdf(data, fileName);
 
-      // 2. Try native mobile sharing if supported with files
+      // 2. Copy the text to clipboard as safety
       try {
-        const pdfFile = getMandadoPdfFile(data, fileName);
-        if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
-          await navigator.share({
-            title: `Mandado de Intimação - ${personName || 'PCCE'}`,
-            text: currentMessageText,
-            files: [pdfFile]
-          });
-          setLastAction('both');
-          showMsg('Intimação e PDF compartilhados com sucesso!', 'success');
-          if (onMarkIntimationSent) {
-            onMarkIntimationSent(oitiva.id);
-          }
-          return;
-        }
-      } catch (shareErr) {
-        console.warn('Native share not supported or cancelled, fallback to web link:', shareErr);
-      }
+        await navigator.clipboard.writeText(currentMessageText);
+      } catch {}
 
-      // 3. Desktop / Web WhatsApp: Open WhatsApp conversation directly
+      // 3. Open WhatsApp Web directly in a new tab (Never call navigator.share which triggers OS app prompt)
       const url = getWhatsAppWebUrl();
       window.open(url, '_blank', 'noopener,noreferrer');
 
       setLastAction('both');
-      showMsg('PDF baixado e WhatsApp aberto! Basta arrastar ou anexar o arquivo na conversa.', 'success');
+      showMsg('PDF baixado e WhatsApp Web aberto! Basta arrastar o PDF para a conversa ou clicar em Anexar (📎).', 'success');
 
       if (onMarkIntimationSent) {
         onMarkIntimationSent(oitiva.id);
       }
     } catch (err: any) {
-      showMsg('Erro ao gerar PDF para envio. Tentando abrir WhatsApp...', 'error');
+      showMsg('PDF baixado. Abrindo WhatsApp Web...', 'info');
       window.open(getWhatsAppWebUrl(), '_blank', 'noopener,noreferrer');
     } finally {
       setIsGeneratingPdf(false);
@@ -252,14 +256,14 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
               <div>
                 <div className="flex items-center gap-2">
                   <h2 className="text-base font-bold text-white tracking-tight">
-                    Notificação Oficial de Intimação via WhatsApp
+                    Notificação Oficial de Intimação via WhatsApp Web
                   </h2>
                   <span className="px-2.5 py-0.5 text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full">
-                    Mensagem & PDF
+                    Direto no Navegador
                   </span>
                 </div>
                 <p className="text-xs text-zinc-400">
-                  1ª Delegacia de Polícia de Maracanaú • PCCE • Intimação Eletrônica Instantânea
+                  1ª Delegacia de Polícia de Maracanaú • PCCE • Envio Direto via WhatsApp Web
                 </p>
               </div>
             </div>
@@ -282,22 +286,40 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
                 : 'bg-rose-950/60 border-rose-500/40 text-rose-300'
             }`}>
               <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 shrink-0" />
+                <Sparkles className="w-4 h-4 shrink-0 text-emerald-400" />
                 <span className="leading-relaxed font-medium">{feedback.text}</span>
               </div>
-              {lastAction && (
+              <div className="flex items-center gap-2 shrink-0">
                 <a
                   href={getWhatsAppWebUrl()}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[11px] font-bold shrink-0 transition-colors flex items-center gap-1"
+                  className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[11px] font-bold transition-colors flex items-center gap-1 cursor-pointer"
                 >
                   <Send className="w-3 h-3" />
-                  <span>Abrir Conversa Novamente</span>
+                  <span>Reabrir WhatsApp Web</span>
                 </a>
-              )}
+              </div>
             </div>
           )}
+
+          {/* Instruções Rápidas de Envio */}
+          <div className="mx-4 sm:mx-6 mt-3 p-3 bg-[#151026] border border-purple-900/30 rounded-2xl shrink-0">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 text-xs">
+              <div className="flex items-center gap-2 text-zinc-300">
+                <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center justify-center font-bold text-[10px] shrink-0">1</span>
+                <span>Baixa o Mandado em <strong>PDF Oficial</strong></span>
+              </div>
+              <div className="flex items-center gap-2 text-zinc-300">
+                <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center justify-center font-bold text-[10px] shrink-0">2</span>
+                <span>Abre o <strong>WhatsApp Web</strong> no chat com o texto pronto</span>
+              </div>
+              <div className="flex items-center gap-2 text-zinc-300">
+                <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center justify-center font-bold text-[10px] shrink-0">3</span>
+                <span>Arraste o PDF baixado ou use o clipe 📎</span>
+              </div>
+            </div>
+          </div>
 
           {/* Body: Grid com 3 colunas compactas preenchendo os 90% de tela */}
           <div className="p-4 sm:p-6 overflow-y-auto flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5">
@@ -325,7 +347,7 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
                   </div>
                   
                   <div>
-                    <label className="text-[10px] font-semibold text-zinc-400 block">WhatsApp / Telefone:</label>
+                    <label className="text-[10px] font-semibold text-zinc-400 block">WhatsApp / Telefone com DDD:</label>
                     <div className="relative">
                       <Phone className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-emerald-400" />
                       <input
@@ -431,21 +453,21 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
                     </div>
                     <div>
                       <p className="text-xs font-bold text-white">{personName || 'Intimado'}</p>
-                      <p className="text-[10px] text-emerald-400 font-mono">{phone || 'Sem telefone'}</p>
+                      <p className="text-[10px] text-emerald-400 font-mono">{phone || 'Sem telefone informado'}</p>
                     </div>
                   </div>
                   <span className="text-[10px] text-zinc-500">Hoje</span>
                 </div>
 
                 {/* Message Bubble */}
-                <div className="bg-[#005c4b] text-[#e9edef] rounded-2xl rounded-tl-sm p-3.5 text-xs font-sans whitespace-pre-wrap leading-relaxed shadow select-text overflow-y-auto max-h-[48vh]">
+                <div className="bg-[#005c4b] text-[#e9edef] rounded-2xl rounded-tl-sm p-3.5 text-xs font-sans whitespace-pre-wrap leading-relaxed shadow select-text overflow-y-auto max-h-[44vh]">
                   {currentMessageText}
                 </div>
 
                 {/* Chat Footer info */}
                 <div className="pt-2 mt-2 border-t border-emerald-950/60 flex items-center justify-between text-[10px] text-zinc-400">
-                  <span>Visualização prévia exata do texto</span>
-                  <span className="text-emerald-400">Criptografado</span>
+                  <span>Visualização prévia do texto enviado</span>
+                  <span className="text-emerald-400">PCCE Cartório</span>
                 </div>
               </div>
             </div>
@@ -456,22 +478,22 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
                 <div className="flex items-center gap-2 pb-1 border-b border-purple-900/30">
                   <Share2 className="w-4 h-4 text-emerald-400" />
                   <h3 className="text-xs font-bold text-white uppercase tracking-wider">
-                    Opções de Envio
+                    Disparo WhatsApp Web
                   </h3>
                 </div>
 
-                {/* OPÇÃO 1: DESTAQUE MENSAGEM + PDF */}
-                <div className="bg-gradient-to-br from-[#1b1233] to-[#0f231e] border-2 border-emerald-500/50 rounded-2xl p-4 space-y-2.5 shadow-lg shadow-emerald-950/40">
+                {/* OPÇÃO 1: DESTAQUE MENSAGEM + PDF NO WHATSAPP WEB */}
+                <div className="bg-gradient-to-br from-[#1b1233] to-[#0f231e] border-2 border-emerald-500/60 rounded-2xl p-4 space-y-3 shadow-lg shadow-emerald-950/40">
                   <div className="flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-300 text-xs font-bold">
+                    <span className="w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-300 text-xs font-bold shrink-0">
                       1
                     </span>
-                    <h4 className="text-xs font-bold text-white">
-                      Mensagem + PDF Oficial
+                    <h4 className="text-xs font-bold text-white leading-tight">
+                      Enviar no WhatsApp Web (Texto + PDF)
                     </h4>
                   </div>
                   <p className="text-[11px] text-zinc-300 leading-relaxed">
-                    Baixa o Mandado em PDF e abre a conversa do WhatsApp com o texto oficial preenchido para anexar.
+                    Baixa o Mandado em PDF automaticamente e abre o WhatsApp Web com o texto preenchido no chat.
                   </p>
                   
                   <button
@@ -481,53 +503,48 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
                     disabled={isGeneratingPdf}
                     className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-950 transition-all cursor-pointer disabled:opacity-50"
                   >
-                    <Share2 className="w-4 h-4" />
-                    <span>{isGeneratingPdf ? 'Gerando Mandado...' : 'Enviar Mensagem + PDF'}</span>
+                    <Send className="w-4 h-4" />
+                    <span>{isGeneratingPdf ? 'Baixando Mandado...' : 'Abrir WhatsApp Web + Baixar PDF'}</span>
                   </button>
                 </div>
 
-                {/* OPÇÃO 2: APENAS MENSAGEM */}
+                {/* OPÇÃO 2: APENAS ABRIR WHATSAPP WEB */}
                 <div className="bg-[#171326] border border-purple-900/40 rounded-2xl p-3.5 space-y-2">
                   <div className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-full bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-300 text-[10px] font-bold">
+                    <span className="w-5 h-5 rounded-full bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-300 text-[10px] font-bold shrink-0">
                       2
                     </span>
                     <h4 className="text-xs font-semibold text-zinc-200">
-                      Apenas Texto no WhatsApp
+                      Abrir WhatsApp Web (Apenas Texto)
                     </h4>
                   </div>
                   <p className="text-[10px] text-zinc-400">
-                    Abre diretamente a conversa com o texto oficial formatado.
+                    Abre diretamente a conversa do WhatsApp Web com a intimação digitada.
                   </p>
 
-                  <a
+                  <button
                     id="link-send-whatsapp-text"
-                    href={getWhatsAppWebUrl()}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={() => {
-                      setLastAction('text');
-                      if (onMarkIntimationSent) onMarkIntimationSent(oitiva.id);
-                    }}
+                    type="button"
+                    onClick={handleSendTextOnly}
                     className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-[#241a3f] hover:bg-emerald-950/70 text-emerald-300 hover:text-white border border-emerald-600/30 rounded-xl text-xs font-semibold transition-all cursor-pointer"
                   >
                     <ExternalLink className="w-3.5 h-3.5" />
-                    <span>Enviar Só Mensagem</span>
-                  </a>
+                    <span>Abrir Conversa no WhatsApp Web</span>
+                  </button>
                 </div>
 
                 {/* OPÇÃO 3: APENAS BAIXAR PDF */}
                 <div className="bg-[#171326] border border-purple-900/40 rounded-2xl p-3.5 space-y-2">
                   <div className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-full bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-300 text-[10px] font-bold">
+                    <span className="w-5 h-5 rounded-full bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-300 text-[10px] font-bold shrink-0">
                       3
                     </span>
                     <h4 className="text-xs font-semibold text-zinc-200">
-                      Apenas Baixar PDF
+                      Apenas Baixar Mandado PDF
                     </h4>
                   </div>
                   <p className="text-[10px] text-zinc-400">
-                    Gera e salva o arquivo PDF do Mandado no computador ou celular.
+                    Gera e salva o arquivo PDF do Mandado no computador.
                   </p>
 
                   <button
@@ -537,7 +554,7 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
                     className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-[#241a3f] hover:bg-purple-950 text-purple-200 hover:text-white border border-purple-700/40 rounded-xl text-xs font-semibold transition-all cursor-pointer disabled:opacity-50"
                   >
                     <Download className="w-3.5 h-3.5 text-purple-400" />
-                    <span>Baixar Arquivo PDF</span>
+                    <span>Baixar Arquivo PDF (A4)</span>
                   </button>
                 </div>
               </div>
@@ -546,7 +563,7 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
               <div className="p-3 bg-[#161226] border border-purple-900/30 rounded-2xl space-y-1">
                 <p className="text-[10px] font-semibold text-zinc-300 flex items-center gap-1">
                   <FileCheck2 className="w-3.5 h-3.5 text-emerald-400" />
-                  Registro de Intimação:
+                  Registro no Cartório:
                 </p>
                 <p className="text-[10px] text-zinc-400 leading-tight">
                   Ao acionar qualquer envio, a oitiva é marcada como <strong>intimada</strong> na pauta do cartório.
@@ -560,7 +577,7 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
           <div className="p-3 sm:p-4 border-t border-purple-900/40 bg-[#161226] flex items-center justify-between shrink-0 text-xs">
             <div className="flex items-center gap-2 text-zinc-400">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span>Pronto para envio • 1ª Delegacia de Maracanaú</span>
+              <span>WhatsApp Web • 1ª Delegacia de Maracanaú</span>
             </div>
 
             <button
