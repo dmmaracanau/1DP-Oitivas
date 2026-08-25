@@ -132,12 +132,22 @@ export const oitivaService = {
         },
         (firestoreErr) => {
           console.warn("Firestore snapshot notice:", firestoreErr);
+          if (onStatusChange) onStatusChange('offline');
+          const cachedItems = getLocalCache(targetUid);
+          if (cachedItems.length > 0) {
+            onData(sortOitivas(cachedItems));
+          }
           handleFirestoreError(firestoreErr, OperationType.LIST, `users/${targetUid}/oitivas`);
           if (onError) onError(firestoreErr);
         }
       );
     } catch (err: any) {
       console.warn("Erro ao iniciar listener do Firestore:", err);
+      if (onStatusChange) onStatusChange('offline');
+      const cachedItems = getLocalCache(targetUid);
+      if (cachedItems.length > 0) {
+        onData(sortOitivas(cachedItems));
+      }
       handleFirestoreError(err, OperationType.LIST, `users/${targetUid}/oitivas`);
       if (onError) onError(err);
     }

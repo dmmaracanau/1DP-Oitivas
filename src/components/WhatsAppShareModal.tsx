@@ -210,7 +210,7 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
 
     try {
       // 1. Download the PDF directly so the user has the file in their downloads immediately
-      downloadMandadoPdf(data, fileName);
+      await downloadMandadoPdf(data, fileName);
 
       // 2. Copy the text to clipboard as safety
       try {
@@ -244,13 +244,20 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm no-print overflow-y-auto">
-        <div className="bg-[#120f1e] border border-purple-900/50 rounded-3xl w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh] overflow-hidden shadow-2xl shadow-purple-950/70 flex flex-col my-auto">
+      <div 
+        className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm no-print overflow-y-auto"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) {
+            onClose();
+          }
+        }}
+      >
+        <div className="bg-[#120f1e] border-2 border-emerald-500/60 rounded-3xl w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh] overflow-hidden shadow-2xl shadow-emerald-950/80 flex flex-col my-auto">
           
           {/* Header Compacto */}
-          <div className="p-4 sm:p-5 border-b border-purple-900/40 bg-[#161226] flex items-center justify-between shrink-0">
+          <div className="p-4 sm:p-5 border-b-2 border-purple-900/50 bg-[#161226] flex items-center justify-between shrink-0">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-900 border border-emerald-400/40 flex items-center justify-center text-emerald-200 shadow-md">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-900 border-2 border-emerald-400/60 flex items-center justify-center text-emerald-200 shadow-md">
                 <Phone className="w-5 h-5" />
               </div>
               <div>
@@ -258,19 +265,20 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
                   <h2 className="text-base font-bold text-white tracking-tight">
                     Notificação Oficial de Intimação via WhatsApp Web
                   </h2>
-                  <span className="px-2.5 py-0.5 text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full">
+                  <span className="px-2.5 py-0.5 text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 rounded-full">
                     Direto no Navegador
                   </span>
                 </div>
-                <p className="text-xs text-zinc-400">
+                <p className="text-xs text-zinc-300">
                   1ª Delegacia de Polícia de Maracanaú • PCCE • Envio Direto via WhatsApp Web
                 </p>
               </div>
             </div>
 
             <button
+              type="button"
               onClick={onClose}
-              className="p-2 text-zinc-400 hover:text-white rounded-xl hover:bg-purple-950/40 transition-colors cursor-pointer"
+              className="p-2 text-zinc-300 hover:text-white rounded-xl hover:bg-purple-950/60 border border-purple-900/40 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>

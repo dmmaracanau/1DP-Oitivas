@@ -81,4 +81,24 @@ export interface UserProfile {
   createdAt?: number;
   updatedAt?: number;
   passwordHash?: string;
+  oitivasCount?: number; // Contagem estimada de oitivas vinculadas
 }
+
+export interface DuplicateUserGroup {
+  id: string;
+  matchType: 'username_and_email' | 'username' | 'email' | 'manual';
+  matchedKey: string;
+  users: UserProfile[];
+}
+
+export interface MergeUsersResult {
+  success: boolean;
+  primaryUid: string;
+  primaryDisplayName: string;
+  mergedUids: string[];
+  transferredOitivasCount: number;
+  deduplicatedOitivasCount?: number;
+  addedOitivasCount?: number;
+  message: string;
+}
+

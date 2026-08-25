@@ -64,21 +64,28 @@ export const OitivaDetailModal: React.FC<OitivaDetailModalProps> = ({
   const statuses: HearingStatus[] = ['Agendada', 'Realizada', 'Remarcada', 'Não Compareceu', 'Cancelada'];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto no-print">
-      <div className="bg-[#120f1e] border border-purple-900/50 rounded-3xl w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh] overflow-hidden shadow-2xl shadow-purple-950/60 my-auto flex flex-col">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto no-print"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div className="bg-[#120f1e] border-2 border-purple-600/70 rounded-3xl w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh] overflow-hidden shadow-2xl shadow-purple-950/90 my-auto flex flex-col">
         
         {/* Header Compacto */}
-        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-purple-900/40 bg-[#161226] shrink-0">
+        <div className="flex items-center justify-between p-4 sm:p-5 border-b-2 border-purple-900/50 bg-[#161226] shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-purple-600 to-purple-950 border border-purple-400/40 flex items-center justify-center text-purple-200 shadow-md">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-purple-600 to-purple-950 border-2 border-purple-400/60 flex items-center justify-center text-purple-200 shadow-md">
               <User className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${getRoleBadgeClasses(oitiva.role)}`}>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border-2 ${getRoleBadgeClasses(oitiva.role)}`}>
                   {oitiva.role || 'Oitiva'}
                 </span>
-                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${getStatusBadgeClasses(oitiva.status)}`}>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border-2 ${getStatusBadgeClasses(oitiva.status)}`}>
                   {oitiva.status}
                 </span>
               </div>
@@ -94,7 +101,7 @@ export const OitivaDetailModal: React.FC<OitivaDetailModalProps> = ({
                 onClose();
                 onEdit(oitiva);
               }}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-950 hover:bg-purple-900 text-purple-200 border border-purple-500/40 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-950 hover:bg-purple-900 text-purple-200 hover:text-white border-2 border-purple-500/60 rounded-xl text-xs font-bold transition-all cursor-pointer"
             >
               <Edit3 className="w-3.5 h-3.5" />
               <span>Editar Oitiva</span>
@@ -102,7 +109,7 @@ export const OitivaDetailModal: React.FC<OitivaDetailModalProps> = ({
 
             <button
               onClick={onClose}
-              className="p-2 text-zinc-400 hover:text-white hover:bg-purple-950/50 rounded-xl transition-colors cursor-pointer"
+              className="p-2 text-zinc-300 hover:text-white hover:bg-purple-950/60 border border-purple-900/40 rounded-xl transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -319,7 +326,7 @@ export const OitivaDetailModal: React.FC<OitivaDetailModalProps> = ({
                   <button
                     type="button"
                     onClick={() => onOpenWhatsApp(oitiva)}
-                    className="w-full flex items-center justify-center gap-2 py-2.5 px-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-950/60 transition-all cursor-pointer"
+                    className="w-full flex items-center justify-center gap-2 py-2.5 px-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white border-2 border-emerald-400/70 rounded-xl text-xs font-bold shadow-md shadow-emerald-950/60 transition-all cursor-pointer"
                   >
                     <Phone className="w-4 h-4" />
                     <span>WhatsApp (Texto + PDF Oficial)</span>
@@ -330,19 +337,19 @@ export const OitivaDetailModal: React.FC<OitivaDetailModalProps> = ({
                   <button
                     type="button"
                     onClick={onOpenPrintIntimacao}
-                    className="w-full flex items-center justify-center gap-2 py-2.5 px-3 bg-purple-950 hover:bg-purple-900 text-purple-200 border border-purple-500/40 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                    className="w-full flex items-center justify-center gap-2 py-2.5 px-3 bg-purple-950 hover:bg-purple-900 text-purple-200 hover:text-white border-2 border-purple-400/80 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
                   >
-                    <Printer className="w-4 h-4" />
-                    <span>Imprimir Mandado de Intimação (A4)</span>
+                    <FileText className="w-4 h-4 text-purple-300" />
+                    <span>Fazer Download da Intimação (PDF)</span>
                   </button>
                 )}
 
                 <button
                   type="button"
                   onClick={onOpenPrint}
-                  className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-[#1a142e] hover:bg-purple-950/60 text-zinc-300 hover:text-white border border-purple-900/40 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-[#1a142e] hover:bg-purple-950/60 text-zinc-200 hover:text-white border-2 border-purple-800/60 hover:border-purple-600 rounded-xl text-xs font-bold transition-all cursor-pointer"
                 >
-                  <FileText className="w-3.5 h-3.5 text-purple-400" />
+                  <Printer className="w-3.5 h-3.5 text-purple-400" />
                   <span>Imprimir Ficha Completa</span>
                 </button>
               </div>

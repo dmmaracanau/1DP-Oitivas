@@ -100,28 +100,36 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto no-print">
-      <div className="bg-[#120f1e] border border-purple-900/50 rounded-3xl w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh] overflow-hidden shadow-2xl shadow-purple-950/70 my-auto flex flex-col">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto no-print"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div className="bg-[#120f1e] border-2 border-purple-600/60 rounded-3xl w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh] overflow-hidden shadow-2xl shadow-purple-950/80 my-auto flex flex-col">
         
         {/* Header */}
-        <div className="p-4 sm:p-5 border-b border-purple-900/40 bg-[#161226] flex items-center justify-between shrink-0">
+        <div className="p-4 sm:p-5 border-b-2 border-purple-900/50 bg-[#161226] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-2xl bg-purple-950 border border-purple-500/40 flex items-center justify-center text-purple-300 shadow-md">
+            <div className="w-10 h-10 rounded-2xl bg-purple-950 border-2 border-purple-500/50 flex items-center justify-center text-purple-300 shadow-md">
               <Shield className="w-5 h-5" />
             </div>
             <div>
               <h2 className="text-base font-bold text-white tracking-tight">
                 {isRegistering ? 'Criar Novo Usuário' : 'Acesso ao Cartório de Oitivas'}
               </h2>
-              <p className="text-xs text-purple-300/70">
+              <p className="text-xs text-purple-300/80">
                 1ª Delegacia Metropolitana de Maracanaú • Polícia Civil do Ceará
               </p>
             </div>
           </div>
 
           <button
+            type="button"
             onClick={onClose}
-            className="p-2 text-zinc-400 hover:text-white hover:bg-purple-950/50 rounded-xl transition-colors cursor-pointer"
+            className="p-2 text-zinc-300 hover:text-white hover:bg-purple-950/60 rounded-xl transition-colors cursor-pointer border border-purple-900/40"
           >
             <X className="w-5 h-5" />
           </button>

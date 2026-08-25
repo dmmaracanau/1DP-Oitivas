@@ -26,7 +26,7 @@ import {
 } from 'firebase/firestore';
 import { ref as rtdbRef, set as rtdbSet, get as rtdbGet } from 'firebase/database';
 import { auth, db, rtdb, googleProvider, googleClientId } from '../firebase';
-import { UserProfile } from '../types/oitiva';
+import { UserProfile, DuplicateUserGroup, MergeUsersResult } from '../types/oitiva';
 
 const LOCAL_USER_KEY = 'oitivas_user_session';
 const USERS_COLLECTION = 'users';
@@ -1208,5 +1208,445 @@ export const authService = {
         await rtdbSet(rtdbRef(rtdb, `users/${targetUid}`), null);
       } catch {}
     }
+  },
+
+  // =========================================================================
+  // UNIFICAÇÃO DE USUÁRIOS DUPLICADOS (ADMIN)
+  // =========================================================================
+
+  // Detecta e agrupa automaticamente todos os usuários duplicados no banco
+  findDuplicateGroups(users: UserProfile[]): DuplicateUserGroup[] {
+    if (!users || users.length < 2) return [];
+
+    const normalize = (val?: string | null) => (val || '').trim().toLowerCase();
+
+    // Cria grafo de conexões de duplicidade
+    const n = users.length;
+    const parent: number[] = Array.from({ length: n }, (_, i) => i);
+
+    function find(i: number): number {
+      if (parent[i] === i) return i;
+      parent[i] = find(parent[i]);
+      return parent[i];
+    }
+
+    function union(i: number, j: number) {
+      const rootI = find(i);
+      const rootJ = find(j);
+      if (rootI !== rootJ) {
+        parent[rootI] = rootJ;
+      }
+    }
+
+    for (let i = 0; i < n; i++) {
+      const u1 = users[i];
+      const u1Name = normalize(u1.username);
+      const u1Email = normalize(u1.email);
+
+      for (let j = i + 1; j < n; j++) {
+        const u2 = users[j];
+        const u2Name = normalize(u2.username);
+        const u2Email = normalize(u2.email);
+
+        const sameUsername = u1Name && u2Name && u1Name === u2Name;
+        const sameEmail = u1Email && u2Email && u1Email === u2Email;
+
+        if (sameUsername || sameEmail) {
+          union(i, j);
+        }
+      }
+    }
+
+    // Agrupa por raiz
+    const clusters = new Map<number, UserProfile[]>();
+    for (let i = 0; i < n; i++) {
+      const root = find(i);
+      if (!clusters.has(root)) {
+        clusters.set(root, []);
+      }
+      clusters.get(root)!.push(users[i]);
+    }
+
+    const duplicateGroups: DuplicateUserGroup[] = [];
+
+    clusters.forEach((groupUsers, rootIdx) => {
+      if (groupUsers.length > 1) {
+        // Ordena usuários da duplicidade: Administradores e contas com mais dados primeiro
+        groupUsers.sort((a, b) => {
+          const aAdmin = a.role === 'admin' || Boolean(a.isAdmin) ? 1 : 0;
+          const bAdmin = b.role === 'admin' || Boolean(b.isAdmin) ? 1 : 0;
+          if (aAdmin !== bAdmin) return bAdmin - aAdmin;
+
+          const aFields = [a.displayName, a.cargo, a.registrationNumber, a.phone, a.unitName].filter(Boolean).length;
+          const bFields = [b.displayName, b.cargo, b.registrationNumber, b.phone, b.unitName].filter(Boolean).length;
+          if (aFields !== bFields) return bFields - aFields;
+
+          return (b.updatedAt || 0) - (a.updatedAt || 0);
+        });
+
+        // Identifica o tipo e critério de duplicidade
+        const first = groupUsers[0];
+        const second = groupUsers[1];
+        const firstName = normalize(first.username);
+        const firstEmail = normalize(first.email);
+        const secondName = normalize(second.username);
+        const secondEmail = normalize(second.email);
+
+        const sameName = firstName && secondName && firstName === secondName;
+        const sameEmail = firstEmail && secondEmail && firstEmail === secondEmail;
+
+        let matchType: 'username_and_email' | 'username' | 'email' = 'username_and_email';
+        let matchedKey = '';
+
+        if (sameName && sameEmail) {
+          matchType = 'username_and_email';
+          matchedKey = `@${first.username || ''} • ${first.email || ''}`;
+        } else if (sameName) {
+          matchType = 'username';
+          matchedKey = `@${first.username || ''}`;
+        } else if (sameEmail) {
+          matchType = 'email';
+          matchedKey = `${first.email || ''}`;
+        } else {
+          matchedKey = `${first.displayName || first.username || first.email || 'Duplicidade'}`;
+        }
+
+        duplicateGroups.push({
+          id: `dup_group_${first.uid}_${Date.now().toString(36)}_${rootIdx}`,
+          matchType,
+          matchedKey,
+          users: groupUsers
+        });
+      }
+    });
+
+    return duplicateGroups;
+  },
+
+  // Consulta a quantidade de oitivas salvas para um UID específico
+  async getOitivasCountForUser(uid: string): Promise<number> {
+    if (!uid) return 0;
+    try {
+      const snap = await getDocs(collection(db, 'users', uid, 'oitivas'));
+      return snap.size;
+    } catch {
+      return 0;
+    }
+  },
+
+  // Unifica (merge) usuários duplicados transferindo todas as oitivas para a conta principal e excluindo as secundárias
+  async mergeDuplicateUsers(
+    primaryUid: string, 
+    secondaryUids: string[],
+    options?: {
+      customDisplayName?: string;
+      customEmail?: string;
+      customUsername?: string;
+      customCargo?: string;
+      customUnitName?: string;
+      customPhone?: string;
+      customDepartment?: string;
+      customRegistration?: string;
+      makeAdmin?: boolean;
+    }
+  ): Promise<MergeUsersResult> {
+    if (!primaryUid) {
+      throw new Error("UID da conta principal de destino é obrigatório.");
+    }
+    const cleanSecondary = (secondaryUids || []).filter(id => id && id !== primaryUid);
+    if (cleanSecondary.length === 0) {
+      throw new Error("Nenhum usuário secundário selecionado para unificação.");
+    }
+
+    console.log(`[Admin Unify] Iniciando unificação de ${cleanSecondary.length} contas na conta principal: ${primaryUid}`);
+
+    // 1. Carrega dados da conta principal
+    const primaryDocRef = doc(db, USERS_COLLECTION, primaryUid);
+    const primarySnap = await getDoc(primaryDocRef);
+    let primaryData: Partial<UserProfile> = primarySnap.exists() ? (primarySnap.data() as UserProfile) : { uid: primaryUid };
+
+    // 2. Carrega dados das contas secundárias
+    const secondaryDocsData: { uid: string; data: Partial<UserProfile> }[] = [];
+    for (const secUid of cleanSecondary) {
+      try {
+        const secSnap = await getDoc(doc(db, USERS_COLLECTION, secUid));
+        if (secSnap.exists()) {
+          secondaryDocsData.push({ uid: secUid, data: secSnap.data() as UserProfile });
+        } else {
+          secondaryDocsData.push({ uid: secUid, data: { uid: secUid } });
+        }
+      } catch (err) {
+        console.warn(`[Admin Unify] Aviso ao carregar doc secundário ${secUid}:`, err);
+        secondaryDocsData.push({ uid: secUid, data: { uid: secUid } });
+      }
+    }
+
+    // 3. Consolidação inteligente dos campos de perfil
+    let mergedIsAdmin = Boolean(
+      primaryData.isAdmin || 
+      primaryData.role === 'admin' || 
+      options?.makeAdmin ||
+      secondaryDocsData.some(s => s.data.isAdmin || s.data.role === 'admin')
+    );
+
+    const mergedProfile: UserProfile = {
+      ...primaryData,
+      uid: primaryUid,
+      username: options?.customUsername || primaryData.username || secondaryDocsData.find(s => s.data.username)?.data.username || primaryUid,
+      email: options?.customEmail || primaryData.email || secondaryDocsData.find(s => s.data.email)?.data.email || null,
+      displayName: options?.customDisplayName || primaryData.displayName || secondaryDocsData.find(s => s.data.displayName)?.data.displayName || 'Servidor Unificado',
+      photoURL: primaryData.photoURL || secondaryDocsData.find(s => s.data.photoURL)?.data.photoURL || null,
+      role: mergedIsAdmin ? 'admin' : 'user',
+      isAdmin: mergedIsAdmin,
+      cargo: options?.customCargo || primaryData.cargo || secondaryDocsData.find(s => s.data.cargo)?.data.cargo || 'Inspetor(a) de Polícia',
+      registrationNumber: options?.customRegistration || primaryData.registrationNumber || secondaryDocsData.find(s => s.data.registrationNumber)?.data.registrationNumber || '',
+      institutionalEmail: primaryData.institutionalEmail || secondaryDocsData.find(s => s.data.institutionalEmail)?.data.institutionalEmail || '',
+      unitName: options?.customUnitName || primaryData.unitName || secondaryDocsData.find(s => s.data.unitName)?.data.unitName || '1ª Delegacia Metropolitana de Maracanaú',
+      phone: options?.customPhone || primaryData.phone || secondaryDocsData.find(s => s.data.phone)?.data.phone || '(85) 3101-2830',
+      department: options?.customDepartment || primaryData.department || secondaryDocsData.find(s => s.data.department)?.data.department || 'Cartório de Oitivas',
+      authProvider: primaryData.authProvider || secondaryDocsData.find(s => s.data.authProvider)?.data.authProvider || 'password',
+      passwordHash: (primaryData as any).passwordHash || (secondaryDocsData.find(s => (s.data as any).passwordHash)?.data as any)?.passwordHash,
+      delegados: primaryData.delegados || secondaryDocsData.find(s => s.data.delegados)?.data.delegados,
+      defaultDelegadoId: primaryData.defaultDelegadoId || secondaryDocsData.find(s => s.data.defaultDelegadoId)?.data.defaultDelegadoId,
+      createdAt: primaryData.createdAt || secondaryDocsData.find(s => s.data.createdAt)?.data.createdAt || Date.now(),
+      updatedAt: Date.now()
+    };
+
+    // 4. Salva a conta principal atualizada
+    await setDoc(primaryDocRef, sanitizeData(mergedProfile), { merge: true });
+    if (rtdb) {
+      try {
+        await rtdbSet(rtdbRef(rtdb, `users/${primaryUid}`), sanitizeData(mergedProfile));
+      } catch (err) {
+        console.warn("[Admin Unify] Aviso ao salvar primary no RTDB:", err);
+      }
+    }
+
+    // 5. Transferência e Unificação Inteligente de Oitivas (Sem duplicatas de agendamentos)
+    // Agendamentos iguais (mesma pessoa, data e horário ou mesmo número de procedimento e pessoa) são unificados; diferentes são adicionados.
+    let transferredOitivasCount = 0;
+    let deduplicatedOitivasCount = 0;
+    let addedOitivasCount = 0;
+
+    // Helper para normalização de strings
+    const norm = (s?: string | null) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const normProc = (s?: string | null) => (s || '').replace(/\D/g, '');
+
+    // Carrega oitivas existentes da conta principal para deduplicação
+    const existingPrimaryOitivasMap = new Map<string, any>(); // id -> oitiva
+    try {
+      const primaryOitivasSnap = await getDocs(collection(db, 'users', primaryUid, 'oitivas'));
+      primaryOitivasSnap.forEach(docSnap => {
+        existingPrimaryOitivasMap.set(docSnap.id, { ...docSnap.data(), id: docSnap.id });
+      });
+    } catch (err) {
+      console.warn("[Admin Unify] Aviso ao carregar oitivas existentes do usuário principal:", err);
+    }
+
+    // Função para verificar se uma oitiva secundária é idêntica/duplicada de alguma já na conta principal
+    const findMatchingPrimaryOitiva = (secOitiva: any): any | null => {
+      const secPerson = norm(secOitiva.personName);
+      const secDate = (secOitiva.date || '').trim();
+      const secTime = (secOitiva.time || '').trim();
+      const secProc = normProc(secOitiva.procedureNumber);
+      const secCpf = (secOitiva.cpf || '').replace(/\D/g, '');
+
+      // 1. Match por ID idêntico
+      if (existingPrimaryOitivasMap.has(secOitiva.id)) {
+        return existingPrimaryOitivasMap.get(secOitiva.id);
+      }
+
+      for (const primOitiva of existingPrimaryOitivasMap.values()) {
+        const primPerson = norm(primOitiva.personName);
+        const primDate = (primOitiva.date || '').trim();
+        const primTime = (primOitiva.time || '').trim();
+        const primProc = normProc(primOitiva.procedureNumber);
+        const primCpf = (primOitiva.cpf || '').replace(/\D/g, '');
+
+        // Critério A: Mesma pessoa, mesma data e mesmo horário
+        const samePersonDateTime = secPerson && primPerson && secPerson === primPerson && 
+                                   secDate && primDate && secDate === primDate && 
+                                   secTime && primTime && secTime === primTime;
+
+        // Critério B: Mesmo CPF + Mesma data
+        const sameCpfDate = secCpf && primCpf && secCpf.length >= 9 && secCpf === primCpf && 
+                            secDate && primDate && secDate === primDate;
+
+        // Critério C: Mesmo número de procedimento + Mesma pessoa (ex: mesmo IP/TCO e mesmo declarante/testemunha)
+        const sameProcAndPerson = secProc && primProc && secProc.length >= 3 && secProc === primProc && 
+                                  secPerson && primPerson && secPerson === primPerson;
+
+        if (samePersonDateTime || sameCpfDate || sameProcAndPerson) {
+          return primOitiva;
+        }
+      }
+
+      return null;
+    };
+
+    for (const secUid of cleanSecondary) {
+      try {
+        // Busca oitivas no Firestore da conta secundária
+        const oitivasSnap = await getDocs(collection(db, 'users', secUid, 'oitivas'));
+        for (const oDoc of oitivasSnap.docs) {
+          const secOData = oDoc.data();
+          const matchedPrimaryOitiva = findMatchingPrimaryOitiva(secOData);
+
+          if (matchedPrimaryOitiva) {
+            // ---> UNIFICA AGENDAMENTOS IGUAIS: Mescla os campos complementando informações faltantes
+            const mergedOitivaPayload = {
+              ...matchedPrimaryOitiva,
+              // Preenche campos que possam estar preenchidos apenas na conta secundária
+              procedureNumber: matchedPrimaryOitiva.procedureNumber || secOData.procedureNumber || '',
+              procedureType: matchedPrimaryOitiva.procedureType || secOData.procedureType || '',
+              role: matchedPrimaryOitiva.role || secOData.role || 'Testemunha',
+              cpf: matchedPrimaryOitiva.cpf || secOData.cpf || '',
+              rg: matchedPrimaryOitiva.rg || secOData.rg || '',
+              phone: matchedPrimaryOitiva.phone || secOData.phone || '',
+              email: matchedPrimaryOitiva.email || secOData.email || '',
+              address: matchedPrimaryOitiva.address || secOData.address || '',
+              neighborhood: matchedPrimaryOitiva.neighborhood || secOData.neighborhood || '',
+              city: matchedPrimaryOitiva.city || secOData.city || '',
+              officerName: matchedPrimaryOitiva.officerName || secOData.officerName || '',
+              clerkName: matchedPrimaryOitiva.clerkName || secOData.clerkName || '',
+              locationOrLink: matchedPrimaryOitiva.locationOrLink || secOData.locationOrLink || '',
+              notes: matchedPrimaryOitiva.notes 
+                ? (secOData.notes && !matchedPrimaryOitiva.notes.includes(secOData.notes) ? `${matchedPrimaryOitiva.notes}\n[Obs unificada]: ${secOData.notes}` : matchedPrimaryOitiva.notes)
+                : (secOData.notes || ''),
+              intimationSent: matchedPrimaryOitiva.intimationSent || secOData.intimationSent || false,
+              googleCalendarEventId: matchedPrimaryOitiva.googleCalendarEventId || secOData.googleCalendarEventId,
+              googleDriveDocId: matchedPrimaryOitiva.googleDriveDocId || secOData.googleDriveDocId,
+              googleDriveDocUrl: matchedPrimaryOitiva.googleDriveDocUrl || secOData.googleDriveDocUrl,
+              uid: primaryUid,
+              updatedAt: Date.now()
+            };
+
+            const targetOitivaRef = doc(db, 'users', primaryUid, 'oitivas', matchedPrimaryOitiva.id);
+            await setDoc(targetOitivaRef, sanitizeData(mergedOitivaPayload), { merge: true });
+
+            if (rtdb) {
+              try {
+                await rtdbSet(rtdbRef(rtdb, `users/${primaryUid}/oitivas/${matchedPrimaryOitiva.id}`), sanitizeData(mergedOitivaPayload));
+                await rtdbSet(rtdbRef(rtdb, `users/${secUid}/oitivas/${oDoc.id}`), null);
+              } catch {}
+            }
+
+            // Atualiza cache em memória
+            existingPrimaryOitivasMap.set(matchedPrimaryOitiva.id, mergedOitivaPayload);
+            deduplicatedOitivasCount++;
+          } else {
+            // ---> ADICIONA AGENDAMENTOS DIFERENTES
+            const newOitivaPayload = {
+              ...secOData,
+              id: oDoc.id,
+              uid: primaryUid,
+              updatedAt: Date.now()
+            };
+
+            const targetOitivaRef = doc(db, 'users', primaryUid, 'oitivas', oDoc.id);
+            await setDoc(targetOitivaRef, sanitizeData(newOitivaPayload), { merge: true });
+
+            if (rtdb) {
+              try {
+                await rtdbSet(rtdbRef(rtdb, `users/${primaryUid}/oitivas/${oDoc.id}`), sanitizeData(newOitivaPayload));
+                await rtdbSet(rtdbRef(rtdb, `users/${secUid}/oitivas/${oDoc.id}`), null);
+              } catch {}
+            }
+
+            // Adiciona no mapa de existentes
+            existingPrimaryOitivasMap.set(oDoc.id, newOitivaPayload);
+            addedOitivasCount++;
+          }
+
+          // Deleta da conta secundária original
+          await deleteDoc(doc(db, 'users', secUid, 'oitivas', oDoc.id));
+          transferredOitivasCount++;
+        }
+      } catch (oitivaErr) {
+        console.warn(`[Admin Unify] Erro ao transferir oitivas de ${secUid}:`, oitivaErr);
+      }
+
+      // 6. Exclui a conta secundária duplicada
+      try {
+        await deleteDoc(doc(db, USERS_COLLECTION, secUid));
+        if (rtdb) {
+          await rtdbSet(rtdbRef(rtdb, `users/${secUid}`), null);
+        }
+      } catch (delErr) {
+        console.warn(`[Admin Unify] Erro ao excluir usuário secundário ${secUid}:`, delErr);
+      }
+
+      // Limpa cache local da conta secundária
+      try {
+        localStorage.removeItem(`oitivas_user_${secUid}`);
+      } catch {}
+    }
+
+    // 7. Atualiza a sessão local se o usuário atual foi unificado
+    const currentUser = this.getCurrentUser();
+    if (currentUser) {
+      if (currentUser.uid === primaryUid || cleanSecondary.includes(currentUser.uid)) {
+        localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(mergedProfile));
+      }
+    }
+
+    const detailMsg = deduplicatedOitivasCount > 0 
+      ? ` (${deduplicatedOitivasCount} agendamento(s) idênticos unificados, ${addedOitivasCount} novos adicionados sem duplicidade)`
+      : ` (${addedOitivasCount} agendamento(s) adicionados)`;
+
+    return {
+      success: true,
+      primaryUid,
+      primaryDisplayName: mergedProfile.displayName || mergedProfile.username || 'Servidor',
+      mergedUids: cleanSecondary,
+      transferredOitivasCount,
+      deduplicatedOitivasCount,
+      addedOitivasCount,
+      message: `Unificação concluída com sucesso! ${cleanSecondary.length} conta(s) fundida(s) no perfil principal "${mergedProfile.displayName}". ${transferredOitivasCount} oitiva(s) processada(s)${detailMsg}.`
+    };
+  },
+
+  // Unifica automaticamente todos os grupos duplicados encontrados no sistema
+  async unifyAllDuplicates(duplicateGroups: DuplicateUserGroup[]): Promise<{
+    unifiedGroupsCount: number;
+    mergedUsersCount: number;
+    transferredOitivasCount: number;
+    deduplicatedOitivasCount: number;
+    addedOitivasCount: number;
+  }> {
+    if (!duplicateGroups || duplicateGroups.length === 0) {
+      return { unifiedGroupsCount: 0, mergedUsersCount: 0, transferredOitivasCount: 0, deduplicatedOitivasCount: 0, addedOitivasCount: 0 };
+    }
+
+    let unifiedGroupsCount = 0;
+    let mergedUsersCount = 0;
+    let transferredOitivasCount = 0;
+    let deduplicatedOitivasCount = 0;
+    let addedOitivasCount = 0;
+
+    for (const group of duplicateGroups) {
+      if (group.users.length > 1) {
+        const primary = group.users[0];
+        const secondaries = group.users.slice(1).map(u => u.uid);
+
+        const res = await this.mergeDuplicateUsers(primary.uid, secondaries);
+        if (res.success) {
+          unifiedGroupsCount++;
+          mergedUsersCount += secondaries.length;
+          transferredOitivasCount += res.transferredOitivasCount;
+          deduplicatedOitivasCount += (res.deduplicatedOitivasCount || 0);
+          addedOitivasCount += (res.addedOitivasCount || 0);
+        }
+      }
+    }
+
+    return {
+      unifiedGroupsCount,
+      mergedUsersCount,
+      transferredOitivasCount,
+      deduplicatedOitivasCount,
+      addedOitivasCount
+    };
   }
 };
+

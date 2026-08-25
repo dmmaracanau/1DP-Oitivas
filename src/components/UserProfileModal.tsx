@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   X, 
   Shield, 
@@ -26,10 +26,13 @@ import {
   ShieldCheck,
   Check,
   AlertTriangle,
-  FileText
+  FileText,
+  GitMerge,
+  Layers
 } from 'lucide-react';
-import { UserProfile } from '../types/oitiva';
+import { UserProfile, DuplicateUserGroup } from '../types/oitiva';
 import { authService } from '../services/authService';
+import { UnifyDuplicatesModal } from './UnifyDuplicatesModal';
 
 interface UserProfileModalProps {
   isOpen: boolean;
@@ -101,8 +104,22 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   // =========================================================================
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [adminSearchQuery, setAdminSearchQuery] = useState('');
-  const [adminRoleFilter, setAdminRoleFilter] = useState<'all' | 'admin' | 'user'>('all');
+  const [adminRoleFilter, setAdminRoleFilter] = useState<'all' | 'admin' | 'user' | 'duplicates'>('all');
   const [adminLoading, setAdminLoading] = useState(false);
+  const [isUnifyModalOpen, setIsUnifyModalOpen] = useState(false);
+  const [selectedGroupForUnify, setSelectedGroupForUnify] = useState<DuplicateUserGroup | null>(null);
+  const [selectedUidsForManualMerge, setSelectedUidsForManualMerge] = useState<string[]>([]);
+
+  // Detecção automática de grupos de usuários duplicados (mesmo username ou email)
+  const duplicateGroups = useMemo(() => {
+    return authService.findDuplicateGroups(allUsers);
+  }, [allUsers]);
+
+  const duplicateUidSet = useMemo(() => {
+    const set = new Set<string>();
+    duplicateGroups.forEach(g => g.users.forEach(u => set.add(u.uid)));
+    return set;
+  }, [duplicateGroups]);
 
   // Admin: Create User Modal
   const [isCreatingUser, setIsCreatingUser] = useState(false);
@@ -397,7 +414,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     const matchesRole = 
       adminRoleFilter === 'all' || 
       (adminRoleFilter === 'admin' && (u.role === 'admin' || u.isAdmin)) ||
-      (adminRoleFilter === 'user' && u.role !== 'admin' && !u.isAdmin);
+      (adminRoleFilter === 'user' && u.role !== 'admin' && !u.isAdmin) ||
+      (adminRoleFilter === 'duplicates' && duplicateUidSet.has(u.uid));
 
     if (!matchesRole) return false;
 
@@ -416,16 +434,23 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   const userCount = allUsers.length - adminCount;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto no-print">
-      <div className="bg-[#110d1e] border border-purple-900/50 rounded-3xl w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh] overflow-hidden shadow-2xl shadow-purple-950/70 my-auto flex flex-col">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto no-print"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div className="bg-[#110d1e] border-2 border-purple-600/60 rounded-3xl w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh] overflow-hidden shadow-2xl shadow-purple-950/80 my-auto flex flex-col">
         
         {/* Header */}
-        <div className="p-5 border-b border-purple-900/40 bg-[#161128] flex items-center justify-between shrink-0">
+        <div className="p-5 border-b-2 border-purple-900/50 bg-[#161128] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className={`w-11 h-11 rounded-2xl border flex items-center justify-center shadow-md ${
+            <div className={`w-11 h-11 rounded-2xl border-2 flex items-center justify-center shadow-md ${
               isAdminUser 
-                ? 'bg-gradient-to-br from-amber-500 to-purple-950 border-amber-400/40 text-amber-300'
-                : 'bg-gradient-to-br from-purple-600 to-purple-950 border-purple-400/40 text-purple-200'
+                ? 'bg-gradient-to-br from-amber-500 to-purple-950 border-amber-400/60 text-amber-300'
+                : 'bg-gradient-to-br from-purple-600 to-purple-950 border-purple-400/60 text-purple-200'
             }`}>
               <Shield className="w-6 h-6" />
             </div>
@@ -440,20 +465,21 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                     ADMINISTRADOR
                   </span>
                 ) : (
-                  <span className="px-2 py-0.5 text-[10px] font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded-full">
+                  <span className="px-2.5 py-0.5 text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40 rounded-full">
                     PCCE
                   </span>
                 )}
               </div>
-              <p className="text-xs text-zinc-400">
+              <p className="text-xs text-zinc-300">
                 {unitName || '1ª Delegacia Metropolitana de Maracanaú'} • {cargo || 'Servidor'}
               </p>
             </div>
           </div>
 
           <button
+            type="button"
             onClick={onClose}
-            className="p-2 text-zinc-400 hover:text-white rounded-xl transition-colors hover:bg-purple-950/40 cursor-pointer"
+            className="p-2 text-zinc-300 hover:text-white rounded-xl transition-colors hover:bg-purple-950/60 border border-purple-900/40 cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -1031,10 +1057,49 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
         {activeTab === 'admin_users' && isAdminUser && (
           <div className="p-6 space-y-5 overflow-y-auto flex-1 flex flex-col">
             
+            {/* Duplicates Alert Banner */}
+            {duplicateGroups.length > 0 && (
+              <div className="bg-gradient-to-r from-amber-950/60 via-[#23173d] to-purple-950/60 border-2 border-amber-500/70 p-4 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xl shadow-amber-950/30">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/50 flex items-center justify-center text-amber-300 shrink-0 mt-0.5 shadow">
+                    <GitMerge className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="text-sm font-bold text-white tracking-tight">
+                        {duplicateGroups.length} Grupo(s) de Usuários Duplicados Detectado(s)
+                      </h4>
+                      <span className="px-2.5 py-0.5 text-[10px] font-bold bg-amber-500/30 text-amber-200 border border-amber-400/50 rounded-full">
+                        {duplicateUidSet.size} contas com mesmo @usuário ou e-mail
+                      </span>
+                    </div>
+                    <p className="text-xs text-zinc-300 mt-1">
+                      O sistema identificou contas redundantes. Você pode unificá-las para que todas as oitivas fiquem consolidadas em uma única conta oficial.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 w-full md:w-auto shrink-0">
+                  <button
+                    id="btn-open-unify-duplicates-modal"
+                    type="button"
+                    onClick={() => {
+                      setSelectedGroupForUnify(null);
+                      setIsUnifyModalOpen(true);
+                    }}
+                    className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-extrabold rounded-xl text-xs shadow-lg shadow-amber-950/50 transition-all cursor-pointer"
+                  >
+                    <GitMerge className="w-4 h-4 stroke-[2.5]" />
+                    <span>Revisar & Unificar Duplicados</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Admin Toolbar: Stats, Search, Filters, New User Button */}
             <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-[#181328] p-4 rounded-2xl border border-purple-900/40 shrink-0">
               
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2.5 flex-wrap">
                 <div className="flex items-center gap-2 bg-[#110d1e] px-3 py-1.5 rounded-xl border border-purple-900/30">
                   <Users className="w-4 h-4 text-purple-400" />
                   <span className="text-xs text-zinc-300 font-semibold">Total: {allUsers.length}</span>
@@ -1047,11 +1112,17 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   <User className="w-3.5 h-3.5 text-purple-400" />
                   <span>Comuns: {userCount}</span>
                 </div>
+                {duplicateGroups.length > 0 && (
+                  <div className="flex items-center gap-1.5 bg-amber-500/20 px-2.5 py-1.5 rounded-xl border border-amber-500/50 text-amber-300 text-xs font-bold animate-pulse">
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Duplicados: {duplicateUidSet.size}</span>
+                  </div>
+                )}
               </div>
 
-              <div className="flex items-center gap-2.5 flex-1 max-w-md justify-end">
+              <div className="flex items-center gap-2.5 flex-1 max-w-lg justify-end flex-wrap sm:flex-nowrap">
                 {/* Search Bar */}
-                <div className="relative flex-1">
+                <div className="relative flex-1 min-w-[160px]">
                   <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
                   <input
                     type="text"
@@ -1076,10 +1147,30 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   onChange={(e: any) => setAdminRoleFilter(e.target.value)}
                   className="bg-[#110d1e] border border-purple-900/50 text-xs text-zinc-200 rounded-xl px-2.5 py-1.5 focus:outline-none cursor-pointer"
                 >
-                  <option value="all">Todos os Papéis</option>
-                  <option value="admin">Apenas Admins</option>
-                  <option value="user">Apenas Comuns</option>
+                  <option value="all">Todos os Papéis ({allUsers.length})</option>
+                  <option value="admin">Apenas Admins ({adminCount})</option>
+                  <option value="user">Apenas Comuns ({userCount})</option>
+                  {duplicateGroups.length > 0 && (
+                    <option value="duplicates">⚠️ Apenas Duplicados ({duplicateUidSet.size})</option>
+                  )}
                 </select>
+
+                {/* Unificar Duplicados Button in Toolbar */}
+                {duplicateGroups.length > 0 && (
+                  <button
+                    id="btn-admin-unify-duplicates"
+                    type="button"
+                    onClick={() => {
+                      setSelectedGroupForUnify(null);
+                      setIsUnifyModalOpen(true);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/50 font-bold rounded-xl text-xs shadow-md transition-all shrink-0 cursor-pointer"
+                    title="Unificar contas duplicadas no banco de dados"
+                  >
+                    <GitMerge className="w-3.5 h-3.5" />
+                    <span>Unificar ({duplicateGroups.length})</span>
+                  </button>
+                )}
 
                 {/* Catálogo de Delegados Button */}
                 {onOpenDelegadosModal && (
@@ -1125,14 +1216,36 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 displayedUsers.map((u) => {
                   const isTargetAdmin = u.role === 'admin' || Boolean(u.isAdmin);
                   const isSelf = user?.uid === u.uid;
+                  const isDuplicate = duplicateUidSet.has(u.uid);
+                  const isSelected = selectedUidsForManualMerge.includes(u.uid);
 
                   return (
                     <div 
                       key={u.uid}
-                      className="bg-[#161128] hover:bg-[#1c1633] border border-purple-900/40 hover:border-purple-700/50 p-4 rounded-2xl transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+                      className={`p-4 rounded-2xl transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border ${
+                        isSelected
+                          ? 'bg-[#261845] border-amber-400 shadow-md ring-1 ring-amber-400/30'
+                          : isDuplicate
+                            ? 'bg-[#1a122e] border-amber-500/40 hover:border-amber-400/60'
+                            : 'bg-[#161128] hover:bg-[#1c1633] border-purple-900/40 hover:border-purple-700/50'
+                      }`}
                     >
-                      {/* User Info */}
-                      <div className="flex items-center gap-3.5 min-w-0">
+                      {/* User Info & Checkbox */}
+                      <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedUidsForManualMerge(prev => [...prev, u.uid]);
+                            } else {
+                              setSelectedUidsForManualMerge(prev => prev.filter(id => id !== u.uid));
+                            }
+                          }}
+                          className="w-4 h-4 rounded border-purple-700 text-amber-500 focus:ring-amber-500 bg-[#0d0a18] cursor-pointer shrink-0"
+                          title="Selecionar usuário para unificação manual"
+                        />
+
                         {u.photoURL ? (
                           <img 
                             src={u.photoURL} 
@@ -1149,7 +1262,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                           </div>
                         )}
 
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-bold text-white text-xs tracking-tight truncate">
                               {u.displayName || 'Sem Nome'}
@@ -1167,6 +1280,12 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                             ) : (
                               <span className="px-2 py-0.5 bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded-md text-[10px] font-medium">
                                 USUÁRIO COMUM
+                              </span>
+                            )}
+                            {isDuplicate && (
+                              <span className="px-2 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/50 rounded-md text-[10px] font-bold flex items-center gap-1">
+                                <AlertTriangle className="w-3 h-3 text-amber-400" />
+                                DUPLICADO
                               </span>
                             )}
                             {isSelf && (
@@ -1192,6 +1311,23 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
                       {/* Admin Actions for this user */}
                       <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                        {/* Quick Unify button for duplicate user */}
+                        {isDuplicate && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const matchedGroup = duplicateGroups.find(g => g.users.some(usr => usr.uid === u.uid));
+                              setSelectedGroupForUnify(matchedGroup || null);
+                              setIsUnifyModalOpen(true);
+                            }}
+                            className="flex items-center gap-1 px-2.5 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                            title="Abrir painel de unificação para este usuário duplicado"
+                          >
+                            <GitMerge className="w-3.5 h-3.5" />
+                            <span>Unificar</span>
+                          </button>
+                        )}
+
                         <button
                           type="button"
                           onClick={() => handleOpenEditUser(u)}
@@ -1216,6 +1352,45 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 })
               )}
             </div>
+
+            {/* Floating Manual Merge Bar */}
+            {selectedUidsForManualMerge.length >= 2 && (
+              <div className="sticky bottom-0 z-20 bg-[#1e133a] border-2 border-amber-500 p-3.5 rounded-2xl shadow-2xl flex items-center justify-between gap-3 animate-in slide-in-from-bottom">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span className="text-xs font-bold text-white">
+                    {selectedUidsForManualMerge.length} usuários selecionados para unificação manual
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedUidsForManualMerge([])}
+                    className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl text-xs cursor-pointer font-medium"
+                  >
+                    Limpar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const selectedUsersList = allUsers.filter(u => selectedUidsForManualMerge.includes(u.uid));
+                      const manualGroup: DuplicateUserGroup = {
+                        id: `manual_merge_${Date.now()}`,
+                        matchType: 'manual',
+                        matchedKey: 'Seleção Manual pelo Administrador',
+                        users: selectedUsersList
+                      };
+                      setSelectedGroupForUnify(manualGroup);
+                      setIsUnifyModalOpen(true);
+                    }}
+                    className="flex items-center gap-1.5 px-4 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-black font-extrabold rounded-xl text-xs shadow-md transition-all cursor-pointer"
+                  >
+                    <GitMerge className="w-4 h-4 stroke-[2.5]" />
+                    <span>Unificar Selecionados ({selectedUidsForManualMerge.length})</span>
+                  </button>
+                </div>
+              </div>
+            )}
 
           </div>
         )}
@@ -1646,6 +1821,27 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: ADMIN - UNIFICAR USUÁRIOS DUPLICADOS */}
+      {/* ========================================================================= */}
+      {isUnifyModalOpen && (
+        <UnifyDuplicatesModal
+          isOpen={isUnifyModalOpen}
+          onClose={() => {
+            setIsUnifyModalOpen(false);
+            setSelectedGroupForUnify(null);
+            setSelectedUidsForManualMerge([]);
+          }}
+          duplicateGroups={selectedGroupForUnify ? [selectedGroupForUnify] : duplicateGroups}
+          allUsers={allUsers}
+          initialSelectedGroup={selectedGroupForUnify}
+          onUnificationComplete={(msg) => {
+            showMsg(msg, 'success');
+            setSelectedUidsForManualMerge([]);
+          }}
+        />
       )}
 
     </div>

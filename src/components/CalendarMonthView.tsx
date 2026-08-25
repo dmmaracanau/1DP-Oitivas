@@ -69,19 +69,19 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
 
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pb-12">
-      <div className="bg-[#100d1b] border border-purple-900/30 rounded-3xl overflow-hidden shadow-2xl shadow-black/80 transition-all">
+      <div className="bg-[#0e0a1b] border-2 border-purple-600/70 rounded-3xl overflow-hidden shadow-2xl shadow-purple-950/80 transition-all">
         
         {/* Calendar Header / Navigation Controls */}
-        <div className="flex flex-col sm:flex-row items-center justify-between p-3.5 sm:p-5 border-b border-purple-900/30 gap-3 bg-[#141021]/80">
+        <div className="flex flex-col sm:flex-row items-center justify-between p-4 sm:p-5 border-b-2 border-purple-700/60 gap-3 bg-[#151026]">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-purple-950/90 border border-purple-500/40 flex items-center justify-center text-purple-300 shadow-inner">
+            <div className="w-10 h-10 rounded-2xl bg-purple-950 border-2 border-purple-400/80 flex items-center justify-center text-purple-200 shadow-md">
               <CalendarIcon className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg sm:text-2xl font-bold text-white tracking-tight capitalize">
+              <h2 className="text-lg sm:text-2xl font-black text-white tracking-tight capitalize">
                 {format(currentDate, 'MMMM yyyy', { locale: ptBR })}
               </h2>
-              <p className="text-[11px] sm:text-xs text-purple-300/70">
+              <p className="text-[11px] sm:text-xs text-purple-300 font-medium">
                 Grade Mensal • Dimensionamento Dinâmico de Pautas
               </p>
             </div>
@@ -92,7 +92,7 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
             <button
               id="month-prev-btn"
               onClick={prevMonth}
-              className="p-1.5 sm:p-2 rounded-xl bg-[#1a152b] hover:bg-[#251e3d] text-zinc-300 hover:text-white border border-purple-900/40 transition-colors cursor-pointer"
+              className="p-2 rounded-xl bg-[#1d1633] hover:bg-[#2a204a] text-zinc-200 hover:text-white border-2 border-purple-700/60 hover:border-purple-400 transition-all cursor-pointer shadow-sm"
               title="Mês anterior"
             >
               <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -101,7 +101,7 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
             <button
               id="month-today-btn"
               onClick={goToToday}
-              className="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-[#1a152b] hover:bg-[#251e3d] text-zinc-200 hover:text-white text-xs font-semibold border border-purple-900/40 transition-colors cursor-pointer"
+              className="px-3.5 py-2 rounded-xl bg-[#1d1633] hover:bg-[#2a204a] text-white text-xs font-bold border-2 border-purple-700/60 hover:border-purple-400 transition-all cursor-pointer shadow-sm"
             >
               Hoje
             </button>
@@ -109,7 +109,7 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
             <button
               id="month-next-btn"
               onClick={nextMonth}
-              className="p-1.5 sm:p-2 rounded-xl bg-[#1a152b] hover:bg-[#251e3d] text-zinc-300 hover:text-white border border-purple-900/40 transition-colors cursor-pointer"
+              className="p-2 rounded-xl bg-[#1d1633] hover:bg-[#2a204a] text-zinc-200 hover:text-white border-2 border-purple-700/60 hover:border-purple-400 transition-all cursor-pointer shadow-sm"
               title="Próximo mês"
             >
               <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -118,12 +118,12 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
         </div>
 
         {/* Weekday Headers */}
-        <div className="grid grid-cols-7 border-b border-purple-900/30 bg-[#0d0a17]">
+        <div className="grid grid-cols-7 border-b-2 border-purple-700/60 bg-[#130d22]">
           {weekDays.map((dayName, idx) => (
             <div
               key={dayName}
-              className={`py-2 sm:py-2.5 text-center text-[10px] sm:text-xs font-bold tracking-wider uppercase ${
-                idx === 0 || idx === 6 ? 'text-purple-400/60' : 'text-zinc-400'
+              className={`py-2.5 text-center text-[11px] sm:text-xs font-black tracking-wider uppercase ${
+                idx === 0 || idx === 6 ? 'text-purple-300' : 'text-zinc-200'
               }`}
             >
               {dayName}
@@ -132,7 +132,7 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
         </div>
 
         {/* Days Grid: Adequa-se naturalmente ao espaço necessário para acomodar todas as entradas sem scrollbar interna */}
-        <div className="grid grid-cols-7 divide-x divide-y divide-purple-900/20 bg-[#0b0914]">
+        <div className="grid grid-cols-7 divide-x-2 divide-y-2 divide-purple-700/50 bg-[#0c0817]">
           {days.map((day) => {
             const dayStr = format(day, 'yyyy-MM-dd');
             const isCurrentMonth = isSameMonth(day, currentDate);
@@ -145,20 +145,20 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
                 key={dayStr}
                 onMouseEnter={() => setHoveredDay(dayStr)}
                 onMouseLeave={() => setHoveredDay(null)}
-                className={`min-h-[85px] sm:min-h-[100px] p-1 sm:p-1.5 transition-colors flex flex-col justify-between group relative ${
-                  !isCurrentMonth ? 'bg-[#090710]/60 opacity-35' : 'bg-[#100d1c]/40 hover:bg-[#151124]'
-                } ${isCurrentDay ? 'ring-2 ring-purple-500/90 bg-purple-950/20 z-10' : ''}`}
+                className={`min-h-[90px] sm:min-h-[105px] p-1.5 sm:p-2 transition-colors flex flex-col justify-between group relative ${
+                  !isCurrentMonth ? 'bg-[#080511]/90 opacity-40' : 'bg-[#141026] hover:bg-[#1a1432]'
+                } ${isCurrentDay ? 'ring-2 ring-purple-400 bg-purple-950/40 z-10' : ''}`}
               >
                 {/* Day Header: Canto Superior Esquerdo (Dia 01) e Canto Superior Direito (Qtd 05) */}
-                <div className="flex items-center justify-between mb-1 gap-1">
+                <div className="flex items-center justify-between mb-1.5 gap-1">
                   {/* Canto Superior Esquerdo: Dia com 2 dígitos (ex: 01, 02) */}
                   <span
-                    className={`inline-flex items-center justify-center text-[11px] sm:text-xs font-bold font-mono rounded-lg px-1.5 py-0.5 transition-all ${
+                    className={`inline-flex items-center justify-center text-[11px] sm:text-xs font-mono rounded-lg px-2 py-0.5 transition-all ${
                       isCurrentDay
-                        ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-950 font-extrabold ring-1 ring-purple-400/40'
+                        ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-950 font-black ring-2 ring-purple-300'
                         : isCurrentMonth
-                        ? 'text-zinc-200 group-hover:text-purple-200 bg-purple-950/40 border border-purple-900/40'
-                        : 'text-zinc-600'
+                        ? 'text-white font-extrabold bg-[#1e163b] border-2 border-purple-500/60 shadow-sm'
+                        : 'text-zinc-500 font-semibold'
                     }`}
                   >
                     {format(day, 'dd')}
@@ -171,19 +171,19 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
                         e.stopPropagation();
                         onAddOitivaForDate(dayStr);
                       }}
-                      className="opacity-0 group-hover:opacity-100 p-0.5 sm:p-1 hover:bg-purple-600/30 text-purple-300 hover:text-white rounded-md transition-all text-[10px] flex items-center cursor-pointer"
+                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-purple-600 text-white rounded-md transition-all text-[10px] flex items-center cursor-pointer border border-purple-400/50"
                       title={`Agendar oitiva para ${format(day, 'dd/MM/yyyy')}`}
                     >
-                      <Plus className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                      <Plus className="w-3.5 h-3.5" />
                     </button>
 
                     <span
-                      className={`inline-flex items-center justify-center font-mono font-bold text-[10px] sm:text-xs px-1.5 py-0.5 rounded-md transition-all ${
+                      className={`inline-flex items-center justify-center font-mono font-black text-[10px] sm:text-xs px-2 py-0.5 rounded-md transition-all ${
                         dayOitivas.length > 0
-                          ? 'bg-purple-900/80 border border-purple-500/50 text-purple-200 shadow-sm'
+                          ? 'bg-purple-900 text-white border-2 border-purple-400 shadow-sm'
                           : isCurrentMonth
-                          ? 'text-zinc-600 bg-purple-950/20 border border-purple-950/40'
-                          : 'text-zinc-700'
+                          ? 'text-zinc-400 bg-purple-950/40 border border-purple-900/60'
+                          : 'text-zinc-600'
                       }`}
                       title={`${dayOitivas.length} oitiva(s) no dia ${format(day, 'dd/MM/yyyy')}`}
                     >
@@ -193,12 +193,28 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
                 </div>
 
                 {/* Scheduled Hearings (Oitivas) List: Sem barra de scroll interna, expande a célula para acomodar todos os itens */}
-                <div className="flex-1 space-y-1 py-0.5">
+                <div className="flex-1 space-y-1.5 py-1">
                   {dayOitivas.map((oitiva) => {
-                    const isCompleted = oitiva.status === 'Realizada';
-                    const isMissed = oitiva.status === 'Não Compareceu';
-                    const isCanceled = oitiva.status === 'Cancelada';
-                    const firstName = getFirstName(oitiva.personName);
+                    const status = oitiva.status || 'Agendada';
+                    const firstName = getFirstName(oitiva.personName) || oitiva.personName || 'Depoente';
+
+                    // Definir estilo de cor de fundo e borda destacada de alto contraste conforme o status
+                    let cardClasses = 'bg-[#1e1338] border-2 border-purple-400 text-white hover:border-purple-200 hover:bg-[#281a4b]';
+                    let statusBadgeClasses = 'bg-purple-950 text-purple-200 border-2 border-purple-400/80';
+
+                    if (status === 'Realizada') {
+                      cardClasses = 'bg-[#062417] border-2 border-emerald-400 text-white hover:border-emerald-200 hover:bg-[#0c3624]';
+                      statusBadgeClasses = 'bg-emerald-950 text-emerald-200 border-2 border-emerald-400/80';
+                    } else if (status === 'Não Compareceu') {
+                      cardClasses = 'bg-[#2f1007] border-2 border-orange-400 text-white hover:border-orange-200 hover:bg-[#43170a]';
+                      statusBadgeClasses = 'bg-orange-950 text-orange-200 border-2 border-orange-400/80';
+                    } else if (status === 'Cancelada') {
+                      cardClasses = 'bg-[#290812] border-2 border-rose-400 text-white line-through opacity-90 hover:border-rose-200 hover:bg-[#3d0c1b]';
+                      statusBadgeClasses = 'bg-rose-950 text-rose-200 border-2 border-rose-400/80 no-underline';
+                    } else if (status === 'Remarcada') {
+                      cardClasses = 'bg-[#291b05] border-2 border-amber-400 text-white hover:border-amber-200 hover:bg-[#3d2908]';
+                      statusBadgeClasses = 'bg-amber-950 text-amber-200 border-2 border-amber-400/80';
+                    }
 
                     return (
                       <div
@@ -207,39 +223,36 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
                           e.stopPropagation();
                           onSelectOitiva(oitiva);
                         }}
-                        className={`px-1.5 py-1 rounded-lg text-left border cursor-pointer transition-all hover:scale-[1.02] shadow-sm ${
-                          isCompleted
-                            ? 'bg-emerald-950/50 border-emerald-500/30 hover:border-emerald-400/60 text-emerald-200'
-                            : isMissed
-                            ? 'bg-orange-950/50 border-orange-500/30 hover:border-orange-400/60 text-orange-200'
-                            : isCanceled
-                            ? 'bg-rose-950/40 border-rose-500/30 hover:border-rose-400/60 text-rose-300 line-through opacity-70'
-                            : 'bg-[#1e1733] border-purple-500/30 hover:border-purple-400/80 hover:bg-[#271e42] text-zinc-100'
-                        }`}
-                        title={`${oitiva.time || ''} - ${oitiva.personName} (${oitiva.role || 'Oitiva'}) • Clique para ver detalhes`}
+                        className={`p-1.5 sm:p-2 rounded-xl text-left border-2 cursor-pointer transition-all hover:scale-[1.02] shadow-md ${cardClasses}`}
+                        title={`${oitiva.time || ''} - ${oitiva.personName} (${oitiva.role || 'Oitiva'}) • Status: ${oitiva.status} • Clique para ver detalhes`}
                       >
                         {/* Time & Role / Modality Indicator */}
-                        <div className="flex items-center justify-between gap-1 text-[9px] sm:text-[10px] leading-none mb-0.5">
-                          <span className="font-bold text-purple-300 flex items-center gap-0.5 font-mono">
-                            <Clock className="w-2.5 h-2.5 text-purple-400" />
+                        <div className="flex items-center justify-between gap-1 text-[10px] leading-none mb-1">
+                          <span className="font-black text-white flex items-center gap-1 font-mono">
+                            <Clock className="w-2.5 h-2.5 text-purple-200" />
                             {oitiva.time || '--:--'}
                           </span>
-                          <div className="flex items-center gap-0.5">
+                          <div className="flex items-center gap-1">
                             {oitiva.modality === 'Videoconferência' && (
-                              <Video className="w-2.5 h-2.5 text-blue-400 shrink-0" title="Videoconferência" />
+                              <Video className="w-3 h-3 text-cyan-300 shrink-0" title="Videoconferência" />
                             )}
                             {oitiva.role && (
-                              <span className="text-[8px] px-1 py-0.2 rounded bg-purple-950/80 text-purple-200 border border-purple-800/40 truncate max-w-[55px]">
+                              <span className="text-[8px] font-bold px-1 py-0.2 rounded bg-black/60 text-white border border-white/30 truncate max-w-[60px]">
                                 {oitiva.role}
                               </span>
                             )}
                           </div>
                         </div>
 
-                        {/* PRIMEIRO NOME DO DEPOENTE (COMPACTO E CLARO) */}
-                        <p className="text-[11px] sm:text-xs font-bold text-white tracking-tight leading-tight truncate">
-                          {firstName}
-                        </p>
+                        {/* NOME DO DEPOENTE E LEGENDA DO STATUS AO LADO EM FONTE MENOR */}
+                        <div className="flex items-center justify-between gap-1 flex-wrap pt-0.5">
+                          <p className="text-xs font-black text-white tracking-tight leading-tight truncate flex-1 min-w-[50px]">
+                            {firstName}
+                          </p>
+                          <span className={`text-[8px] sm:text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider shrink-0 ${statusBadgeClasses}`}>
+                            {status.toLowerCase()}
+                          </span>
+                        </div>
                       </div>
                     );
                   })}
@@ -249,7 +262,7 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
                 {dayOitivas.length === 0 && isHovered && isCurrentMonth && (
                   <div
                     onClick={() => onAddOitivaForDate(dayStr)}
-                    className="text-[9px] sm:text-[10px] text-purple-400/80 hover:text-purple-200 text-center py-0.5 rounded bg-purple-950/30 border border-dashed border-purple-500/30 cursor-pointer transition-colors mt-auto"
+                    className="text-[10px] text-purple-300 font-bold hover:text-white text-center py-1 rounded-lg bg-purple-950/60 border-2 border-dashed border-purple-500/50 cursor-pointer transition-colors mt-auto"
                   >
                     + Agendar
                   </div>
@@ -260,29 +273,29 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
         </div>
 
         {/* Footer info & Status Legend */}
-        <div className="p-3 sm:p-4 bg-[#0d0a17] border-t border-purple-900/30 flex flex-wrap items-center justify-between gap-3 text-xs text-zinc-400">
-          <div className="flex items-center gap-3 sm:gap-4 flex-wrap text-[11px] sm:text-xs">
-            <span className="text-zinc-500 font-medium">Legenda:</span>
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+        <div className="p-3.5 sm:p-4 bg-[#130d22] border-t-2 border-purple-700/60 flex flex-wrap items-center justify-between gap-3 text-xs text-zinc-300">
+          <div className="flex items-center gap-3 sm:gap-4 flex-wrap text-xs">
+            <span className="text-zinc-300 font-bold uppercase tracking-wider">Legenda:</span>
+            <div className="flex items-center gap-1.5 font-semibold text-white">
+              <span className="w-2.5 h-2.5 rounded-full bg-purple-400 border border-white/30"></span>
               <span>Agendada</span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <div className="flex items-center gap-1.5 font-semibold text-white">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 border border-white/30"></span>
               <span>Realizada</span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-orange-500"></span>
+            <div className="flex items-center gap-1.5 font-semibold text-white">
+              <span className="w-2.5 h-2.5 rounded-full bg-orange-400 border border-white/30"></span>
               <span>Não Compareceu</span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+            <div className="flex items-center gap-1.5 font-semibold text-white">
+              <span className="w-2.5 h-2.5 rounded-full bg-rose-400 border border-white/30"></span>
               <span>Cancelada</span>
             </div>
           </div>
 
-          <div className="text-[10px] sm:text-[11px] text-purple-300/80">
-            Ambiente Individual • As entradas expandem a grade automaticamente
+          <div className="text-xs text-purple-200 font-medium">
+            Ambiente Oficial • Pautas dinâmicas e auto-ajustáveis
           </div>
         </div>
 

@@ -282,13 +282,21 @@ export const GoogleWorkspaceModal = ({
   const selectedDateStr = currentDate.toISOString().split('T')[0];
 
   return (
-    <div id="google-workspace-modal-overlay" className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto no-print">
-      <div id="google-workspace-modal-card" className="bg-[#100D1B] border border-purple-900/50 rounded-3xl w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh] overflow-hidden shadow-2xl shadow-purple-950/80 my-auto flex flex-col">
+    <div 
+      id="google-workspace-modal-overlay" 
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto no-print"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div id="google-workspace-modal-card" className="bg-[#100D1B] border-2 border-purple-600/60 rounded-3xl w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh] overflow-hidden shadow-2xl shadow-purple-950/90 my-auto flex flex-col">
         
         {/* Modal Header */}
-        <div className="p-5 border-b border-purple-900/40 bg-[#151124] flex items-center justify-between shrink-0">
+        <div className="p-5 border-b-2 border-purple-900/50 bg-[#151124] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-purple-950/80 border border-purple-500/40 flex items-center justify-center text-purple-300">
+            <div className="w-10 h-10 rounded-2xl bg-purple-950/80 border-2 border-purple-500/50 flex items-center justify-center text-purple-300">
               {activeTab === 'calendar' && <Calendar className="w-5 h-5" />}
               {activeTab === 'gmail' && <Mail className="w-5 h-5" />}
               {activeTab === 'drive' && <HardDrive className="w-5 h-5" />}
@@ -298,11 +306,11 @@ export const GoogleWorkspaceModal = ({
                 <h2 className="text-base font-bold text-white tracking-tight">
                   Google Workspace
                 </h2>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-purple-900/50 text-purple-300 border border-purple-500/30">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-900/50 text-purple-300 border border-purple-500/40">
                   Drive • Gmail • Agenda
                 </span>
               </div>
-              <p className="text-xs text-purple-300/70">
+              <p className="text-xs text-purple-300/80">
                 Integração oficial da Delegacia de Maracanaú
               </p>
             </div>
@@ -310,8 +318,9 @@ export const GoogleWorkspaceModal = ({
 
           <button
             id="close-google-workspace-modal-btn"
+            type="button"
             onClick={onClose}
-            className="p-2 text-zinc-400 hover:text-white rounded-xl transition-colors hover:bg-purple-950/50"
+            className="p-2 text-zinc-300 hover:text-white rounded-xl transition-colors hover:bg-purple-950/60 border border-purple-900/40"
           >
             <X className="w-5 h-5" />
           </button>

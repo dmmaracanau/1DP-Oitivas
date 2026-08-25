@@ -135,6 +135,26 @@ export const OitivaModal: React.FC<OitivaModalProps> = ({
     delegadoService.setLastSelectedDelegado(delegado.nome);
   };
 
+  const handleGoNext = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (activeTab === 'depoente') {
+      setActiveTab('agendamento');
+    } else if (activeTab === 'agendamento') {
+      setActiveTab('procedimento');
+    }
+  };
+
+  const handleGoBack = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (activeTab === 'procedimento') {
+      setActiveTab('agendamento');
+    } else if (activeTab === 'agendamento') {
+      setActiveTab('depoente');
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -186,28 +206,36 @@ export const OitivaModal: React.FC<OitivaModalProps> = ({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto no-print">
-        <div className="bg-[#120f1e] border border-purple-900/50 rounded-3xl w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh] overflow-hidden shadow-2xl shadow-purple-950/70 my-auto flex flex-col">
+      <div 
+        className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto no-print"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) {
+            onClose();
+          }
+        }}
+      >
+        <div className="bg-[#120f1e] border-2 border-purple-600/60 rounded-3xl w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh] overflow-hidden shadow-2xl shadow-purple-950/90 my-auto flex flex-col">
           
           {/* Header */}
-          <div className="p-5 border-b border-purple-900/40 bg-[#161226] flex items-center justify-between shrink-0">
+          <div className="p-5 border-b-2 border-purple-900/50 bg-[#161226] flex items-center justify-between shrink-0">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-purple-600 to-purple-950 border border-purple-400/40 flex items-center justify-center text-purple-200 shadow-md">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-purple-600 to-purple-950 border-2 border-purple-400/60 flex items-center justify-center text-purple-200 shadow-md">
                 <FileText className="w-5 h-5" />
               </div>
               <div>
                 <h2 className="text-base font-bold text-white tracking-tight">
                   {initialData ? 'Editar Agendamento de Oitiva' : 'Nova Marcação de Oitiva'}
                 </h2>
-                <p className="text-xs text-zinc-400">
+                <p className="text-xs text-zinc-300">
                   Cadastre ou atualize os dados da oitiva policial e intime com facilidade
                 </p>
               </div>
             </div>
 
             <button
+              type="button"
               onClick={onClose}
-              className="p-2 text-zinc-400 hover:text-white rounded-xl hover:bg-purple-950/40 transition-colors"
+              className="p-2 text-zinc-300 hover:text-white rounded-xl hover:bg-purple-950/60 border border-purple-900/40 hover:border-purple-500/50 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -215,21 +243,21 @@ export const OitivaModal: React.FC<OitivaModalProps> = ({
 
           {/* Validation Error Alert */}
           {validationError && (
-            <div className="mx-6 mt-4 p-3 bg-red-950/60 border border-red-500/40 rounded-xl flex items-center gap-2 text-xs text-red-300">
-              <AlertCircle className="w-4 h-4 shrink-0" />
+            <div className="mx-6 mt-4 p-3 bg-red-950/80 border-2 border-red-500/60 rounded-xl flex items-center gap-2 text-xs text-red-200">
+              <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
               <span>{validationError}</span>
             </div>
           )}
 
           {/* Tabs Navigation */}
-          <div className="px-6 pt-4 pb-2 border-b border-purple-900/30 flex gap-2">
+          <div className="px-6 pt-4 pb-2 border-b border-purple-900/40 flex gap-2">
             <button
               type="button"
               onClick={() => setActiveTab('depoente')}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all border-2 ${
                 activeTab === 'depoente'
-                  ? 'bg-purple-600 text-white shadow-sm shadow-purple-900/50'
-                  : 'bg-[#171326] text-zinc-400 hover:text-zinc-200 border border-purple-900/30'
+                  ? 'bg-purple-600 text-white border-purple-300 shadow-md shadow-purple-900/60'
+                  : 'bg-[#171326] text-zinc-300 hover:text-white border-purple-900/60 hover:border-purple-600/60'
               }`}
             >
               <User className="w-3.5 h-3.5" />
@@ -239,10 +267,10 @@ export const OitivaModal: React.FC<OitivaModalProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('agendamento')}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all border-2 ${
                 activeTab === 'agendamento'
-                  ? 'bg-purple-600 text-white shadow-sm shadow-purple-900/50'
-                  : 'bg-[#171326] text-zinc-400 hover:text-zinc-200 border border-purple-900/30'
+                  ? 'bg-purple-600 text-white border-purple-300 shadow-md shadow-purple-900/60'
+                  : 'bg-[#171326] text-zinc-300 hover:text-white border-purple-900/60 hover:border-purple-600/60'
               }`}
             >
               <CalendarIcon className="w-3.5 h-3.5 text-purple-300" />
@@ -252,10 +280,10 @@ export const OitivaModal: React.FC<OitivaModalProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('procedimento')}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all border-2 ${
                 activeTab === 'procedimento'
-                  ? 'bg-purple-600 text-white shadow-sm shadow-purple-900/50'
-                  : 'bg-[#171326] text-zinc-400 hover:text-zinc-200 border border-purple-900/30'
+                  ? 'bg-purple-600 text-white border-purple-300 shadow-md shadow-purple-900/60'
+                  : 'bg-[#171326] text-zinc-300 hover:text-white border-purple-900/60 hover:border-purple-600/60'
               }`}
             >
               <Shield className="w-3.5 h-3.5" />
@@ -264,7 +292,15 @@ export const OitivaModal: React.FC<OitivaModalProps> = ({
           </div>
 
           {/* Form Body */}
-          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
+          <form 
+            onSubmit={handleSubmit} 
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && e.target instanceof HTMLInputElement) {
+                e.preventDefault();
+              }
+            }}
+            className="flex-1 overflow-y-auto p-6 space-y-4"
+          >
             
             {/* TAB 1: DEPOENTE (PESSOA) */}
             {activeTab === 'depoente' && (
@@ -662,11 +698,11 @@ export const OitivaModal: React.FC<OitivaModalProps> = ({
             )}
 
             {/* Form Actions */}
-            <div className="pt-4 border-t border-purple-900/30 flex items-center justify-between">
+            <div className="pt-4 border-t-2 border-purple-900/50 flex items-center justify-between">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl text-xs font-semibold transition-colors"
+                className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border-2 border-zinc-600/70 hover:border-zinc-500 rounded-xl text-xs font-bold transition-all"
               >
                 Cancelar
               </button>
@@ -675,11 +711,8 @@ export const OitivaModal: React.FC<OitivaModalProps> = ({
                 {activeTab !== 'depoente' && (
                   <button
                     type="button"
-                    onClick={() => {
-                      if (activeTab === 'agendamento') setActiveTab('depoente');
-                      if (activeTab === 'procedimento') setActiveTab('agendamento');
-                    }}
-                    className="px-3.5 py-2 bg-[#171326] hover:bg-purple-950/40 text-zinc-300 border border-purple-900/40 rounded-xl text-xs font-semibold transition-colors"
+                    onClick={handleGoBack}
+                    className="px-4 py-2 bg-[#171326] hover:bg-purple-950/60 text-zinc-200 hover:text-white border-2 border-purple-600/60 hover:border-purple-400 rounded-xl text-xs font-bold transition-all"
                   >
                     Voltar
                   </button>
@@ -688,11 +721,8 @@ export const OitivaModal: React.FC<OitivaModalProps> = ({
                 {activeTab !== 'procedimento' ? (
                   <button
                     type="button"
-                    onClick={() => {
-                      if (activeTab === 'depoente') setActiveTab('agendamento');
-                      if (activeTab === 'agendamento') setActiveTab('procedimento');
-                    }}
-                    className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold transition-colors"
+                    onClick={handleGoNext}
+                    className="px-5 py-2 bg-purple-600 hover:bg-purple-500 text-white border-2 border-purple-300 rounded-xl text-xs font-bold shadow-md shadow-purple-900/60 hover:shadow-lg transition-all"
                   >
                     Avançar
                   </button>
@@ -700,10 +730,10 @@ export const OitivaModal: React.FC<OitivaModalProps> = ({
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="flex items-center gap-1.5 px-5 py-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-purple-900/40 transition-all disabled:opacity-50"
+                    className="flex items-center gap-1.5 px-6 py-2 bg-gradient-to-r from-emerald-600 via-purple-600 to-purple-700 hover:from-emerald-500 hover:to-purple-600 text-white border-2 border-emerald-400/80 rounded-xl text-xs font-bold shadow-lg shadow-purple-900/60 transition-all disabled:opacity-50"
                   >
                     <Save className="w-4 h-4" />
-                    <span>{isSubmitting ? 'Salvando...' : 'Salvar Oitiva'}</span>
+                    <span>{isSubmitting ? 'Salvando Oitiva...' : 'Salvar Oitiva'}</span>
                   </button>
                 )}
               </div>

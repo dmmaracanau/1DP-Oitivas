@@ -56,7 +56,70 @@ export function extractMandadoData(oitiva: Oitiva, user?: UserProfile | null): M
   };
 }
 
-export function generateMandadoPdf(data: MandadoPdfData): jsPDF {
+// Cache for the official header image in base64 format to avoid reloading on every export
+let cachedHeaderImageDataUrl: string | null = null;
+let cachedHeaderAspectRatio: number = 0.23; // default header aspect ratio
+
+export async function loadOfficialHeaderImage(): Promise<{ dataUrl: string; aspectRatio: number } | null> {
+  if (cachedHeaderImageDataUrl) {
+    return { dataUrl: cachedHeaderImageDataUrl, aspectRatio: cachedHeaderAspectRatio };
+  }
+
+  const sources = [
+    '/images/cabecalho-oficial.png',
+    './images/cabecalho-oficial.png',
+    'https://lh3.googleusercontent.com/d/1H0TRKiVUk9VHOJA0j2ShtFNqQKhzRFW7',
+    'https://drive.google.com/thumbnail?id=1H0TRKiVUk9VHOJA0j2ShtFNqQKhzRFW7&sz=w1600'
+  ];
+
+  for (const src of sources) {
+    try {
+      const res = await new Promise<{ dataUrl: string; aspectRatio: number }>((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          try {
+            const canvas = document.createElement('canvas');
+            const w = img.naturalWidth || img.width || 1200;
+            const h = img.naturalHeight || img.height || 276;
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(img, 0, 0);
+              const dataUrl = canvas.toDataURL('image/png');
+              const aspectRatio = h / w;
+              cachedHeaderImageDataUrl = dataUrl;
+              cachedHeaderAspectRatio = aspectRatio;
+              resolve({ dataUrl, aspectRatio });
+            } else {
+              reject(new Error('Canvas context not available'));
+            }
+          } catch (e) {
+            reject(e);
+          }
+        };
+        img.onerror = (e) => reject(e);
+        img.src = src;
+      });
+
+      if (res && res.dataUrl) {
+        return res;
+      }
+    } catch {
+      // Continue to next image source
+    }
+  }
+
+  return null;
+}
+
+// Pre-load header on module load for instant generation
+if (typeof window !== 'undefined') {
+  loadOfficialHeaderImage().catch(() => {});
+}
+
+export async function generateMandadoPdf(data: MandadoPdfData): Promise<jsPDF> {
   // A4 standard: 210mm x 297mm
   const doc = new jsPDF({
     orientation: 'portrait',
@@ -67,36 +130,51 @@ export function generateMandadoPdf(data: MandadoPdfData): jsPDF {
   const pageWidth = 210;
   const marginX = 22;
   const contentWidth = pageWidth - (marginX * 2); // 166mm
-  let currentY = 18;
+  let currentY = 16;
 
-  // 1. Official Header (PCCE / Governo do Estado do Ceará)
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.setTextColor(0, 0, 0);
-  doc.text('GOVERNO DO ESTADO DO CEARÁ', pageWidth / 2, currentY, { align: 'center' });
+  // 1. Official Header Image (PCCE / Governo do Estado do Ceará)
+  const headerImg = await loadOfficialHeaderImage();
 
-  currentY += 4.5;
-  doc.setFontSize(9);
-  doc.text('SECRETARIA DA SEGURANÇA PÚBLICA E DEFESA SOCIAL', pageWidth / 2, currentY, { align: 'center' });
+  if (headerImg && headerImg.dataUrl) {
+    // Header image scaled to 148mm width, centered on the page
+    const headerWidth = 148;
+    const headerHeight = headerWidth * (headerImg.aspectRatio || 0.23);
+    const headerX = (pageWidth - headerWidth) / 2;
 
-  currentY += 4.5;
-  doc.setFontSize(9.5);
-  doc.text('POLÍCIA CIVIL DO ESTADO DO CEARÁ', pageWidth / 2, currentY, { align: 'center' });
+    doc.addImage(headerImg.dataUrl, 'PNG', headerX, currentY, headerWidth, headerHeight);
+    currentY += headerHeight + 5;
+  } else {
+    // Fallback Vector / Text Header if image cannot be rendered
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(0, 0, 0);
+    doc.text('GOVERNO DO ESTADO DO CEARÁ', pageWidth / 2, currentY, { align: 'center' });
 
-  currentY += 4.5;
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.5);
-  doc.text('1ª DELEGACIA METROPOLITANA DE MARACANAÚ', pageWidth / 2, currentY, { align: 'center' });
+    currentY += 4.5;
+    doc.setFontSize(9);
+    doc.text('SECRETARIA DA SEGURANÇA PÚBLICA E DEFESA SOCIAL', pageWidth / 2, currentY, { align: 'center' });
 
-  currentY += 3;
-  doc.setDrawColor(30, 30, 30);
-  doc.setLineWidth(0.4);
-  doc.line(marginX, currentY, pageWidth - marginX, currentY);
+    currentY += 4.5;
+    doc.setFontSize(9.5);
+    doc.text('POLÍCIA CIVIL DO ESTADO DO CEARÁ', pageWidth / 2, currentY, { align: 'center' });
+
+    currentY += 4.5;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.text('1ª DELEGACIA METROPOLITANA DE MARACANAÚ', pageWidth / 2, currentY, { align: 'center' });
+
+    currentY += 3;
+    doc.setDrawColor(30, 30, 30);
+    doc.setLineWidth(0.4);
+    doc.line(marginX, currentY, pageWidth - marginX, currentY);
+    currentY += 3;
+  }
 
   // 2. Title: MANDADO DE INTIMAÇÃO
-  currentY += 8;
+  currentY += 5;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(13);
+  doc.setTextColor(0, 0, 0);
   doc.text('MANDADO DE INTIMAÇÃO', pageWidth / 2, currentY, { align: 'center' });
 
   // 3. References (Ref and OIP)
@@ -139,15 +217,16 @@ export function generateMandadoPdf(data: MandadoPdfData): jsPDF {
   doc.text('TRAZER DOCUMENTO DE IDENTIFICAÇÃO E VIA DA INTIMAÇÃO.', pageWidth / 2, currentY, { align: 'center' });
 
   // 8. Sign-off & Delegate Signature
-  currentY += 10;
+  currentY += 9;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9.5);
   doc.text('Atenciosamente,', marginX, currentY);
 
-  currentY += 16;
+  currentY += 15;
   const sigLineWidth = 75;
   const sigStartX = (pageWidth - sigLineWidth) / 2;
   doc.setLineWidth(0.3);
+  doc.setDrawColor(0, 0, 0);
   doc.line(sigStartX, currentY, sigStartX + sigLineWidth, currentY);
 
   currentY += 4.5;
@@ -164,7 +243,7 @@ export function generateMandadoPdf(data: MandadoPdfData): jsPDF {
   doc.text(sigSub, pageWidth / 2, currentY, { align: 'center' });
 
   // 9. Receipt / Contra-fé section
-  currentY += 10;
+  currentY += 9;
   doc.setDrawColor(180, 180, 180);
   doc.setLineWidth(0.3);
   doc.line(marginX, currentY, pageWidth - marginX, currentY);
@@ -214,15 +293,15 @@ export function generateMandadoPdf(data: MandadoPdfData): jsPDF {
   return doc;
 }
 
-export function downloadMandadoPdf(data: MandadoPdfData, fileName?: string): void {
-  const doc = generateMandadoPdf(data);
+export async function downloadMandadoPdf(data: MandadoPdfData, fileName?: string): Promise<void> {
+  const doc = await generateMandadoPdf(data);
   const cleanName = data.personName ? data.personName.replace(/[^a-zA-Z0-9]/g, '_') : 'Intimacao';
   const name = fileName || `Mandado_Intimacao_${cleanName}.pdf`;
   doc.save(name);
 }
 
-export function getMandadoPdfFile(data: MandadoPdfData, fileName?: string): File {
-  const doc = generateMandadoPdf(data);
+export async function getMandadoPdfFile(data: MandadoPdfData, fileName?: string): Promise<File> {
+  const doc = await generateMandadoPdf(data);
   const cleanName = data.personName ? data.personName.replace(/[^a-zA-Z0-9]/g, '_') : 'Intimacao';
   const name = fileName || `Mandado_Intimacao_${cleanName}.pdf`;
   const blob = doc.output('blob');

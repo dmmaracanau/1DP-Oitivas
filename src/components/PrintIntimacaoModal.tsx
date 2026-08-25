@@ -5,28 +5,22 @@ import {
   Copy, 
   Check, 
   FileText, 
-  User, 
-  Shield, 
-  Calendar, 
-  Clock, 
   Edit3, 
   Download,
-  Send,
   Phone,
   UserCheck
 } from 'lucide-react';
 import { Oitiva, UserProfile } from '../types/oitiva';
 import { 
-  formatDateBR, 
   formatDateExtenso, 
   getUserInitials, 
-  formatAddressCompleto,
-  generateWhatsAppReminder 
+  formatAddressCompleto
 } from '../utils/formatters';
 import { OfficialCeHeader } from './OfficialCeHeader';
 import { DelegadoSelectorModal } from './DelegadoSelectorModal';
 import { WhatsAppShareModal } from './WhatsAppShareModal';
 import { DelegadoInfo, delegadoService } from '../services/delegadoService';
+import { downloadMandadoPdf, MandadoPdfData } from '../utils/pdfGenerator';
 
 interface PrintIntimacaoModalProps {
   isOpen: boolean;
@@ -43,7 +37,7 @@ export const PrintIntimacaoModal: React.FC<PrintIntimacaoModalProps> = ({
   user,
   onMarkIntimationSent
 }) => {
-  // Editable fields for custom adjustments before printing
+  // Editable fields for custom adjustments before printing or downloading
   const [procedureRef, setProcedureRef] = useState('');
   const [oipInitials, setOipInitials] = useState('');
   const [personName, setPersonName] = useState('');
@@ -56,6 +50,7 @@ export const PrintIntimacaoModal: React.FC<PrintIntimacaoModalProps> = ({
   const [officerCargo, setOfficerCargo] = useState('Delegado de Polícia Civil');
   
   const [copied, setCopied] = useState(false);
+  const [downloaded, setDownloaded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isDelegadoModalOpen, setIsDelegadoModalOpen] = useState(false);
   const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
@@ -113,7 +108,33 @@ export const PrintIntimacaoModal: React.FC<PrintIntimacaoModalProps> = ({
     setOfficerCargo(delegado.cargo || 'Delegado de Polícia Civil');
   };
 
-  const handlePrint = () => {
+  const handleDownloadPdf = async () => {
+    const data: MandadoPdfData = {
+      procedureRef,
+      oipInitials,
+      personName,
+      address,
+      phone,
+      dateFormatted,
+      timeFormatted,
+      officerName,
+      officerMatricula,
+      officerCargo
+    };
+
+    const cleanName = personName ? personName.replace(/[^a-zA-Z0-9]/g, '_') : 'Intimacao';
+    const fileName = `Mandado_Intimacao_${cleanName}.pdf`;
+    await downloadMandadoPdf(data, fileName);
+    
+    setDownloaded(true);
+    setTimeout(() => setDownloaded(false), 3000);
+
+    if (onMarkIntimationSent && oitiva) {
+      onMarkIntimationSent(oitiva.id);
+    }
+  };
+
+  const handlePrintBrowser = () => {
     if (onMarkIntimationSent && oitiva) {
       onMarkIntimationSent(oitiva.id);
     }
@@ -149,9 +170,7 @@ Assinatura Intimado(a): _________________________________________
 
 Policial encarregado: ___________________________________ em ______/______/_______
 
-1ª Delegacia de Maracanaú – Polícia Civil
-Av. VI, 410, Jereissati I, Maracanaú/CE, CEP: 61.900-670, Fone: (85) 3101-7344
-Email: 1dpmaracanau@pc.ce.gov.br / Site: www.policiacivil.ce.gov.br`;
+1ª Delegacia de Maracanaú – Polícia Civil do Estado do Ceará | Av. VI, 410, Jereissati I, Maracanaú/CE, CEP: 61.900-670, Fone: (85) 3101-7344 | Email: 1dpmaracanau@pc.ce.gov.br | Site: www.policiacivil.ce.gov.br`;
 
     navigator.clipboard.writeText(fullText);
     setCopied(true);
@@ -160,13 +179,18 @@ Email: 1dpmaracanau@pc.ce.gov.br / Site: www.policiacivil.ce.gov.br`;
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-        <div className="bg-[#120f1e] border border-purple-900/50 rounded-3xl w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh] overflow-hidden shadow-2xl shadow-purple-950/70 my-auto flex flex-col">
+      <div 
+        className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) onClose();
+        }}
+      >
+        <div className="bg-[#120f1e] border-2 border-purple-900/60 rounded-3xl w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh] overflow-hidden shadow-2xl shadow-purple-950/80 my-auto flex flex-col">
           
           {/* Modal Controls Header (Hidden in Print) */}
-          <div className="p-4 border-b border-purple-900/40 bg-[#161226] flex items-center justify-between no-print shrink-0">
+          <div className="p-4 border-b-2 border-purple-900/40 bg-[#161226] flex items-center justify-between no-print shrink-0 flex-wrap gap-2">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-purple-600 to-purple-950 border border-purple-400/40 flex items-center justify-center text-purple-200 shadow-md">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-purple-600 to-purple-950 border-2 border-purple-400/40 flex items-center justify-center text-purple-200 shadow-md">
                 <FileText className="w-5 h-5" />
               </div>
               <div>
@@ -174,8 +198,8 @@ Email: 1dpmaracanau@pc.ce.gov.br / Site: www.policiacivil.ce.gov.br`;
                   <h2 className="text-base font-bold text-white tracking-tight">
                     Mandado de Intimação Oficial
                   </h2>
-                  <span className="px-2 py-0.5 text-[10px] font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded-full">
-                    PDF / A4
+                  <span className="px-2 py-0.5 text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40 rounded-full">
+                    PDF A4
                   </span>
                 </div>
                 <p className="text-xs text-zinc-400">
@@ -189,22 +213,22 @@ Email: 1dpmaracanau@pc.ce.gov.br / Site: www.policiacivil.ce.gov.br`;
               <button
                 type="button"
                 onClick={() => setIsDelegadoModalOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border-2 border-amber-500/40 rounded-xl text-xs font-bold transition-all cursor-pointer"
                 title="Trocar Delegado(a) Signatário(a)"
               >
                 <UserCheck className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Trocar Delegado (DPC)</span>
+                <span className="hidden sm:inline">Trocar Delegado</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setIsEditing(!isEditing)}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-colors cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border-2 transition-all cursor-pointer ${
                   isEditing
                     ? 'bg-purple-600 text-white border-purple-400'
-                    : 'bg-[#1b152d] text-zinc-300 hover:text-white border-purple-900/40 hover:bg-purple-950/50'
+                    : 'bg-[#1b152d] text-zinc-300 hover:text-white border-purple-900/60 hover:bg-purple-950/50'
                 }`}
-                title="Ajustar dados antes de imprimir"
+                title="Ajustar dados antes de baixar"
               >
                 <Edit3 className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">{isEditing ? 'Visualizar' : 'Editar Dados'}</span>
@@ -213,7 +237,7 @@ Email: 1dpmaracanau@pc.ce.gov.br / Site: www.policiacivil.ce.gov.br`;
               <button
                 type="button"
                 onClick={handleCopyText}
-                className="flex items-center gap-1.5 px-3 py-2 bg-[#1b152d] hover:bg-purple-950/50 text-zinc-300 hover:text-white border border-purple-900/40 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-2 bg-[#1b152d] hover:bg-purple-950/50 text-zinc-300 hover:text-white border-2 border-purple-900/60 rounded-xl text-xs font-bold transition-all cursor-pointer"
                 title="Copiar texto da intimação"
               >
                 {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
@@ -223,21 +247,31 @@ Email: 1dpmaracanau@pc.ce.gov.br / Site: www.policiacivil.ce.gov.br`;
               <button
                 type="button"
                 onClick={() => setIsWhatsAppModalOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-2 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-2 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border-2 border-emerald-500/50 rounded-xl text-xs font-bold transition-all cursor-pointer"
                 title="Notificar por WhatsApp (Texto + PDF)"
               >
                 <Phone className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">WhatsApp (Texto + PDF)</span>
+                <span className="hidden sm:inline">WhatsApp</span>
               </button>
 
+              {/* Botão de Download Solicitado pelo Usuário */}
               <button
-                id="btn-print-mandado"
-                onClick={handlePrint}
-                className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-purple-900/40 transition-all cursor-pointer"
-                title="Imprimir ou Salvar como PDF"
+                id="btn-download-mandado"
+                onClick={handleDownloadPdf}
+                className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-purple-900/50 border-2 border-purple-400/50 transition-all cursor-pointer"
+                title="Fazer Download do Mandado em PDF"
+              >
+                {downloaded ? <Check className="w-4 h-4 text-emerald-300" /> : <Download className="w-4 h-4" />}
+                <span>{downloaded ? 'Baixado!' : 'Fazer Download da Intimação'}</span>
+              </button>
+
+              {/* Opção secundária para impressão direta no navegador */}
+              <button
+                onClick={handlePrintBrowser}
+                className="p-2 text-zinc-400 hover:text-white rounded-xl hover:bg-purple-950/40 border border-purple-900/40 transition-colors"
+                title="Imprimir direto pelo navegador"
               >
                 <Printer className="w-4 h-4" />
-                <span>Imprimir / PDF</span>
               </button>
 
               <button
@@ -252,69 +286,69 @@ Email: 1dpmaracanau@pc.ce.gov.br / Site: www.policiacivil.ce.gov.br`;
 
           {/* Quick edit drawer when active (Hidden in Print) */}
           {isEditing && (
-            <div className="p-4 bg-[#181328] border-b border-purple-900/40 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs no-print">
+            <div className="p-4 bg-[#181328] border-b-2 border-purple-900/40 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs no-print">
               <div>
-                <label className="block text-[11px] font-medium text-zinc-300 mb-1">Referência (Procedimento)</label>
+                <label className="block text-[11px] font-bold text-zinc-200 mb-1">Referência (Procedimento)</label>
                 <input
                   type="text"
                   value={procedureRef}
                   onChange={(e) => setProcedureRef(e.target.value)}
                   placeholder="Ex: IP nº 123/2026"
-                  className="w-full bg-[#110d1e] border border-purple-900/50 rounded-lg px-2.5 py-1.5 text-white"
+                  className="w-full bg-[#110d1e] border-2 border-purple-900/50 rounded-xl px-2.5 py-1.5 text-white"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-medium text-zinc-300 mb-1">OIP (Iniciais do Usuário/Policial)</label>
+                <label className="block text-[11px] font-bold text-zinc-200 mb-1">OIP (Iniciais do Usuário/Policial)</label>
                 <input
                   type="text"
                   value={oipInitials}
                   onChange={(e) => setOipInitials(e.target.value)}
                   placeholder="Ex: M.S"
-                  className="w-full bg-[#110d1e] border border-purple-900/50 rounded-lg px-2.5 py-1.5 text-white font-mono"
+                  className="w-full bg-[#110d1e] border-2 border-purple-900/50 rounded-xl px-2.5 py-1.5 text-white font-mono"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-medium text-zinc-300 mb-1">Nome do Intimado</label>
+                <label className="block text-[11px] font-bold text-zinc-200 mb-1">Nome do Intimado</label>
                 <input
                   type="text"
                   value={personName}
                   onChange={(e) => setPersonName(e.target.value)}
-                  className="w-full bg-[#110d1e] border border-purple-900/50 rounded-lg px-2.5 py-1.5 text-white"
+                  className="w-full bg-[#110d1e] border-2 border-purple-900/50 rounded-xl px-2.5 py-1.5 text-white"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-medium text-zinc-300 mb-1">Endereço Residencial</label>
+                <label className="block text-[11px] font-bold text-zinc-200 mb-1">Endereço Residencial</label>
                 <input
                   type="text"
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  className="w-full bg-[#110d1e] border border-purple-900/50 rounded-lg px-2.5 py-1.5 text-white"
+                  className="w-full bg-[#110d1e] border-2 border-purple-900/50 rounded-xl px-2.5 py-1.5 text-white"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-medium text-zinc-300 mb-1">Telefone de Contato</label>
+                <label className="block text-[11px] font-bold text-zinc-200 mb-1">Telefone de Contato</label>
                 <input
                   type="text"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="(85) 98765-4321"
-                  className="w-full bg-[#110d1e] border border-purple-900/50 rounded-lg px-2.5 py-1.5 text-white"
+                  className="w-full bg-[#110d1e] border-2 border-purple-900/50 rounded-xl px-2.5 py-1.5 text-white"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-medium text-zinc-300 mb-1">Delegado de Polícia (Assinatura)</label>
+                <label className="block text-[11px] font-bold text-zinc-200 mb-1">Delegado de Polícia (Assinatura)</label>
                 <div className="flex gap-1.5">
                   <input
                     type="text"
                     value={officerName}
                     onChange={(e) => setOfficerName(e.target.value)}
                     placeholder="Fernando Moretto Nachtigall"
-                    className="w-full bg-[#110d1e] border border-purple-900/50 rounded-lg px-2.5 py-1.5 text-white"
+                    className="w-full bg-[#110d1e] border-2 border-purple-900/50 rounded-xl px-2.5 py-1.5 text-white"
                   />
                   <button
                     type="button"
                     onClick={() => setIsDelegadoModalOpen(true)}
-                    className="px-2 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-lg hover:bg-amber-500/30 text-[10px] font-bold"
+                    className="px-2.5 py-1 bg-amber-500/20 text-amber-300 border-2 border-amber-500/40 rounded-xl hover:bg-amber-500/30 text-[11px] font-bold"
                   >
                     DPC
                   </button>
@@ -441,16 +475,13 @@ Email: 1dpmaracanau@pc.ce.gov.br / Site: www.policiacivil.ce.gov.br`;
 
               </div>
 
-              {/* Bottom Area: Official Footer */}
+              {/* Bottom Area: Standardized Official Footer */}
               <div className="pt-6 mt-4 border-t border-zinc-400 text-center font-sans">
                 <p className="text-[10px] font-bold text-zinc-900 leading-tight">
-                  1ª Delegacia de Maracanaú – Polícia Civil
+                  1ª Delegacia de Maracanaú – Polícia Civil do Estado do Ceará
                 </p>
                 <p className="text-[9px] text-zinc-700 leading-tight mt-0.5">
-                  Av. VI, 410, Jereissati I, Maracanaú/CE, CEP: 61.900-670, Fone: (85) 3101-7344
-                </p>
-                <p className="text-[9px] text-zinc-700 leading-tight">
-                  Email: 1dpmaracanau@pc.ce.gov.br &nbsp;/&nbsp; Site: www.policiacivil.ce.gov.br
+                  Av. VI, 410, Jereissati I, Maracanaú/CE, CEP: 61.900-670, Fone: (85) 3101-7344 | Email: 1dpmaracanau@pc.ce.gov.br | Site: www.policiacivil.ce.gov.br
                 </p>
                 {/* Bottom decorative color bar of Ceará */}
                 <div className="w-full h-1.5 bg-gradient-to-r from-[#008643] via-[#f9b233] to-[#008643] mt-2 rounded-full" />

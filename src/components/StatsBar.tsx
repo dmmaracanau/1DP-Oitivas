@@ -64,56 +64,56 @@ export const StatsBar: React.FC<StatsBarProps> = ({
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2 sm:py-3 no-print space-y-2 sm:space-y-2.5">
-      {/* Top summary metric cards - Compactos e com cores temáticas individuais */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-2.5">
+    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-1 sm:py-1.5 no-print space-y-1.5">
+      {/* Top summary metric cards - Ultra Compactos para economizar espaço de tela */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5 sm:gap-2">
         
         {/* Metric 1: Total Cadastrado (Azul / Ciano) */}
         <button
           type="button"
           onClick={() => onStatusFilterChange('TODOS')}
-          className={`p-2 sm:p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2.5 ${
+          className={`px-2.5 py-1.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-2 shadow-sm ${
             selectedStatusFilter === 'TODOS'
-              ? 'bg-[#0d172e] border-blue-500 ring-1 ring-blue-500/50 shadow-md shadow-blue-950/50'
-              : 'bg-[#0b1222]/90 border-blue-900/40 hover:border-blue-500/40 hover:bg-[#0e1933]'
+              ? 'bg-[#102046] border-blue-400 ring-1 ring-blue-400/60 shadow-blue-950/80'
+              : 'bg-[#0c162b] border-blue-700/50 hover:border-blue-400 hover:bg-[#122247]'
           }`}
         >
-          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-blue-950/80 border border-blue-500/40 flex items-center justify-center text-blue-400 shrink-0">
-            <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-6 h-6 rounded-lg bg-blue-950 border border-blue-400/80 flex items-center justify-center text-blue-200 shrink-0">
+              <Users className="w-3.5 h-3.5" />
+            </div>
+            <span className="text-[10px] font-black text-blue-200 uppercase tracking-wider truncate">
+              Cadastrados
+            </span>
           </div>
-          <div className="min-w-0">
-            <p className="text-[10px] font-bold text-blue-300/80 uppercase tracking-wider truncate">
-              Total Cadastrado
-            </p>
-            <p className="text-sm sm:text-base font-black text-blue-100 tracking-tight leading-none mt-0.5">
-              {total}
-            </p>
-          </div>
+          <span className="text-sm sm:text-base font-black text-white tracking-tight leading-none shrink-0">
+            {total}
+          </span>
         </button>
 
         {/* Metric 2: Oitivas de Hoje (Âmbar / Dourado) */}
-        <div className={`p-2 sm:p-2.5 rounded-xl border transition-all flex items-center gap-2.5 ${
+        <div className={`px-2.5 py-1.5 rounded-xl border transition-all flex items-center justify-between gap-2 shadow-sm ${
           todayCount > 0 
-            ? 'bg-[#261a07]/90 border-amber-500/50 ring-1 ring-amber-500/30 shadow-md shadow-amber-950/40' 
-            : 'bg-[#181105]/90 border-amber-900/30'
+            ? 'bg-[#312007] border-amber-400 ring-1 ring-amber-400/50 shadow-amber-950/60' 
+            : 'bg-[#1c1205] border-amber-700/50'
         }`}>
-          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-amber-950/80 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
-            <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[10px] font-bold text-amber-300/90 uppercase tracking-wider truncate">
-              Oitivas Hoje
-            </p>
-            <div className="flex items-baseline gap-1.5 mt-0.5">
-              <p className="text-sm sm:text-base font-black text-amber-200 tracking-tight leading-none">
-                {todayCount}
-              </p>
-              {todayCount > 0 && (
-                <span className="text-[9px] font-bold text-amber-400 bg-amber-500/20 px-1 rounded">
-                  Hoje
-                </span>
-              )}
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-6 h-6 rounded-lg bg-amber-950 border border-amber-400/80 flex items-center justify-center text-amber-200 shrink-0">
+              <Clock className="w-3.5 h-3.5" />
             </div>
+            <span className="text-[10px] font-black text-amber-200 uppercase tracking-wider truncate">
+              Hoje
+            </span>
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            <span className="text-sm sm:text-base font-black text-white tracking-tight leading-none">
+              {todayCount}
+            </span>
+            {todayCount > 0 && (
+              <span className="text-[9px] font-black text-amber-950 bg-amber-300 px-1 py-0.2 rounded">
+                Hoje
+              </span>
+            )}
           </div>
         </div>
 
@@ -121,78 +121,78 @@ export const StatsBar: React.FC<StatsBarProps> = ({
         <button
           type="button"
           onClick={() => onStatusFilterChange('Agendada')}
-          className={`p-2 sm:p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2.5 ${
+          className={`px-2.5 py-1.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-2 shadow-sm ${
             selectedStatusFilter === 'Agendada'
-              ? 'bg-[#1e1136] border-purple-500 ring-1 ring-purple-500/50 shadow-md shadow-purple-950/50'
-              : 'bg-[#140b24]/90 border-purple-900/40 hover:border-purple-500/40 hover:bg-[#1a0f2f]'
+              ? 'bg-[#281548] border-purple-400 ring-1 ring-purple-400/60 shadow-purple-950/80'
+              : 'bg-[#1a0e30] border-purple-700/50 hover:border-purple-400 hover:bg-[#251344]'
           }`}
         >
-          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-purple-950/80 border border-purple-500/40 flex items-center justify-center text-purple-400 shrink-0">
-            <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[10px] font-bold text-purple-300/80 uppercase tracking-wider truncate">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-6 h-6 rounded-lg bg-purple-950 border border-purple-400/80 flex items-center justify-center text-purple-200 shrink-0">
+              <Calendar className="w-3.5 h-3.5" />
+            </div>
+            <span className="text-[10px] font-black text-purple-200 uppercase tracking-wider truncate">
               Agendadas
-            </p>
-            <p className="text-sm sm:text-base font-black text-purple-100 tracking-tight leading-none mt-0.5">
-              {scheduledCount}
-            </p>
+            </span>
           </div>
+          <span className="text-sm sm:text-base font-black text-white tracking-tight leading-none shrink-0">
+            {scheduledCount}
+          </span>
         </button>
 
         {/* Metric 4: Realizadas (Verde Esmeralda) */}
         <button
           type="button"
           onClick={() => onStatusFilterChange('Realizada')}
-          className={`p-2 sm:p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2.5 ${
+          className={`px-2.5 py-1.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-2 shadow-sm ${
             selectedStatusFilter === 'Realizada'
-              ? 'bg-[#0a241a] border-emerald-500 ring-1 ring-emerald-500/50 shadow-md shadow-emerald-950/50'
-              : 'bg-[#071a13]/90 border-emerald-900/40 hover:border-emerald-500/40 hover:bg-[#0c261c]'
+              ? 'bg-[#0c3122] border-emerald-400 ring-1 ring-emerald-400/60 shadow-emerald-950/80'
+              : 'bg-[#082017] border-emerald-700/50 hover:border-emerald-400 hover:bg-[#0c3022]'
           }`}
         >
-          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-emerald-950/80 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0">
-            <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[10px] font-bold text-emerald-300/80 uppercase tracking-wider truncate">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-6 h-6 rounded-lg bg-emerald-950 border border-emerald-400/80 flex items-center justify-center text-emerald-200 shrink-0">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+            </div>
+            <span className="text-[10px] font-black text-emerald-200 uppercase tracking-wider truncate">
               Realizadas
-            </p>
-            <p className="text-sm sm:text-base font-black text-emerald-100 tracking-tight leading-none mt-0.5">
-              {completedCount}
-            </p>
+            </span>
           </div>
+          <span className="text-sm sm:text-base font-black text-white tracking-tight leading-none shrink-0">
+            {completedCount}
+          </span>
         </button>
 
         {/* Metric 5: Não Compareceu / Faltas (Rosa / Vermelho) */}
         <button
           type="button"
           onClick={() => onStatusFilterChange('Não Compareceu')}
-          className={`p-2 sm:p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2.5 col-span-2 sm:col-span-1 ${
+          className={`px-2.5 py-1.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-2 col-span-2 sm:col-span-1 shadow-sm ${
             selectedStatusFilter === 'Não Compareceu'
-              ? 'bg-[#290d16] border-rose-500 ring-1 ring-rose-500/50 shadow-md shadow-rose-950/50'
-              : 'bg-[#1c0910]/90 border-rose-900/40 hover:border-rose-500/40 hover:bg-[#250d17]'
+              ? 'bg-[#3b121f] border-rose-400 ring-1 ring-rose-400/60 shadow-rose-950/80'
+              : 'bg-[#240b14] border-rose-700/50 hover:border-rose-400 hover:bg-[#340f1c]'
           }`}
         >
-          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-rose-950/80 border border-rose-500/40 flex items-center justify-center text-rose-400 shrink-0">
-            <UserX className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-6 h-6 rounded-lg bg-rose-950 border border-rose-400/80 flex items-center justify-center text-rose-200 shrink-0">
+              <UserX className="w-3.5 h-3.5" />
+            </div>
+            <span className="text-[10px] font-black text-rose-200 uppercase tracking-wider truncate">
+              Faltas
+            </span>
           </div>
-          <div className="min-w-0">
-            <p className="text-[10px] font-bold text-rose-300/80 uppercase tracking-wider truncate">
-              Não Compareceu
-            </p>
-            <p className="text-sm sm:text-base font-black text-rose-100 tracking-tight leading-none mt-0.5">
-              {absentCount}
-            </p>
-          </div>
+          <span className="text-sm sm:text-base font-black text-white tracking-tight leading-none shrink-0">
+            {absentCount}
+          </span>
         </button>
 
       </div>
 
       {/* Filter Chips Compactos */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 text-xs">
-        <div className="flex items-center gap-1 text-[11px] text-zinc-400 font-semibold shrink-0 pr-1">
-          <Filter className="w-3 h-3 text-purple-400" />
-          <span>Filtrar:</span>
+        <div className="flex items-center gap-1 text-[11px] text-purple-200 font-bold shrink-0 pr-1">
+          <Filter className="w-3 h-3 text-purple-300" />
+          <span>Filtro:</span>
         </div>
         
         {filters.map((f) => {
@@ -201,15 +201,15 @@ export const StatsBar: React.FC<StatsBarProps> = ({
             <button
               key={f.value}
               onClick={() => onStatusFilterChange(f.value)}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 border cursor-pointer ${
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all whitespace-nowrap flex items-center gap-1.5 border cursor-pointer shadow-sm ${
                 isActive
                   ? `${f.activeBg} ${f.activeBorder} shadow-sm`
-                  : 'bg-[#13101e] border-purple-900/30 text-zinc-400 hover:text-zinc-200 hover:bg-[#1a1428]'
+                  : 'bg-[#151026] border-purple-800/50 text-zinc-300 hover:text-white hover:border-purple-400 hover:bg-[#1d1633]'
               }`}
             >
               <span>{f.label}</span>
-              <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-md ${
-                isActive ? f.badgeBg : 'bg-[#1b152b] text-zinc-400'
+              <span className={`text-[9px] font-bold px-1 py-0.2 rounded ${
+                isActive ? f.badgeBg : 'bg-[#251c3d] text-purple-200 border border-purple-500/30'
               }`}>
                 {f.count}
               </span>

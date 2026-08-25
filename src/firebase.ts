@@ -14,12 +14,12 @@ import firebaseConfigJson from '../firebase-applet-config.json';
 
 // Configuração do projeto Firebase Cloud Firestore
 export const firebaseConfig = {
-  projectId: firebaseConfigJson.projectId || "gen-lang-client-0042808261",
-  appId: firebaseConfigJson.appId || "1:990634811839:web:6a14e1ff54b938e591010a",
-  apiKey: firebaseConfigJson.apiKey || "AIzaSyApFItY2kDW-moOChbOZathqDZ70WNUO9w",
-  authDomain: firebaseConfigJson.authDomain || "gen-lang-client-0042808261.firebaseapp.com",
-  storageBucket: firebaseConfigJson.storageBucket || "gen-lang-client-0042808261.firebasestorage.app",
-  messagingSenderId: firebaseConfigJson.messagingSenderId || "990634811839",
+  projectId: firebaseConfigJson.projectId || "dp-oitivas",
+  appId: firebaseConfigJson.appId || "1:419038450181:web:a3e770c8f77ec00caa426c",
+  apiKey: firebaseConfigJson.apiKey || "AIzaSyCnX1qIqv7YwbngXH0zBXyoX2BDu36rc3I",
+  authDomain: firebaseConfigJson.authDomain || "dp-oitivas.firebaseapp.com",
+  storageBucket: firebaseConfigJson.storageBucket || "dp-oitivas.firebasestorage.app",
+  messagingSenderId: firebaseConfigJson.messagingSenderId || "419038450181",
 };
 
 // Configuração do Realtime Database (calandario-oitiva)
@@ -34,7 +34,7 @@ export const rtdbConfig = {
   measurementId: "G-3DRJ07XCKL"
 };
 
-export const firestoreDatabaseId = (firebaseConfigJson as any).firestoreDatabaseId || "(default)";
+export const firestoreDatabaseId = (firebaseConfigJson as any).firestoreDatabaseId || "ai-studio-1dpoitivas-38a4723f-ec20-4946-b7a6-e8758ca2068a";
 export const googleClientId = firebaseConfigJson.oAuthClientId || "419038450181-hkt4kk4p84r0afv11h9isvvgg4oa1m6e.apps.googleusercontent.com";
 
 // Inicializa app Firebase principal
@@ -60,7 +60,7 @@ try {
 }
 export const rtdb = rtdbInstance;
 
-// Inicializa Firestore com o databaseId correto e persistência multi-abas
+// Inicializa Firestore com o databaseId correto, detecção de long polling e persistência multi-abas
 let firestoreDb: Firestore;
 try {
   firestoreDb = initializeFirestore(
@@ -68,12 +68,25 @@ try {
     {
       localCache: persistentLocalCache({
         tabManager: persistentMultipleTabManager()
-      })
+      }),
+      experimentalAutoDetectLongPolling: true,
+      ignoreUndefinedProperties: true
     }, 
     firestoreDatabaseId
   );
-} catch {
-  firestoreDb = getFirestore(app, firestoreDatabaseId);
+} catch (e) {
+  try {
+    firestoreDb = initializeFirestore(
+      app,
+      {
+        experimentalAutoDetectLongPolling: true,
+        ignoreUndefinedProperties: true
+      },
+      firestoreDatabaseId
+    );
+  } catch {
+    firestoreDb = getFirestore(app, firestoreDatabaseId);
+  }
 }
 
 export const db = firestoreDb;
@@ -94,15 +107,13 @@ WORKSPACE_SCOPES.forEach(scope => {
   googleProvider.addScope(scope);
 });
 
-// Teste inicial de conexão com o servidor Firestore
+// Teste inicial de conexão com o servidor Firestore com tratamento seguro de offline/unavailable
 export async function testFirestoreConnection(): Promise<boolean> {
   try {
     await getDocFromServer(doc(db, 'test', 'connection'));
     return true;
   } catch (error: any) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.warn("Firestore operando em cache local/offline:", error.message);
-    }
+    // Normal em inicialização offline ou se conexão ainda estiver negociando transporte
     return false;
   }
 }

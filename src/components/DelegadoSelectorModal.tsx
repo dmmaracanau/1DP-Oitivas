@@ -185,16 +185,23 @@ export const DelegadoSelectorModal: React.FC<DelegadoSelectorModalProps> = ({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm no-print overflow-y-auto">
-        <div className="bg-[#120f1e] border border-purple-900/50 rounded-3xl w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh] overflow-hidden shadow-2xl shadow-purple-950/70 flex flex-col my-auto">
+      <div 
+        className="fixed inset-0 z-[70] flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm no-print overflow-y-auto"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) {
+            onClose();
+          }
+        }}
+      >
+        <div className="bg-[#120f1e] border-2 border-purple-600/70 rounded-3xl w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh] overflow-hidden shadow-2xl shadow-purple-950/90 flex flex-col my-auto">
           
           {/* Header */}
-          <div className="p-5 border-b border-purple-900/40 bg-[#161226] flex items-center justify-between shrink-0">
+          <div className="p-5 border-b-2 border-purple-900/50 bg-[#161226] flex items-center justify-between shrink-0">
             <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-2xl border flex items-center justify-center shadow-md ${
+              <div className={`w-10 h-10 rounded-2xl border-2 flex items-center justify-center shadow-md ${
                 isUserAdmin 
-                  ? 'bg-gradient-to-br from-amber-500 to-purple-900 border-amber-400/40 text-amber-200' 
-                  : 'bg-gradient-to-br from-purple-600 to-purple-950 border-purple-400/30 text-purple-200'
+                  ? 'bg-gradient-to-br from-amber-500 to-purple-900 border-amber-400/60 text-amber-200' 
+                  : 'bg-gradient-to-br from-purple-600 to-purple-950 border-purple-400/50 text-purple-200'
               }`}>
                 <Shield className="w-5 h-5" />
               </div>
@@ -203,25 +210,26 @@ export const DelegadoSelectorModal: React.FC<DelegadoSelectorModalProps> = ({
                   <h2 className="text-base font-bold text-white tracking-tight">
                     Catálogo Unificado de Autoridades Policiais (DPC)
                   </h2>
-                  <span className="px-2 py-0.5 text-[10px] font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded-full">
+                  <span className="px-2 py-0.5 text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40 rounded-full">
                     Compartilhado
                   </span>
                   {isUserAdmin && (
-                    <span className="px-2 py-0.5 text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded-full flex items-center gap-1">
+                    <span className="px-2 py-0.5 text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/50 rounded-full flex items-center gap-1">
                       <ShieldCheck className="w-3 h-3" />
                       ADMINISTRADOR
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-zinc-400">
+                <p className="text-xs text-zinc-300">
                   Lista unificada sincronizada na nuvem para preenchimento de oitivas e assinatura de mandados
                 </p>
               </div>
             </div>
 
             <button
+              type="button"
               onClick={onClose}
-              className="p-2 text-zinc-400 hover:text-white rounded-xl hover:bg-purple-950/40 transition-colors cursor-pointer"
+              className="p-2 text-zinc-300 hover:text-white rounded-xl hover:bg-purple-950/60 border border-purple-900/40 hover:border-purple-500/50 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
