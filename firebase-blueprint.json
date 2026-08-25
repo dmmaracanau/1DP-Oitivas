@@ -217,6 +217,63 @@
         }
       },
       "required": ["personName", "status", "createdAt", "updatedAt"]
+    },
+    "delegado": {
+      "title": "DelegadoInfo",
+      "description": "Autoridade Policial / Delegado(a) de Polícia Civil cadastrado no catálogo unificado",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Identificador único do delegado",
+          "maxLength": 100
+        },
+        "nome": {
+          "type": "string",
+          "description": "Nome completo da autoridade policial",
+          "minLength": 1,
+          "maxLength": 150
+        },
+        "cargo": {
+          "type": "string",
+          "description": "Cargo ou função (Ex: Delegado de Polícia Civil)",
+          "maxLength": 100
+        },
+        "matricula": {
+          "type": "string",
+          "description": "Matrícula funcional",
+          "maxLength": 50
+        },
+        "delegacia": {
+          "type": "string",
+          "description": "Lotação / Delegacia Oficial",
+          "maxLength": 150
+        },
+        "municipio": {
+          "type": "string",
+          "description": "Município e UF",
+          "maxLength": 100
+        },
+        "portariaOuObs": {
+          "type": "string",
+          "description": "Portaria de lotação ou observações adicionais",
+          "maxLength": 500
+        },
+        "fotoUrl": {
+          "type": "string",
+          "description": "URL da foto institucional",
+          "maxLength": 500
+        },
+        "createdAt": {
+          "type": "number",
+          "description": "Timestamp Unix de cadastro"
+        },
+        "updatedAt": {
+          "type": "number",
+          "description": "Timestamp Unix de última atualização"
+        }
+      },
+      "required": ["id", "nome"]
     }
   },
   "firestore": {
@@ -231,6 +288,14 @@
     "/oitivas/{oitivaId}": {
       "schema": "oitiva",
       "description": "Coleção de oitivas e agendamentos policiais sincronizada em tempo real"
+    },
+    "/delegados/{delegadoId}": {
+      "schema": "delegado",
+      "description": "Catálogo unificado de Delegados de Polícia Civil compartilhado entre todos os usuários"
+    },
+    "/system_config/{configId}": {
+      "schema": "object",
+      "description": "Configurações globais do sistema e catálogo unificado"
     }
   }
 }

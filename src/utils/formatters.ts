@@ -83,30 +83,65 @@ export function getRoleBadgeClasses(role?: HearingRole | string): string {
   }
 }
 
-export function generateWhatsAppReminder(oitiva: {
+export function formatWhatsAppMessageText(oitiva: {
   personName: string;
   date: string;
   time: string;
   procedureNumber?: string;
+  procedureType?: string;
   locationOrLink?: string;
   officerName?: string;
   modality?: string;
   phone?: string;
 }): string {
   const dateFormatted = formatDateBR(oitiva.date);
-  const text = `*COMUNICADO / INTIMAÇÃO DE OITIVA*
-Olá, *${oitiva.personName}*.
+  
+  // Format procedure
+  let procText = oitiva.procedureNumber || 'Em andamento';
+  if (oitiva.procedureNumber && oitiva.procedureType) {
+    procText = `${oitiva.procedureType} nº ${oitiva.procedureNumber}`;
+  }
+
+  // Format time
+  let timeText = oitiva.time || 'A definir';
+  if (oitiva.time && !oitiva.time.toLowerCase().includes('h')) {
+    timeText = `${oitiva.time}h`;
+  }
+
+  // Format location / room
+  const localText = oitiva.locationOrLink || oitiva.modality || '1ª Delegacia de Polícia de Maracanaú';
+
+  // Format officer
+  const autoridadeText = oitiva.officerName || 'Fernando Moretto Nachtigall';
+
+  return `*COMUNICADO / INTIMAÇÃO DE OITIVA*
+*1ª DELEGACIA DE POLÍCIA DE MARACANAÚ*
+Olá, *${oitiva.personName || 'Cidadão(ã)'}*.
 
 Informamos que está agendada a sua oitiva referente ao procedimento:
-📋 *Procedimento:* ${oitiva.procedureNumber || 'Em andamento'}
-📅 *Data:* ${dateFormatted}
-⏰ *Horário:* ${oitiva.time || 'A definir'}
-📍 *Local / Formato:* ${oitiva.locationOrLink || oitiva.modality || 'Delegacia de Polícia'}
-${oitiva.officerName ? `👤 *Autoridade:* ${oitiva.officerName}` : ''}
+• *Procedimento:* ${procText}
+• *Data:* ${dateFormatted}
+• *Horário:* ${timeText}
+• *Local / Formato:* ${localText}
+• *Autoridade:* ${autoridadeText}
 
-Por favor, compareça portando documento de identificação oficial com foto (RG ou CNH).
+Por favor, compareça portando documento de identificação oficial com foto (RG ou CNH), e apresente essa notificação.
+
 Caso haja impossibilidade justificada de comparecimento, favor entrar em contato.`;
+}
 
+export function generateWhatsAppReminder(oitiva: {
+  personName: string;
+  date: string;
+  time: string;
+  procedureNumber?: string;
+  procedureType?: string;
+  locationOrLink?: string;
+  officerName?: string;
+  modality?: string;
+  phone?: string;
+}): string {
+  const text = formatWhatsAppMessageText(oitiva);
   const cleanPhone = (oitiva.phone || '').replace(/\D/g, '');
   const encodedText = encodeURIComponent(text);
   

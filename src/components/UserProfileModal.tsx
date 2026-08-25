@@ -37,6 +37,7 @@ interface UserProfileModalProps {
   user: UserProfile | null;
   onUpdateProfile: (updated: UserProfile) => void;
   onOpenWorkspaceModal?: () => void;
+  onOpenDelegadosModal?: () => void;
 }
 
 const CARGO_SUGGESTIONS = [
@@ -64,7 +65,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   onClose,
   user,
   onUpdateProfile,
-  onOpenWorkspaceModal
+  onOpenWorkspaceModal,
+  onOpenDelegadosModal
 }) => {
   const isAdminUser = user?.role === 'admin' || Boolean(user?.isAdmin);
 
@@ -1078,6 +1080,20 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   <option value="admin">Apenas Admins</option>
                   <option value="user">Apenas Comuns</option>
                 </select>
+
+                {/* Catálogo de Delegados Button */}
+                {onOpenDelegadosModal && (
+                  <button
+                    id="btn-admin-manage-delegados"
+                    type="button"
+                    onClick={onOpenDelegadosModal}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-[#201838] hover:bg-purple-900/50 text-amber-300 border border-amber-500/40 font-semibold rounded-xl text-xs shadow-md transition-all shrink-0 cursor-pointer"
+                    title="Gerenciar Catálogo Unificado de Delegados (DPC)"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Catálogo DPC</span>
+                  </button>
+                )}
 
                 {/* Novo Usuário Button */}
                 <button

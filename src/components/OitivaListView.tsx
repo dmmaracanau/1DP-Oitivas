@@ -26,6 +26,7 @@ interface OitivaListViewProps {
   onEditOitiva: (oitiva: Oitiva) => void;
   onDeleteOitiva: (id: string) => void;
   onPrintIntimacao: (oitiva: Oitiva) => void;
+  onOpenWhatsApp?: (oitiva: Oitiva) => void;
   statusFilter: HearingStatus | 'TODOS';
   onStatusFilterChange: (status: HearingStatus | 'TODOS') => void;
   onAddOitiva: () => void;
@@ -39,6 +40,7 @@ export const OitivaListView: React.FC<OitivaListViewProps> = ({
   onEditOitiva,
   onDeleteOitiva,
   onPrintIntimacao,
+  onOpenWhatsApp,
   statusFilter,
   onStatusFilterChange,
   onAddOitiva
@@ -216,7 +218,16 @@ export const OitivaListView: React.FC<OitivaListViewProps> = ({
                           </div>
                         ) : (
                           <>
-                            {oitiva.phone && (
+                            {onOpenWhatsApp ? (
+                              <button
+                                type="button"
+                                onClick={() => onOpenWhatsApp(oitiva)}
+                                className="p-1.5 text-zinc-400 hover:text-emerald-400 hover:bg-emerald-950/40 rounded-lg transition-colors cursor-pointer"
+                                title="Notificar via WhatsApp (Texto + PDF)"
+                              >
+                                <Phone className="w-3.5 h-3.5" />
+                              </button>
+                            ) : oitiva.phone ? (
                               <a
                                 href={generateWhatsAppReminder(oitiva)}
                                 target="_blank"
@@ -226,7 +237,7 @@ export const OitivaListView: React.FC<OitivaListViewProps> = ({
                               >
                                 <Phone className="w-3.5 h-3.5" />
                               </a>
-                            )}
+                            ) : null}
 
                             <button
                               type="button"

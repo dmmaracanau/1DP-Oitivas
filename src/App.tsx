@@ -9,9 +9,11 @@ import { OitivaModal } from './components/OitivaModal';
 import { OitivaDetailModal } from './components/OitivaDetailModal';
 import { PrintPautaModal } from './components/PrintPautaModal';
 import { PrintIntimacaoModal } from './components/PrintIntimacaoModal';
+import { WhatsAppShareModal } from './components/WhatsAppShareModal';
 import { AuthModal } from './components/AuthModal';
 import { GoogleWorkspaceModal } from './components/GoogleWorkspaceModal';
 import { UserProfileModal } from './components/UserProfileModal';
+import { DelegadoSelectorModal } from './components/DelegadoSelectorModal';
 import { oitivaService } from './services/oitivaService';
 import { authService } from './services/authService';
 import { calendarService } from './services/calendarService';
@@ -38,9 +40,12 @@ export default function App() {
   const [isPrintModalOpen, setIsPrintModalOpen] = useState<boolean>(false);
   const [isPrintIntimacaoModalOpen, setIsPrintIntimacaoModalOpen] = useState<boolean>(false);
   const [selectedOitivaForIntimacao, setSelectedOitivaForIntimacao] = useState<Oitiva | null>(null);
+  const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState<boolean>(false);
+  const [selectedOitivaForWhatsApp, setSelectedOitivaForWhatsApp] = useState<Oitiva | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState<boolean>(false);
+  const [isDelegadosModalOpen, setIsDelegadosModalOpen] = useState<boolean>(false);
   const [workspaceInitialTab, setWorkspaceInitialTab] = useState<'calendar' | 'gmail' | 'drive'>('calendar');
   const [selectedOitivaForWorkspace, setSelectedOitivaForWorkspace] = useState<Oitiva | null>(null);
   
@@ -104,6 +109,11 @@ export default function App() {
   const handleOpenPrintIntimacao = (oitiva: Oitiva) => {
     setSelectedOitivaForIntimacao(oitiva);
     setIsPrintIntimacaoModalOpen(true);
+  };
+
+  const handleOpenWhatsApp = (oitiva: Oitiva) => {
+    setSelectedOitivaForWhatsApp(oitiva);
+    setIsWhatsAppModalOpen(true);
   };
 
   const handleEditOitiva = (oitiva: Oitiva) => {
@@ -311,6 +321,7 @@ export default function App() {
             onEditOitiva={handleEditOitiva}
             onDeleteOitiva={handleDeleteOitiva}
             onPrintIntimacao={handleOpenPrintIntimacao}
+            onOpenWhatsApp={handleOpenWhatsApp}
             statusFilter={statusFilter}
             onStatusFilterChange={setStatusFilter}
             onAddOitiva={handleOpenNewModal}
@@ -347,6 +358,7 @@ export default function App() {
             handleOpenPrintIntimacao(selectedOitiva);
           }
         }}
+        onOpenWhatsApp={handleOpenWhatsApp}
         onSyncCalendar={handleDirectSyncCalendar}
         onSendGmail={(o) => handleOpenWorkspace('gmail', o)}
         onSaveDrive={handleDirectSaveDrive}
@@ -364,6 +376,24 @@ export default function App() {
           try {
             await oitivaService.update(oitivaId, { intimationSent: true });
             showToast('Intimação marcada como emitida!');
+          } catch (e) {
+            console.error('Erro ao atualizar status da intimação:', e);
+          }
+        }}
+      />
+
+      <WhatsAppShareModal
+        isOpen={isWhatsAppModalOpen}
+        onClose={() => {
+          setIsWhatsAppModalOpen(false);
+          setSelectedOitivaForWhatsApp(null);
+        }}
+        oitiva={selectedOitivaForWhatsApp}
+        user={user}
+        onMarkIntimationSent={async (oitivaId) => {
+          try {
+            await oitivaService.update(oitivaId, { intimationSent: true });
+            showToast('Intimação via WhatsApp enviada!');
           } catch (e) {
             console.error('Erro ao atualizar status da intimação:', e);
           }
@@ -415,6 +445,20 @@ export default function App() {
         onOpenWorkspaceModal={() => {
           setIsProfileModalOpen(false);
           handleOpenWorkspace('calendar');
+        }}
+        onOpenDelegadosModal={() => {
+          setIsProfileModalOpen(false);
+          setIsDelegadosModalOpen(true);
+        }}
+      />
+
+      {/* Global Catálogo Unificado de Delegados (DPC) */}
+      <DelegadoSelectorModal
+        isOpen={isDelegadosModalOpen}
+        onClose={() => setIsDelegadosModalOpen(false)}
+        user={user}
+        onSelectDelegado={(del) => {
+          showToast(`Delegado(a) ${del.nome} selecionado(a)!`, 'info');
         }}
       />
 

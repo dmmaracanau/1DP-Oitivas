@@ -743,6 +743,7 @@ export const OitivaModal: React.FC<OitivaModalProps> = ({
         onClose={() => setIsDelegadoModalOpen(false)}
         onSelectDelegado={handleSelectDelegado}
         currentSelectedNome={officerName}
+        user={user}
       />
     </>
   );

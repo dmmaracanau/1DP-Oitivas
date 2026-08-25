@@ -25,6 +25,7 @@ import {
 } from '../utils/formatters';
 import { OfficialCeHeader } from './OfficialCeHeader';
 import { DelegadoSelectorModal } from './DelegadoSelectorModal';
+import { WhatsAppShareModal } from './WhatsAppShareModal';
 import { DelegadoInfo, delegadoService } from '../services/delegadoService';
 
 interface PrintIntimacaoModalProps {
@@ -57,6 +58,7 @@ export const PrintIntimacaoModal: React.FC<PrintIntimacaoModalProps> = ({
   const [copied, setCopied] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isDelegadoModalOpen, setIsDelegadoModalOpen] = useState(false);
+  const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
 
   useEffect(() => {
     if (oitiva) {
@@ -218,18 +220,15 @@ Email: 1dpmaracanau@pc.ce.gov.br / Site: www.policiacivil.ce.gov.br`;
                 <span className="hidden sm:inline">{copied ? 'Copiado!' : 'Copiar Texto'}</span>
               </button>
 
-              {oitiva.phone && (
-                <a
-                  href={generateWhatsAppReminder(oitiva)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 px-3 py-2 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-semibold transition-colors"
-                  title="Notificar também por WhatsApp"
-                >
-                  <Phone className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">WhatsApp</span>
-                </a>
-              )}
+              <button
+                type="button"
+                onClick={() => setIsWhatsAppModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+                title="Notificar por WhatsApp (Texto + PDF)"
+              >
+                <Phone className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">WhatsApp (Texto + PDF)</span>
+              </button>
 
               <button
                 id="btn-print-mandado"
@@ -470,6 +469,16 @@ Email: 1dpmaracanau@pc.ce.gov.br / Site: www.policiacivil.ce.gov.br`;
         onClose={() => setIsDelegadoModalOpen(false)}
         onSelectDelegado={handleSelectDelegado}
         currentSelectedNome={officerName}
+        user={user}
+      />
+
+      {/* Modal de Notificação WhatsApp com opção de envio do PDF */}
+      <WhatsAppShareModal
+        isOpen={isWhatsAppModalOpen}
+        onClose={() => setIsWhatsAppModalOpen(false)}
+        oitiva={oitiva}
+        user={user}
+        onMarkIntimationSent={onMarkIntimationSent}
       />
     </>
   );

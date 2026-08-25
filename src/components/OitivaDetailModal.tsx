@@ -33,6 +33,7 @@ interface OitivaDetailModalProps {
   onStatusChange: (id: string, newStatus: HearingStatus) => void;
   onOpenPrint: () => void;
   onOpenPrintIntimacao?: () => void;
+  onOpenWhatsApp?: (oitiva: Oitiva) => void;
   onSyncCalendar?: (oitiva: Oitiva) => void;
   onSendGmail?: (oitiva: Oitiva) => void;
   onSaveDrive?: (oitiva: Oitiva) => void;
@@ -47,6 +48,7 @@ export const OitivaDetailModal: React.FC<OitivaDetailModalProps> = ({
   onStatusChange,
   onOpenPrint,
   onOpenPrintIntimacao,
+  onOpenWhatsApp,
   onSyncCalendar,
   onSendGmail,
   onSaveDrive
@@ -319,7 +321,17 @@ export const OitivaDetailModal: React.FC<OitivaDetailModalProps> = ({
           
           {/* Notification & Print Buttons */}
           <div className="flex items-center gap-2 flex-wrap">
-            {oitiva.phone && (
+            {onOpenWhatsApp ? (
+              <button
+                type="button"
+                onClick={() => onOpenWhatsApp(oitiva)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+                title="Notificar por WhatsApp (Texto + PDF)"
+              >
+                <Phone className="w-3.5 h-3.5" />
+                <span>WhatsApp (Texto + PDF)</span>
+              </button>
+            ) : oitiva.phone ? (
               <a
                 href={generateWhatsAppReminder(oitiva)}
                 target="_blank"
@@ -330,7 +342,7 @@ export const OitivaDetailModal: React.FC<OitivaDetailModalProps> = ({
                 <Phone className="w-3.5 h-3.5" />
                 <span>Notificar WhatsApp</span>
               </a>
-            )}
+            ) : null}
 
             {onOpenPrintIntimacao && (
               <button
