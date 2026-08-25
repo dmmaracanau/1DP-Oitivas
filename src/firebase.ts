@@ -30,8 +30,7 @@ export const rtdbConfig = {
   databaseURL: "https://dp-oitivas-default-rtdb.firebaseio.com",
   storageBucket: "dp-oitivas.firebasestorage.app",
   messagingSenderId: "419038450181",
-  appId: "1:419038450181:web:a3e770c8f77ec00caa426c",
-  measurementId: "G-3DRJ07XCKL"
+  appId: "1:419038450181:web:a3e770c8f77ec00caa426c"
 };
 
 export const firestoreDatabaseId = (firebaseConfigJson as any).firestoreDatabaseId || "ai-studio-1dpoitivas-38a4723f-ec20-4946-b7a6-e8758ca2068a";
@@ -54,7 +53,7 @@ export const rtdbApp = rtdbAppInstance;
 // Instância do Firebase Realtime Database
 let rtdbInstance: Database;
 try {
-  rtdbInstance = getDatabase(rtdbApp, "https://calandario-oitiva-default-rtdb.firebaseio.com");
+  rtdbInstance = getDatabase(rtdbApp, "https://dp-oitivas-default-rtdb.firebaseio.com/");
 } catch {
   rtdbInstance = getDatabase(app);
 }
