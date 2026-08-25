@@ -25,7 +25,7 @@ import {
   Unsubscribe 
 } from 'firebase/firestore';
 import { ref as rtdbRef, set as rtdbSet, get as rtdbGet } from 'firebase/database';
-import { auth, db, rtdb, googleProvider } from '../firebase';
+import { auth, db, rtdb, googleProvider, googleClientId } from '../firebase';
 import { UserProfile } from '../types/oitiva';
 
 const LOCAL_USER_KEY = 'oitivas_user_session';
@@ -33,6 +33,98 @@ const USERS_COLLECTION = 'users';
 
 // In-memory token cache (required for Workspace OAuth scopes)
 let cachedAccessToken: string | null = null;
+
+// Garante o carregamento do script do Google Identity Services (GSI)
+async function ensureGoogleIdentityLoaded(): Promise<void> {
+  if (typeof window === 'undefined') return;
+  if ((window as any).google?.accounts?.oauth2) return;
+
+  return new Promise((resolve, reject) => {
+    const existing = document.getElementById('google-gsi-client');
+    if (existing) {
+      if ((window as any).google?.accounts?.oauth2) return resolve();
+      existing.addEventListener('load', () => resolve());
+      existing.addEventListener('error', () => reject(new Error('Falha ao carregar Google Identity Services.')));
+      return;
+    }
+    const script = document.createElement('script');
+    script.id = 'google-gsi-client';
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Falha ao carregar Google Identity Services.'));
+    document.head.appendChild(script);
+  });
+}
+
+// Solicita Access Token via Google Identity Services Token Client (OAuth 2.0)
+async function requestTokenViaGsi(): Promise<string> {
+  await ensureGoogleIdentityLoaded();
+  const google = (window as any).google;
+  if (!google?.accounts?.oauth2?.initTokenClient) {
+    throw new Error("Google Identity Services não está pronto no navegador.");
+  }
+
+  const clientId = googleClientId;
+  const scopes = [
+    'https://www.googleapis.com/auth/drive.file',
+    'https://www.googleapis.com/auth/drive.readonly',
+    'https://www.googleapis.com/auth/gmail.send',
+    'https://www.googleapis.com/auth/gmail.readonly',
+    'https://www.googleapis.com/auth/gmail.compose',
+    'https://www.googleapis.com/auth/calendar.events',
+    'https://www.googleapis.com/auth/calendar.readonly',
+    'https://www.googleapis.com/auth/userinfo.email',
+    'https://www.googleapis.com/auth/userinfo.profile',
+    'openid'
+  ].join(' ');
+
+  return new Promise((resolve, reject) => {
+    try {
+      const client = google.accounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope: scopes,
+        callback: (response: any) => {
+          if (response?.error) {
+            return reject(new Error(response.error_description || response.error));
+          }
+          if (response?.access_token) {
+            cachedAccessToken = response.access_token;
+            return resolve(response.access_token);
+          }
+          reject(new Error("Nenhum token de acesso foi retornado pelo Google."));
+        },
+        error_callback: (err: any) => {
+          reject(new Error(err?.message || "Erro na autenticação do Google Workspace."));
+        }
+      });
+      client.requestAccessToken({ prompt: '' });
+    } catch (e: any) {
+      reject(e);
+    }
+  });
+}
+
+// Busca informações do perfil do usuário utilizando o Access Token do Google
+async function fetchGoogleUserInfo(token: string): Promise<{
+  sub?: string;
+  email?: string;
+  name?: string;
+  picture?: string;
+}> {
+  try {
+    const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (e) {
+    console.warn("Aviso ao buscar dados do perfil Google:", e);
+  }
+  return {};
+}
 
 // Helper to sanitize undefined values before saving to Firestore & RTDB
 function sanitizeData<T extends Record<string, any>>(obj: T): Record<string, any> {
@@ -68,12 +160,14 @@ function mapAuthError(err: any): string {
     case 'auth/requires-recent-login':
       return 'Por segurança, faça login novamente antes de realizar esta alteração.';
     case 'auth/popup-closed-by-user':
-      return 'A janela de login com Google foi fechada antes da conclusão.';
+      return 'A janela de autorização do Google foi fechada antes da conclusão.';
     case 'auth/popup-blocked':
       return 'A janela popup foi bloqueada pelo navegador. Permita popups para este site.';
+    case 'auth/unauthorized-domain':
+      return 'Domínio não autorizado pelo Firebase para popups. A autorização direta do Google Identity Services foi disponibilizada.';
     case 'auth/operation-not-allowed':
     case 'auth/admin-restricted-operation':
-      return 'O provedor de autenticação por E-mail/Senha precisa ser ativado no Firebase Console.';
+      return 'O provedor de autenticação precisa ser ativado no console.';
     default:
       return err.message || 'Erro durante a operação de autenticação.';
   }
@@ -391,56 +485,106 @@ export const authService = {
     }
   },
 
-  // Login com Google
+  // Login com Google (com suporte primário ao Google Identity Services e fallback Firebase)
   async loginWithGoogle(): Promise<{ profile: UserProfile; token?: string }> {
+    let token: string | null = null;
+    let googleUser: { sub?: string; email?: string; name?: string; picture?: string } | null = null;
+    let uid = '';
+
+    // 1. Tenta obter token diretamente via Google Identity Services (GSI)
     try {
-      const res = await signInWithPopup(auth, googleProvider);
-      const credential = GoogleAuthProvider.credentialFromResult(res);
-      if (credential?.accessToken) {
-        cachedAccessToken = credential.accessToken;
+      token = await requestTokenViaGsi();
+      if (token) {
+        cachedAccessToken = token;
+        googleUser = await fetchGoogleUserInfo(token);
+        uid = googleUser?.sub ? `google_${googleUser.sub}` : `google_${Date.now().toString(36)}`;
       }
-      
-      const docRef = doc(db, USERS_COLLECTION, res.user.uid);
-      const snap = await getDoc(docRef);
-      const existingData = snap.exists() ? (snap.data() as Partial<UserProfile>) : {};
-
-      const profile: UserProfile = {
-        uid: res.user.uid,
-        email: res.user.email,
-        displayName: res.user.displayName || existingData.displayName || 'Servidor(a) Policial',
-        photoURL: res.user.photoURL || existingData.photoURL || null,
-        role: existingData.role || (existingData.isAdmin ? 'admin' : 'user'),
-        isAdmin: Boolean(existingData.isAdmin || existingData.role === 'admin'),
-        cargo: existingData.cargo || 'Escrivão(ã) / Inspetor(a)',
-        registrationNumber: existingData.registrationNumber || '',
-        institutionalEmail: existingData.institutionalEmail || '',
-        unitName: existingData.unitName || '1ª Delegacia Metropolitana de Maracanaú',
-        phone: existingData.phone || '(85) 3101-2830',
-        department: existingData.department || 'Cartório de Oitivas',
-        authProvider: 'google',
-        updatedAt: Date.now()
-      };
-
-      // Salva perfil no Firestore e RTDB
-      try {
-        await setDoc(docRef, sanitizeData(profile), { merge: true });
-        if (rtdb) {
-          await rtdbSet(rtdbRef(rtdb, `users/${res.user.uid}`), sanitizeData(profile));
-        }
-      } catch (e) {
-        console.warn("Erro ao gravar perfil Google:", e);
-      }
-
-      localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(profile));
-      return { profile, token: cachedAccessToken || undefined };
-    } catch (err: any) {
-      console.error("Erro no login Google:", err);
-      throw new Error(mapAuthError(err));
+    } catch (gsiErr: any) {
+      console.warn("Google Identity Services não concluiu, tentando fallback Firebase Auth:", gsiErr);
     }
+
+    // 2. Se o GSI não retornou token (ex: popup fechado ou bloqueado), tenta signInWithPopup do Firebase
+    if (!token) {
+      try {
+        const res = await signInWithPopup(auth, googleProvider);
+        const credential = GoogleAuthProvider.credentialFromResult(res);
+        if (credential?.accessToken) {
+          cachedAccessToken = credential.accessToken;
+          token = credential.accessToken;
+        }
+        uid = res.user.uid;
+        googleUser = {
+          email: res.user.email || undefined,
+          name: res.user.displayName || undefined,
+          picture: res.user.photoURL || undefined
+        };
+      } catch (fbErr: any) {
+        console.error("Erro no login Google:", fbErr);
+        throw new Error(mapAuthError(fbErr));
+      }
+    }
+
+    if (!uid) {
+      throw new Error("Não foi possível identificar o usuário Google.");
+    }
+
+    // Recupera dados já existentes do perfil se houver
+    const docRef = doc(db, USERS_COLLECTION, uid);
+    let existingData: Partial<UserProfile> = {};
+    try {
+      const snap = await getDoc(docRef);
+      if (snap.exists()) {
+        existingData = snap.data() as Partial<UserProfile>;
+      }
+    } catch (e) {
+      console.warn("Aviso ao carregar dados do usuário no Firestore:", e);
+    }
+
+    const profile: UserProfile = {
+      uid: uid,
+      email: googleUser?.email || existingData.email || '',
+      displayName: googleUser?.name || existingData.displayName || 'Servidor(a) Policial',
+      photoURL: googleUser?.picture || existingData.photoURL || null,
+      role: existingData.role || (existingData.isAdmin ? 'admin' : 'user'),
+      isAdmin: Boolean(existingData.isAdmin || existingData.role === 'admin'),
+      cargo: existingData.cargo || 'Escrivão(ã) / Inspetor(a)',
+      registrationNumber: existingData.registrationNumber || '',
+      institutionalEmail: existingData.institutionalEmail || googleUser?.email || '',
+      unitName: existingData.unitName || '1ª Delegacia Metropolitana de Maracanaú',
+      phone: existingData.phone || '(85) 3101-2830',
+      department: existingData.department || 'Cartório de Oitivas',
+      authProvider: 'google',
+      updatedAt: Date.now()
+    };
+
+    // Salva perfil no Firestore e RTDB
+    try {
+      await setDoc(docRef, sanitizeData(profile), { merge: true });
+      if (rtdb) {
+        await rtdbSet(rtdbRef(rtdb, `users/${uid}`), sanitizeData(profile));
+      }
+    } catch (e) {
+      console.warn("Erro ao gravar perfil Google:", e);
+    }
+
+    localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(profile));
+    return { profile, token: cachedAccessToken || undefined };
   },
 
   // Re-solicitar token / conectar Workspace
   async connectGoogleWorkspace(): Promise<string | null> {
+    // 1. Tenta obter o token diretamente via Google Identity Services
+    try {
+      const token = await requestTokenViaGsi();
+      if (token) {
+        cachedAccessToken = token;
+        return token;
+      }
+    } catch (gsiErr: any) {
+      console.warn("Tentativa via GSI não concluiu, tentando fallback Firebase:", gsiErr);
+    }
+
+    // 2. Fallback com Firebase signInWithPopup
     try {
       const res = await signInWithPopup(auth, googleProvider);
       const credential = GoogleAuthProvider.credentialFromResult(res);

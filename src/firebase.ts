@@ -35,6 +35,7 @@ export const rtdbConfig = {
 };
 
 export const firestoreDatabaseId = firebaseConfigJson.firestoreDatabaseId || "(default)";
+export const googleClientId = firebaseConfigJson.oAuthClientId || "990634811839-p7fka828f6a5je4g3hv1q66ks4rarmsd.apps.googleusercontent.com";
 
 // Inicializa app Firebase principal
 export const app = getApps().find(a => a.name === '[DEFAULT]') || initializeApp(firebaseConfig);
