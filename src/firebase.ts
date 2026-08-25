@@ -24,13 +24,13 @@ export const firebaseConfig = {
 
 // Configuração do Realtime Database (calandario-oitiva)
 export const rtdbConfig = {
-  apiKey: "AIzaSyBWnoSQ-KvsK3jyXbx3cLapNPdXA4pJcfI",
-  authDomain: "calandario-oitiva.firebaseapp.com",
-  projectId: "calandario-oitiva",
-  databaseURL: "https://calandario-oitiva-default-rtdb.firebaseio.com",
-  storageBucket: "calandario-oitiva.firebasestorage.app",
-  messagingSenderId: "212326139293",
-  appId: "1:212326139293:web:0115579f44bc263b529b74",
+  apiKey: "AIzaSyCnX1qIqv7YwbngXH0zBXyoX2BDu36rc3I",
+  authDomain: "dp-oitivas.firebaseapp.com",
+  projectId: "dp-oitivas",
+  databaseURL: "https://dp-oitivas-default-rtdb.firebaseio.com",
+  storageBucket: "dp-oitivas.firebasestorage.app",
+  messagingSenderId: "419038450181",
+  appId: "1:419038450181:web:a3e770c8f77ec00caa426c",
   measurementId: "G-3DRJ07XCKL"
 };
 
