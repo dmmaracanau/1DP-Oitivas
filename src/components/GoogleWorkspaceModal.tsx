@@ -282,8 +282,8 @@ export const GoogleWorkspaceModal = ({
   const selectedDateStr = currentDate.toISOString().split('T')[0];
 
   return (
-    <div id="google-workspace-modal-overlay" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto no-print">
-      <div id="google-workspace-modal-card" className="bg-[#100D1B] border border-purple-900/50 rounded-3xl w-[88vw] max-w-6xl overflow-hidden shadow-2xl shadow-purple-950/80 my-8 flex flex-col max-h-[88vh]">
+    <div id="google-workspace-modal-overlay" className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto no-print">
+      <div id="google-workspace-modal-card" className="bg-[#100D1B] border border-purple-900/50 rounded-3xl w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh] overflow-hidden shadow-2xl shadow-purple-950/80 my-auto flex flex-col">
         
         {/* Modal Header */}
         <div className="p-5 border-b border-purple-900/40 bg-[#151124] flex items-center justify-between shrink-0">

@@ -185,8 +185,8 @@ export const DelegadoSelectorModal: React.FC<DelegadoSelectorModalProps> = ({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm no-print">
-        <div className="bg-[#120f1e] border border-purple-900/50 rounded-3xl w-[88vw] max-w-5xl overflow-hidden shadow-2xl shadow-purple-950/70 flex flex-col max-h-[88vh]">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm no-print overflow-y-auto">
+        <div className="bg-[#120f1e] border border-purple-900/50 rounded-3xl w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh] overflow-hidden shadow-2xl shadow-purple-950/70 flex flex-col my-auto">
           
           {/* Header */}
           <div className="p-5 border-b border-purple-900/40 bg-[#161226] flex items-center justify-between shrink-0">
@@ -419,58 +419,58 @@ export const DelegadoSelectorModal: React.FC<DelegadoSelectorModalProps> = ({
             )}
 
             {/* List */}
-            <div className="space-y-2.5">
-              {filteredDelegados.length === 0 ? (
-                <div className="text-center py-10 bg-[#161226] rounded-2xl border border-purple-900/30">
-                  <Shield className="w-8 h-8 text-zinc-600 mx-auto mb-2" />
-                  <p className="text-xs text-zinc-400">Nenhum Delegado(a) encontrado.</p>
-                </div>
-              ) : (
-                filteredDelegados.map((delegado) => {
+            {filteredDelegados.length === 0 ? (
+              <div className="text-center py-10 bg-[#161226] rounded-2xl border border-purple-900/30">
+                <Shield className="w-8 h-8 text-zinc-600 mx-auto mb-2" />
+                <p className="text-xs text-zinc-400">Nenhum Delegado(a) encontrado.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {filteredDelegados.map((delegado) => {
                   const isSelected = currentSelectedNome === delegado.nome;
 
                   return (
                     <div
                       key={delegado.id}
                       onClick={() => handleSelect(delegado)}
-                      className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-4 group ${
+                      className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between gap-3 group ${
                         isSelected
                           ? 'bg-purple-950/70 border-purple-500/80 ring-1 ring-purple-500 shadow-lg shadow-purple-950/50'
                           : 'bg-[#171326] border-purple-900/30 hover:border-purple-500/50 hover:bg-purple-950/30'
                       }`}
                     >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-9 h-9 rounded-xl bg-purple-900/40 border border-purple-500/30 flex items-center justify-center text-purple-300 font-bold shrink-0">
+                      <div className="flex items-start gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-xl bg-purple-900/40 border border-purple-500/30 flex items-center justify-center text-purple-300 font-bold shrink-0 mt-0.5">
                           {delegado.nome.charAt(0)}
                         </div>
 
-                        <div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h4 className="text-xs sm:text-sm font-bold text-white group-hover:text-purple-200">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <h4 className="text-xs sm:text-sm font-bold text-white group-hover:text-purple-200 truncate">
                               {delegado.nome}
                             </h4>
-                            {delegado.matricula && (
-                              <span className="px-2 py-0.5 text-[10px] font-mono text-purple-300 bg-purple-950/80 border border-purple-800/40 rounded-md">
-                                Mat. {delegado.matricula}
-                              </span>
-                            )}
-                            {delegado.portariaOuObs && (
-                              <span className="px-2 py-0.5 text-[10px] text-zinc-400 bg-zinc-900/60 rounded-md">
-                                {delegado.portariaOuObs}
-                              </span>
-                            )}
                           </div>
-                          <p className="text-[11px] text-zinc-400 mt-0.5">
+                          {delegado.matricula && (
+                            <span className="inline-block mt-0.5 px-1.5 py-0.5 text-[10px] font-mono text-purple-300 bg-purple-950/80 border border-purple-800/40 rounded-md">
+                              Mat. {delegado.matricula}
+                            </span>
+                          )}
+                          <p className="text-[11px] text-zinc-400 mt-1 line-clamp-1">
                             {delegado.cargo} • <span className="text-zinc-300">{delegado.delegacia}</span>
                             {delegado.municipio ? ` - ${delegado.municipio}` : ''}
                           </p>
+                          {delegado.portariaOuObs && (
+                            <p className="text-[10px] text-zinc-500 mt-0.5 line-clamp-1 italic">
+                              {delegado.portariaOuObs}
+                            </p>
+                          )}
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center justify-between pt-2 border-t border-purple-900/20 shrink-0">
                         {/* ADMIN-ONLY CONTROLS: EDIT & DELETE */}
-                        {isUserAdmin && (
-                          <>
+                        {isUserAdmin ? (
+                          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                             <button
                               id={`edit-delegado-${delegado.id}`}
                               type="button"
@@ -493,11 +493,11 @@ export const DelegadoSelectorModal: React.FC<DelegadoSelectorModalProps> = ({
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
-                          </>
-                        )}
+                          </div>
+                        ) : <div />}
 
                         {/* SELECTION BUTTON (AVAILABLE TO ALL USERS) */}
-                        <div className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 transition-all ${
+                        <div className={`px-2.5 py-1 rounded-xl text-xs font-semibold flex items-center gap-1 transition-all ${
                           isSelected 
                             ? 'bg-purple-600 text-white shadow-sm ring-1 ring-purple-400' 
                             : 'bg-[#211b36] text-purple-300 group-hover:bg-purple-600 group-hover:text-white'
@@ -514,9 +514,9 @@ export const DelegadoSelectorModal: React.FC<DelegadoSelectorModalProps> = ({
                       </div>
                     </div>
                   );
-                })
-              )}
-            </div>
+                })}
+              </div>
+            )}
 
           </div>
 

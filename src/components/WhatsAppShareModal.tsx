@@ -11,13 +11,18 @@ import {
   ShieldCheck, 
   Info,
   Sparkles,
-  UserCheck
+  UserCheck,
+  Calendar,
+  Clock,
+  MapPin,
+  Send,
+  AlertCircle,
+  FileCheck2
 } from 'lucide-react';
 import { Oitiva, UserProfile } from '../types/oitiva';
 import { 
   formatWhatsAppMessageText, 
-  formatDateBR, 
-  formatAddressCompleto 
+  formatDateBR 
 } from '../utils/formatters';
 import { 
   extractMandadoData, 
@@ -58,6 +63,7 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isDelegadoModalOpen, setIsDelegadoModalOpen] = useState(false);
   const [feedback, setFeedback] = useState<{ text: string; type: 'success' | 'info' | 'error' } | null>(null);
+  const [lastAction, setLastAction] = useState<'both' | 'text' | 'pdf' | null>(null);
 
   useEffect(() => {
     if (oitiva && isOpen) {
@@ -84,6 +90,7 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
         setOfficerCargo('Delegado de Polícia Civil');
       }
       setFeedback(null);
+      setLastAction(null);
     }
   }, [oitiva, user, isOpen]);
 
@@ -102,7 +109,6 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
 
   const showMsg = (text: string, type: 'success' | 'info' | 'error' = 'success') => {
     setFeedback({ text, type });
-    setTimeout(() => setFeedback(null), 5000);
   };
 
   const getCleanPhone = (): string => {
@@ -113,13 +119,13 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
     return '';
   };
 
-  const getWhatsAppWebUrl = (customText?: string): string => {
+  const getWhatsAppWebUrl = (): string => {
     const fullPhone = getCleanPhone();
-    const encoded = encodeURIComponent(customText || currentMessageText);
+    const encoded = encodeURIComponent(currentMessageText);
     if (fullPhone) {
-      return `https://wa.me/${fullPhone}?text=${encoded}`;
+      return `https://api.whatsapp.com/send?phone=${fullPhone}&text=${encoded}`;
     }
-    return `https://wa.me/?text=${encoded}`;
+    return `https://api.whatsapp.com/send?text=${encoded}`;
   };
 
   const getMandadoData = (): MandadoPdfData => {
@@ -147,12 +153,14 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
     }
   };
 
+  // 1. APENAS PDF
   const handleDownloadOnlyPdf = () => {
     try {
       setIsGeneratingPdf(true);
       const data = getMandadoData();
       downloadMandadoPdf(data);
-      showMsg('PDF do Mandado de Intimação baixado com sucesso!', 'success');
+      setLastAction('pdf');
+      showMsg('Mandado de Intimação em PDF baixado com sucesso no seu dispositivo!', 'success');
       if (onMarkIntimationSent) {
         onMarkIntimationSent(oitiva.id);
       }
@@ -163,53 +171,61 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
     }
   };
 
+  // 2. APENAS MENSAGEM WHATSAPP
   const handleSendTextOnly = () => {
     const url = getWhatsAppWebUrl();
+    setLastAction('text');
+    showMsg('Abrindo WhatsApp com a mensagem formatada...', 'info');
     if (onMarkIntimationSent) {
       onMarkIntimationSent(oitiva.id);
     }
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
+  // 3. MENSAGEM + PDF
   const handleSendTextAndPdf = async () => {
     setIsGeneratingPdf(true);
     const data = getMandadoData();
+    const cleanName = data.personName ? data.personName.replace(/[^a-zA-Z0-9]/g, '_') : 'Intimacao';
+    const fileName = `Mandado_Intimacao_${cleanName}.pdf`;
 
     try {
-      const pdfFile = getMandadoPdfFile(data);
+      // 1. Download the PDF directly so the user has the file immediately on PC or phone
+      downloadMandadoPdf(data, fileName);
 
-      // Check if Web Share API with Files is supported (mobile / tablets / compatible browsers)
-      if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
-        await navigator.share({
-          title: `Mandado de Intimação - ${personName || 'PCCE'}`,
-          text: currentMessageText,
-          files: [pdfFile]
-        });
-        showMsg('Intimação e PDF compartilhados com sucesso!', 'success');
-        if (onMarkIntimationSent) {
-          onMarkIntimationSent(oitiva.id);
+      // 2. Try native mobile sharing if supported with files
+      try {
+        const pdfFile = getMandadoPdfFile(data, fileName);
+        if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+          await navigator.share({
+            title: `Mandado de Intimação - ${personName || 'PCCE'}`,
+            text: currentMessageText,
+            files: [pdfFile]
+          });
+          setLastAction('both');
+          showMsg('Intimação e PDF compartilhados com sucesso!', 'success');
+          if (onMarkIntimationSent) {
+            onMarkIntimationSent(oitiva.id);
+          }
+          return;
         }
-        return;
+      } catch (shareErr) {
+        console.warn('Native share not supported or cancelled, fallback to web link:', shareErr);
       }
 
-      // Fallback for Desktop / WhatsApp Web:
-      // 1. Download the PDF directly for the officer
-      downloadMandadoPdf(data);
-      
-      // 2. Open WhatsApp Web / App with text pre-filled
+      // 3. Desktop / Web WhatsApp: Open WhatsApp conversation directly
       const url = getWhatsAppWebUrl();
       window.open(url, '_blank', 'noopener,noreferrer');
+
+      setLastAction('both');
+      showMsg('PDF baixado e WhatsApp aberto! Basta arrastar ou anexar o arquivo na conversa.', 'success');
 
       if (onMarkIntimationSent) {
         onMarkIntimationSent(oitiva.id);
       }
-
-      showMsg('PDF baixado e WhatsApp aberto! Arraste ou anexe o arquivo baixado na conversa para enviar tudo junto.', 'info');
     } catch (err: any) {
-      if (err.name !== 'AbortError') {
-        showMsg('Erro ao processar envio com PDF. Tentando abrir WhatsApp...', 'error');
-        window.open(getWhatsAppWebUrl(), '_blank', 'noopener,noreferrer');
-      }
+      showMsg('Erro ao gerar PDF para envio. Tentando abrir WhatsApp...', 'error');
+      window.open(getWhatsAppWebUrl(), '_blank', 'noopener,noreferrer');
     } finally {
       setIsGeneratingPdf(false);
     }
@@ -224,10 +240,10 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm no-print overflow-y-auto">
-        <div className="bg-[#120f1e] border border-purple-900/50 rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl shadow-purple-950/70 flex flex-col max-h-[92vh]">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm no-print overflow-y-auto">
+        <div className="bg-[#120f1e] border border-purple-900/50 rounded-3xl w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh] overflow-hidden shadow-2xl shadow-purple-950/70 flex flex-col my-auto">
           
-          {/* Header */}
+          {/* Header Compacto */}
           <div className="p-4 sm:p-5 border-b border-purple-900/40 bg-[#161226] flex items-center justify-between shrink-0">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-900 border border-emerald-400/40 flex items-center justify-center text-emerald-200 shadow-md">
@@ -236,14 +252,14 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
               <div>
                 <div className="flex items-center gap-2">
                   <h2 className="text-base font-bold text-white tracking-tight">
-                    Notificação Oficial por WhatsApp
+                    Notificação Oficial de Intimação via WhatsApp
                   </h2>
-                  <span className="px-2 py-0.5 text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full">
-                    Texto + PDF
+                  <span className="px-2.5 py-0.5 text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full">
+                    Mensagem & PDF
                   </span>
                 </div>
                 <p className="text-xs text-zinc-400">
-                  1ª Delegacia de Polícia de Maracanaú • Intimação Eletrônica
+                  1ª Delegacia de Polícia de Maracanaú • PCCE • Intimação Eletrônica Instantânea
                 </p>
               </div>
             </div>
@@ -258,128 +274,302 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
 
           {/* Feedback alert */}
           {feedback && (
-            <div className={`mx-5 mt-3 p-3 rounded-2xl text-xs flex items-center gap-2 border shrink-0 ${
+            <div className={`mx-6 mt-3 p-3 rounded-2xl text-xs flex items-center justify-between gap-3 border shrink-0 ${
               feedback.type === 'success'
                 ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300'
                 : feedback.type === 'info'
                 ? 'bg-purple-950/60 border-purple-500/40 text-purple-200'
                 : 'bg-rose-950/60 border-rose-500/40 text-rose-300'
             }`}>
-              <Sparkles className="w-4 h-4 shrink-0" />
-              <span className="leading-relaxed">{feedback.text}</span>
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 shrink-0" />
+                <span className="leading-relaxed font-medium">{feedback.text}</span>
+              </div>
+              {lastAction && (
+                <a
+                  href={getWhatsAppWebUrl()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[11px] font-bold shrink-0 transition-colors flex items-center gap-1"
+                >
+                  <Send className="w-3 h-3" />
+                  <span>Abrir Conversa Novamente</span>
+                </a>
+              )}
             </div>
           )}
 
-          {/* Body Content */}
-          <div className="p-4 sm:p-5 overflow-y-auto space-y-4 flex-1">
+          {/* Body: Grid com 3 colunas compactas preenchendo os 90% de tela */}
+          <div className="p-4 sm:p-6 overflow-y-auto flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5">
             
-            {/* Quick Metadata Bar */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs bg-[#171326] p-3 rounded-2xl border border-purple-900/30">
-              <div>
-                <span className="text-[10px] text-zinc-400 block">Intimado(a):</span>
-                <span className="font-bold text-white text-xs">{personName || 'Não informado'}</span>
-              </div>
-              <div>
-                <span className="text-[10px] text-zinc-400 block">WhatsApp de Envio:</span>
-                <span className="font-mono text-emerald-300 text-xs font-semibold">{phone || 'Sem telefone informado'}</span>
-              </div>
-            </div>
+            {/* COLUNA 1: DADOS DA OITIVA & AUTORIDADE (4 Cols) */}
+            <div className="lg:col-span-4 space-y-4 flex flex-col justify-between">
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 pb-1 border-b border-purple-900/30">
+                  <FileText className="w-4 h-4 text-purple-400" />
+                  <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                    Dados do Mandado
+                  </h3>
+                </div>
 
-            {/* Delegate Selector Strip */}
-            <div className="flex items-center justify-between gap-2 p-2.5 bg-[#1a142e] border border-purple-900/40 rounded-xl text-xs">
-              <div className="flex items-center gap-2 truncate">
-                <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0" />
-                <span className="text-zinc-300 truncate">
-                  Autoridade Signatária: <strong className="text-white">{officerName}</strong>
+                {/* Intimado & Telefone */}
+                <div className="bg-[#171326] p-3 rounded-2xl border border-purple-900/30 space-y-2">
+                  <div>
+                    <label className="text-[10px] font-semibold text-zinc-400 block">Intimado(a):</label>
+                    <input
+                      type="text"
+                      value={personName}
+                      onChange={(e) => setPersonName(e.target.value)}
+                      className="w-full bg-[#110d1e] border border-purple-900/50 rounded-xl px-3 py-1.5 text-xs text-white font-bold focus:outline-none focus:border-purple-500"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="text-[10px] font-semibold text-zinc-400 block">WhatsApp / Telefone:</label>
+                    <div className="relative">
+                      <Phone className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-emerald-400" />
+                      <input
+                        type="text"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        placeholder="(85) 99999-9999"
+                        className="w-full bg-[#110d1e] border border-purple-900/50 rounded-xl pl-8 pr-3 py-1.5 text-xs text-emerald-300 font-mono font-semibold focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Procedimento, Data, Hora & Local */}
+                <div className="bg-[#171326] p-3 rounded-2xl border border-purple-900/30 space-y-2 text-xs">
+                  <div>
+                    <span className="text-[10px] text-zinc-400 block">Procedimento Policial:</span>
+                    <span className="font-semibold text-zinc-200 text-xs">
+                      {procedureType ? `${procedureType} nº ${procedureNumber || 'S/N'}` : (procedureNumber || 'Em andamento')}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 pt-1 border-t border-purple-900/20">
+                    <div>
+                      <span className="text-[10px] text-zinc-400 block flex items-center gap-1">
+                        <Calendar className="w-3 h-3 text-purple-400" /> Data:
+                      </span>
+                      <span className="font-bold text-white text-xs">{formatDateBR(date)}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-zinc-400 block flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-purple-400" /> Horário:
+                      </span>
+                      <span className="font-bold text-white text-xs">{time ? `${time}h` : 'A definir'}</span>
+                    </div>
+                  </div>
+
+                  <div className="pt-1 border-t border-purple-900/20">
+                    <span className="text-[10px] text-zinc-400 block flex items-center gap-1">
+                      <MapPin className="w-3 h-3 text-purple-400" /> Local / Sala:
+                    </span>
+                    <span className="text-zinc-300 text-xs font-medium">{locationOrLink}</span>
+                  </div>
+                </div>
+
+                {/* Autoridade Policial Signatária */}
+                <div className="bg-[#1a142e] border border-amber-500/30 p-3 rounded-2xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-amber-300 flex items-center gap-1">
+                      <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+                      Autoridade Signatária (DPC)
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsDelegadoModalOpen(true)}
+                      className="px-2 py-0.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/40 rounded-lg text-[10px] font-semibold transition-colors cursor-pointer"
+                    >
+                      Trocar
+                    </button>
+                  </div>
+                  <div className="text-xs">
+                    <p className="font-bold text-white">{officerName}</p>
+                    <p className="text-[10px] text-zinc-400">{officerMatricula} • {officerCargo}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Informação sobre validade */}
+              <div className="p-3 bg-purple-950/30 border border-purple-900/40 rounded-2xl text-[11px] text-purple-300/80 leading-relaxed flex items-start gap-2">
+                <Info className="w-3.5 h-3.5 text-purple-400 shrink-0 mt-0.5" />
+                <span>
+                  O texto e o PDF contêm as advertências legais da Polícia Civil do Estado do Ceará para comparecimento oficial.
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsDelegadoModalOpen(true)}
-                className="flex items-center gap-1 px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-lg text-[11px] font-semibold transition-colors cursor-pointer shrink-0"
-              >
-                <UserCheck className="w-3 h-3" />
-                <span>Trocar DPC</span>
-              </button>
             </div>
 
-            {/* Message Preview Box */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className="text-[11px] font-semibold text-zinc-300 flex items-center gap-1.5">
-                  <span>Mensagem Formatada para o WhatsApp</span>
-                </label>
+            {/* COLUNA 2: PRÉVIA DA MENSAGEM WHATSAPP (5 Cols) */}
+            <div className="lg:col-span-5 flex flex-col space-y-2">
+              <div className="flex items-center justify-between pb-1 border-b border-purple-900/30">
+                <div className="flex items-center gap-2">
+                  <Send className="w-4 h-4 text-emerald-400" />
+                  <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                    Mensagem Formatada (WhatsApp)
+                  </h3>
+                </div>
                 <button
                   type="button"
                   onClick={handleCopyText}
-                  className="flex items-center gap-1 text-[11px] text-purple-300 hover:text-white px-2 py-0.5 rounded-md hover:bg-purple-950/50 transition-colors cursor-pointer"
+                  className="flex items-center gap-1 text-[11px] text-purple-300 hover:text-white px-2.5 py-1 rounded-lg hover:bg-purple-950/50 border border-purple-800/40 transition-colors cursor-pointer font-semibold"
                 >
-                  {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                   <span>{copied ? 'Copiado!' : 'Copiar Texto'}</span>
                 </button>
               </div>
 
-              {/* Chat-style Preview Bubble */}
-              <div className="bg-[#0b141a] border border-emerald-900/40 rounded-2xl p-4 text-xs font-sans text-[#e9edef] whitespace-pre-wrap leading-relaxed shadow-inner select-text">
-                {currentMessageText}
+              {/* Simulador da Tela do WhatsApp */}
+              <div className="flex-1 bg-[#0b141a] border border-[#222d34] rounded-2xl p-4 flex flex-col justify-between shadow-inner">
+                {/* Chat Top bar */}
+                <div className="flex items-center justify-between pb-2 border-b border-emerald-950/60 mb-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-full bg-emerald-700/60 flex items-center justify-center text-white text-[11px] font-bold">
+                      PC
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-white">{personName || 'Intimado'}</p>
+                      <p className="text-[10px] text-emerald-400 font-mono">{phone || 'Sem telefone'}</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] text-zinc-500">Hoje</span>
+                </div>
+
+                {/* Message Bubble */}
+                <div className="bg-[#005c4b] text-[#e9edef] rounded-2xl rounded-tl-sm p-3.5 text-xs font-sans whitespace-pre-wrap leading-relaxed shadow select-text overflow-y-auto max-h-[48vh]">
+                  {currentMessageText}
+                </div>
+
+                {/* Chat Footer info */}
+                <div className="pt-2 mt-2 border-t border-emerald-950/60 flex items-center justify-between text-[10px] text-zinc-400">
+                  <span>Visualização prévia exata do texto</span>
+                  <span className="text-emerald-400">Criptografado</span>
+                </div>
               </div>
             </div>
 
-            {/* Explanatory Info Card */}
-            <div className="bg-[#151025] border border-purple-900/30 rounded-2xl p-3.5 flex items-start gap-3 text-xs text-zinc-300">
-              <Info className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
-              <div className="space-y-1">
-                <p className="font-semibold text-purple-200">
-                  Envio Completo com Documento Oficial (PDF)
+            {/* COLUNA 3: AÇÕES E ENVIO (3 Cols) */}
+            <div className="lg:col-span-3 space-y-4 flex flex-col justify-between">
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 pb-1 border-b border-purple-900/30">
+                  <Share2 className="w-4 h-4 text-emerald-400" />
+                  <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                    Opções de Envio
+                  </h3>
+                </div>
+
+                {/* OPÇÃO 1: DESTAQUE MENSAGEM + PDF */}
+                <div className="bg-gradient-to-br from-[#1b1233] to-[#0f231e] border-2 border-emerald-500/50 rounded-2xl p-4 space-y-2.5 shadow-lg shadow-emerald-950/40">
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-300 text-xs font-bold">
+                      1
+                    </span>
+                    <h4 className="text-xs font-bold text-white">
+                      Mensagem + PDF Oficial
+                    </h4>
+                  </div>
+                  <p className="text-[11px] text-zinc-300 leading-relaxed">
+                    Baixa o Mandado em PDF e abre a conversa do WhatsApp com o texto oficial preenchido para anexar.
+                  </p>
+                  
+                  <button
+                    id="btn-send-whatsapp-both"
+                    type="button"
+                    onClick={handleSendTextAndPdf}
+                    disabled={isGeneratingPdf}
+                    className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-950 transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    <Share2 className="w-4 h-4" />
+                    <span>{isGeneratingPdf ? 'Gerando Mandado...' : 'Enviar Mensagem + PDF'}</span>
+                  </button>
+                </div>
+
+                {/* OPÇÃO 2: APENAS MENSAGEM */}
+                <div className="bg-[#171326] border border-purple-900/40 rounded-2xl p-3.5 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-300 text-[10px] font-bold">
+                      2
+                    </span>
+                    <h4 className="text-xs font-semibold text-zinc-200">
+                      Apenas Texto no WhatsApp
+                    </h4>
+                  </div>
+                  <p className="text-[10px] text-zinc-400">
+                    Abre diretamente a conversa com o texto oficial formatado.
+                  </p>
+
+                  <a
+                    id="link-send-whatsapp-text"
+                    href={getWhatsAppWebUrl()}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => {
+                      setLastAction('text');
+                      if (onMarkIntimationSent) onMarkIntimationSent(oitiva.id);
+                    }}
+                    className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-[#241a3f] hover:bg-emerald-950/70 text-emerald-300 hover:text-white border border-emerald-600/30 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>Enviar Só Mensagem</span>
+                  </a>
+                </div>
+
+                {/* OPÇÃO 3: APENAS BAIXAR PDF */}
+                <div className="bg-[#171326] border border-purple-900/40 rounded-2xl p-3.5 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-300 text-[10px] font-bold">
+                      3
+                    </span>
+                    <h4 className="text-xs font-semibold text-zinc-200">
+                      Apenas Baixar PDF
+                    </h4>
+                  </div>
+                  <p className="text-[10px] text-zinc-400">
+                    Gera e salva o arquivo PDF do Mandado no computador ou celular.
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={handleDownloadOnlyPdf}
+                    disabled={isGeneratingPdf}
+                    className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-[#241a3f] hover:bg-purple-950 text-purple-200 hover:text-white border border-purple-700/40 rounded-xl text-xs font-semibold transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    <Download className="w-3.5 h-3.5 text-purple-400" />
+                    <span>Baixar Arquivo PDF</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Dica e link de segurança */}
+              <div className="p-3 bg-[#161226] border border-purple-900/30 rounded-2xl space-y-1">
+                <p className="text-[10px] font-semibold text-zinc-300 flex items-center gap-1">
+                  <FileCheck2 className="w-3.5 h-3.5 text-emerald-400" />
+                  Registro de Intimação:
                 </p>
-                <p className="text-[11px] text-zinc-400 leading-relaxed">
-                  O botão <strong>"Enviar Mensagem + PDF"</strong> gera automaticamente o Mandado de Intimação em alta resolução com o cabeçalho e a assinatura da autoridade, baixando o arquivo e abrindo o WhatsApp com a mensagem pronta para anexar e enviar.
+                <p className="text-[10px] text-zinc-400 leading-tight">
+                  Ao acionar qualquer envio, a oitiva é marcada como <strong>intimada</strong> na pauta do cartório.
                 </p>
               </div>
             </div>
 
           </div>
 
-          {/* Action Footer */}
-          <div className="p-4 sm:p-5 border-t border-purple-900/40 bg-[#161226] flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
-            
-            <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
-              {/* Baixar apenas PDF */}
-              <button
-                type="button"
-                onClick={handleDownloadOnlyPdf}
-                disabled={isGeneratingPdf}
-                className="flex items-center gap-1.5 px-3 py-2 bg-[#201838] hover:bg-purple-950/60 text-zinc-300 hover:text-white rounded-xl text-xs font-semibold border border-purple-800/40 transition-all cursor-pointer disabled:opacity-50"
-                title="Baixar apenas o PDF do Mandado"
-              >
-                <Download className="w-3.5 h-3.5 text-purple-400" />
-                <span>Baixar PDF</span>
-              </button>
-
-              {/* Enviar apenas Texto */}
-              <button
-                type="button"
-                onClick={handleSendTextOnly}
-                className="flex items-center gap-1.5 px-3 py-2 bg-[#201838] hover:bg-purple-950/60 text-emerald-300 hover:text-emerald-200 rounded-xl text-xs font-semibold border border-emerald-800/40 transition-all cursor-pointer"
-                title="Abrir WhatsApp apenas com o texto"
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-                <span>Apenas Texto</span>
-              </button>
+          {/* Footer Compacto */}
+          <div className="p-3 sm:p-4 border-t border-purple-900/40 bg-[#161226] flex items-center justify-between shrink-0 text-xs">
+            <div className="flex items-center gap-2 text-zinc-400">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span>Pronto para envio • 1ª Delegacia de Maracanaú</span>
             </div>
 
-            {/* Primary Action: Enviar Mensagem + PDF */}
             <button
-              id="btn-whatsapp-send-all"
               type="button"
-              onClick={handleSendTextAndPdf}
-              disabled={isGeneratingPdf}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-950/60 transition-all cursor-pointer disabled:opacity-50"
+              onClick={onClose}
+              className="px-4 py-2 bg-[#201838] hover:bg-purple-950 text-zinc-300 hover:text-white rounded-xl text-xs font-semibold border border-purple-800/40 transition-all cursor-pointer"
             >
-              <Share2 className="w-4 h-4" />
-              <span>{isGeneratingPdf ? 'Gerando Intimação...' : 'Enviar Mensagem + PDF'}</span>
+              Fechar Janela
             </button>
-
           </div>
 
         </div>
