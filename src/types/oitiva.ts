@@ -67,7 +67,8 @@ export interface UserProfile {
   email: string | null; // E-mail da conta / Gmail pessoal para login e recuperação
   displayName: string | null; // Nome completo
   photoURL?: string | null; // Foto ou avatar do perfil
-  role?: string; // Papel de sistema
+  role?: 'admin' | 'user' | string; // Papel de sistema ('admin' ou 'user')
+  isAdmin?: boolean; // Booleano indicando privilégio administrativo
   cargo?: string | null; // Cargo funcional (Ex: Delegado(a), Escrivão(ã), Inspetor(a))
   registrationNumber?: string | null; // Matrícula funcional
   institutionalEmail?: string | null; // E-mail institucional (Ex: @policiacivil.ce.gov.br)
@@ -77,5 +78,7 @@ export interface UserProfile {
   authProvider?: 'google' | 'password' | 'anonymous' | 'custom';
   delegados?: any[]; // Lista personalizada de delegados sincronizada
   defaultDelegadoId?: string;
+  createdAt?: number;
   updatedAt?: number;
+  passwordHash?: string;
 }

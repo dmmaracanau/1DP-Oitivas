@@ -13,6 +13,27 @@
   }
 }
 
+/* Ensure native date and time picker icons are luminous and visible on dark background */
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"] {
+  color-scheme: dark;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.8) sepia(100%) saturate(300%) hue-rotate(220deg);
+  cursor: pointer;
+  opacity: 0.9;
+  transition: opacity 0.2s ease;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover,
+input[type="time"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+  filter: invert(1) drop-shadow(0 0 4px rgba(168, 85, 247, 0.6));
+}
+
 /* Custom cohesive dark purple scrollbars */
 ::-webkit-scrollbar {
   width: 6px;

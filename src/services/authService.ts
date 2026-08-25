@@ -12,7 +12,18 @@ import {
   User,
   GoogleAuthProvider
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, deleteDoc, onSnapshot, collection, query, where, getDocs } from 'firebase/firestore';
+import { 
+  doc, 
+  getDoc, 
+  setDoc, 
+  deleteDoc, 
+  onSnapshot, 
+  collection, 
+  query, 
+  where, 
+  getDocs,
+  Unsubscribe 
+} from 'firebase/firestore';
 import { ref as rtdbRef, set as rtdbSet, get as rtdbGet } from 'firebase/database';
 import { auth, db, rtdb, googleProvider } from '../firebase';
 import { UserProfile } from '../types/oitiva';
@@ -20,7 +31,7 @@ import { UserProfile } from '../types/oitiva';
 const LOCAL_USER_KEY = 'oitivas_user_session';
 const USERS_COLLECTION = 'users';
 
-// In-memory token cache (strictly required for Workspace OAuth scopes)
+// In-memory token cache (required for Workspace OAuth scopes)
 let cachedAccessToken: string | null = null;
 
 // Helper to sanitize undefined values before saving to Firestore & RTDB
@@ -41,7 +52,7 @@ function mapAuthError(err: any): string {
   switch (code) {
     case 'auth/invalid-credential':
     case 'auth/wrong-password':
-      return 'E-mail ou senha incorretos. Verifique suas credenciais.';
+      return 'E-mail, usuário ou senha incorretos. Verifique suas credenciais.';
     case 'auth/user-not-found':
       return 'Nenhum usuário cadastrado com este e-mail.';
     case 'auth/invalid-email':
@@ -62,7 +73,7 @@ function mapAuthError(err: any): string {
       return 'A janela popup foi bloqueada pelo navegador. Permita popups para este site.';
     case 'auth/operation-not-allowed':
     case 'auth/admin-restricted-operation':
-      return 'O provedor de autenticação por E-mail/Senha precisa ser ativado no Firebase Console > Authentication > Sign-in method.';
+      return 'O provedor de autenticação por E-mail/Senha precisa ser ativado no Firebase Console.';
     default:
       return err.message || 'Erro durante a operação de autenticação.';
   }
@@ -119,12 +130,21 @@ export const authService = {
         email: auth.currentUser.email,
         displayName: auth.currentUser.displayName || 'Servidor(a) Policial',
         photoURL: auth.currentUser.photoURL,
+        role: 'user',
+        isAdmin: false,
         unitName: '1ª Delegacia Metropolitana de Maracanaú',
         authProvider: auth.currentUser.isAnonymous ? 'anonymous' : 'password'
       };
     }
 
     return null;
+  },
+
+  // Verifica se o usuário atual é administrador
+  isCurrentUserAdmin(): boolean {
+    const u = this.getCurrentUser();
+    if (!u) return false;
+    return u.role === 'admin' || Boolean(u.isAdmin);
   },
 
   // Busca dados extras de perfil no Firestore ou RTDB
@@ -138,7 +158,9 @@ export const authService = {
         const merged: UserProfile = {
           ...current,
           ...firestoreData,
-          uid
+          uid,
+          role: firestoreData.role || (firestoreData.isAdmin ? 'admin' : 'user'),
+          isAdmin: Boolean(firestoreData.isAdmin || firestoreData.role === 'admin')
         };
         localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(merged));
         return merged;
@@ -155,7 +177,13 @@ export const authService = {
         if (rSnap.exists()) {
           const rtdbData = rSnap.val() as Partial<UserProfile>;
           const current = this.getCurrentUser() || { uid, email: null, displayName: null };
-          const merged: UserProfile = { ...current, ...rtdbData, uid };
+          const merged: UserProfile = { 
+            ...current, 
+            ...rtdbData, 
+            uid,
+            role: rtdbData.role || (rtdbData.isAdmin ? 'admin' : 'user'),
+            isAdmin: Boolean(rtdbData.isAdmin || rtdbData.role === 'admin')
+          };
           localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(merged));
           return merged;
         }
@@ -172,18 +200,7 @@ export const authService = {
     try {
       console.log("[FirebaseAuth] Initializing onAuthStateChanged observer...");
       const unsubAuth = fbOnAuthStateChanged(auth, async (user: User | null) => {
-        console.log(`[FirebaseAuth] onAuthStateChanged triggered. Current Firebase Auth User:`, user ? {
-          uid: user.uid,
-          email: user.email,
-          displayName: user.displayName,
-          isAnonymous: user.isAnonymous,
-          emailVerified: user.emailVerified,
-          providerData: user.providerData?.map(p => ({
-            providerId: p.providerId,
-            email: p.email,
-            displayName: p.displayName
-          }))
-        } : 'NULL (No active Firebase Auth session)');
+        console.log(`[FirebaseAuth] onAuthStateChanged triggered:`, user ? { uid: user.uid, email: user.email } : 'NULL');
 
         if (unsubUserDoc) {
           unsubUserDoc();
@@ -193,7 +210,6 @@ export const authService = {
         const cached = this.getCurrentUser();
 
         if (user) {
-          console.log(`[FirebaseAuth] User detected in Firebase Auth session: ${user.uid} (${user.email || 'anonymous'})`);
           const effectiveUid = (user.isAnonymous && cached?.uid) ? cached.uid : user.uid;
           const baseProfile: UserProfile = {
             uid: effectiveUid,
@@ -201,6 +217,8 @@ export const authService = {
             email: user.email || cached?.email || null,
             displayName: user.displayName || cached?.displayName || user.email?.split('@')[0] || 'Servidor(a) Policial',
             photoURL: user.photoURL || cached?.photoURL || null,
+            role: cached?.role || (cached?.isAdmin ? 'admin' : 'user'),
+            isAdmin: Boolean(cached?.isAdmin || cached?.role === 'admin'),
             cargo: cached?.cargo || 'Inspetor(a) de Polícia',
             registrationNumber: cached?.registrationNumber || '',
             institutionalEmail: cached?.institutionalEmail || (user.email?.includes('delegacia') ? user.email : ''),
@@ -222,14 +240,14 @@ export const authService = {
                   uid: effectiveUid,
                   email: user.email || liveData.email || baseProfile.email,
                   displayName: user.displayName || liveData.displayName || baseProfile.displayName,
-                  photoURL: user.photoURL || liveData.photoURL || null
+                  photoURL: user.photoURL || liveData.photoURL || null,
+                  role: liveData.role || (liveData.isAdmin ? 'admin' : 'user'),
+                  isAdmin: Boolean(liveData.isAdmin || liveData.role === 'admin')
                 };
-                console.log(`[FirebaseAuth] Firestore user document synced for UID=${effectiveUid}:`, liveProfile.displayName);
                 localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(liveProfile));
                 callback(liveProfile);
               } else {
                 // Se documento ainda não existe no Firestore, salva o perfil inicial
-                console.log(`[FirebaseAuth] Firestore user document not found for UID=${effectiveUid}. Creating initial record...`);
                 setDoc(userDocRef, sanitizeData({ ...baseProfile, updatedAt: Date.now() }), { merge: true }).catch(() => {});
                 if (rtdb) {
                   rtdbSet(rtdbRef(rtdb, `users/${effectiveUid}`), sanitizeData({ ...baseProfile, updatedAt: Date.now() })).catch(() => {});
@@ -248,9 +266,7 @@ export const authService = {
             callback(baseProfile);
           }
         } else {
-          console.log("[FirebaseAuth] Signed out or no session active.");
           if (cached && cached.uid) {
-            // Mantém sessão local persistida e reativa token Firebase anônimo em segundo plano se necessário
             try {
               signInAnonymously(auth).catch(() => {});
             } catch {}
@@ -275,7 +291,7 @@ export const authService = {
     }
   },
 
-  // Atualiza perfil completo do usuário e sincroniza direto no Firestore e RTDB
+  // Atualiza perfil próprio do usuário e sincroniza direto no Firestore e RTDB
   async updateUserProfile(profileData: Partial<UserProfile>): Promise<UserProfile> {
     const current = this.getCurrentUser() || {
       uid: auth.currentUser?.uid || `user_${Date.now()}`,
@@ -287,6 +303,8 @@ export const authService = {
       ...current,
       ...profileData,
       uid: current.uid,
+      role: profileData.role !== undefined ? profileData.role : current.role,
+      isAdmin: profileData.isAdmin !== undefined ? profileData.isAdmin : current.isAdmin,
       updatedAt: Date.now()
     };
 
@@ -341,7 +359,7 @@ export const authService = {
 
     const pHash = await hashPassword(newPassword);
 
-    // 1. Tenta atualizar no Firebase Auth se usuário estiver com login de email/senha padrão
+    // 1. Atualiza no Firebase Auth se usuário estiver com sessão nativa
     if (auth.currentUser && !auth.currentUser.isAnonymous) {
       try {
         await updatePassword(auth.currentUser, normalizePassword(newPassword));
@@ -373,7 +391,7 @@ export const authService = {
     }
   },
 
-  // Login com Google com obtenção do OAuth Access Token para Workspace (Drive, Gmail, Agenda)
+  // Login com Google
   async loginWithGoogle(): Promise<{ profile: UserProfile; token?: string }> {
     try {
       const res = await signInWithPopup(auth, googleProvider);
@@ -391,6 +409,8 @@ export const authService = {
         email: res.user.email,
         displayName: res.user.displayName || existingData.displayName || 'Servidor(a) Policial',
         photoURL: res.user.photoURL || existingData.photoURL || null,
+        role: existingData.role || (existingData.isAdmin ? 'admin' : 'user'),
+        isAdmin: Boolean(existingData.isAdmin || existingData.role === 'admin'),
         cargo: existingData.cargo || 'Escrivão(ã) / Inspetor(a)',
         registrationNumber: existingData.registrationNumber || '',
         institutionalEmail: existingData.institutionalEmail || '',
@@ -491,11 +511,9 @@ export const authService = {
     // 3. Tenta autenticação nativa do Firebase Auth se houver e-mail
     if (loginEmail) {
       try {
-        console.log(`[FirebaseAuth] Attempting native signInWithEmailAndPassword for: ${loginEmail}`);
         const res = await signInWithEmailAndPassword(auth, loginEmail, normalizePassword(pass));
         userUid = res.user.uid;
         fbSuccess = true;
-        console.log(`[FirebaseAuth] Native signInWithEmailAndPassword SUCCESS for UID: ${res.user.uid}, email: ${res.user.email}`);
         
         // Recarrega documento do Firestore se existir
         const snap = await getDoc(doc(db, USERS_COLLECTION, res.user.uid));
@@ -504,30 +522,26 @@ export const authService = {
         }
       } catch (err: any) {
         authAttemptError = err;
-        console.warn(`[FirebaseAuth] signInWithEmailAndPassword notice: code=${err?.code}, message=${err?.message}`);
       }
     }
 
-    // 4. Verificação de credenciais e Auto-provisionamento no Firebase Authentication caso o usuário tenha sido criado em Firestore antes da ativação do Auth
+    // 4. Verificação de credenciais e Auto-provisionamento no Firebase Authentication
     if (userDocData) {
       const storedHash = userDocData.passwordHash;
       const isPasswordValid = fbSuccess || (storedHash && storedHash === pHash) || (!storedHash && fbSuccess);
 
       if (isPasswordValid) {
-        // Se a senha é válida mas o usuário ainda não existia no Firebase Authentication, cria agora!
+        // Se a senha é válida mas o usuário ainda não existia no Firebase Authentication, provisiona
         if (!fbSuccess && loginEmail && (authAttemptError?.code === 'auth/user-not-found' || authAttemptError?.code === 'auth/invalid-credential')) {
           try {
-            console.log(`[FirebaseAuth] Auto-provisioning legacy user into Firebase Authentication: ${loginEmail}`);
             const newAuthRes = await createUserWithEmailAndPassword(auth, loginEmail, normalizePassword(pass));
-            console.log(`[FirebaseAuth] SUCCESS: User provisioned in Firebase Authentication! UID: ${newAuthRes.user.uid}, Email: ${newAuthRes.user.email}`);
-            
             if (userDocData.displayName) {
               await updateProfile(newAuthRes.user, { displayName: userDocData.displayName }).catch(() => {});
             }
             userUid = newAuthRes.user.uid;
             fbSuccess = true;
           } catch (createErr: any) {
-            console.warn("[FirebaseAuth] Notice during auto-provisioning:", createErr?.code || createErr?.message);
+            console.warn("[FirebaseAuth] Notice during auto-provisioning:", createErr);
           }
         }
 
@@ -538,12 +552,15 @@ export const authService = {
           } catch {}
         }
 
+        const isAdmin = Boolean(userDocData.isAdmin || userDocData.role === 'admin');
         const profile: UserProfile = {
           uid: userUid || userDocSnap?.id || `user_${cleanIdentifier}`,
           username: userDocData.username || cleanIdentifier.replace(/[^a-z0-9_.]/g, ''),
           email: userDocData.email || loginEmail || null,
           displayName: userDocData.displayName || cleanIdentifier,
           photoURL: userDocData.photoURL || null,
+          role: isAdmin ? 'admin' : (userDocData.role || 'user'),
+          isAdmin: isAdmin,
           cargo: userDocData.cargo || 'Inspetor(a) de Polícia',
           registrationNumber: userDocData.registrationNumber || '',
           institutionalEmail: userDocData.institutionalEmail || '',
@@ -555,13 +572,12 @@ export const authService = {
           updatedAt: Date.now()
         };
 
-        // Salva hash e perfil sincronizado
+        // Salva hash e perfil sincronizado no Firestore
         try {
           await setDoc(doc(db, USERS_COLLECTION, profile.uid), sanitizeData({ ...profile, passwordHash: pHash }), { merge: true });
         } catch {}
 
         localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(profile));
-        console.log(`[FirebaseAuth] Login complete for user: ${profile.displayName} (${profile.email})`);
         return profile;
       } else {
         throw new Error("Senha incorreta. Verifique suas credenciais.");
@@ -579,20 +595,20 @@ export const authService = {
     throw new Error("Nenhum usuário cadastrado com este identificador. Por favor, crie seu usuário na opção de cadastro.");
   },
 
-  // Alias para signup (compatibilidade com APIs e rotinas de registro)
-  async signup(email: string, pass: string, fullName: string, username?: string): Promise<UserProfile> {
-    console.log(`[FirebaseAuth] signup method called for: ${email}`);
-    return this.registerWithEmail(email, pass, fullName, username);
+  // Alias para signup
+  async signup(email: string, pass: string, fullName: string, username?: string, isAdmin = false): Promise<UserProfile> {
+    return this.registerWithEmail(email, pass, fullName, username, isAdmin);
   },
 
-  // Registrar novo usuário: nome de usuário, nome completo, e-mail e senha diretamente no Firebase Authentication
+  // Registrar novo usuário: nome de usuário, nome completo, e-mail, senha e opção de administrador
   async registerWithEmail(
     email: string, 
     pass: string, 
     fullName: string, 
-    username?: string
+    username?: string,
+    isAdmin = false
   ): Promise<UserProfile> {
-    console.log(`[FirebaseAuth] registerWithEmail started. Email: "${email}", FullName: "${fullName}", Username: "${username}"`);
+    console.log(`[FirebaseAuth] registerWithEmail: Email="${email}", FullName="${fullName}", Username="${username}", isAdmin=${isAdmin}`);
     if (!email || !pass) {
       throw new Error("E-mail e senha são obrigatórios.");
     }
@@ -608,41 +624,37 @@ export const authService = {
       throw new Error("Por favor, forneça um nome de usuário válido.");
     }
 
+    // Verifica se já existe um usuário com esse username no Firestore
+    try {
+      const uQuery = query(collection(db, USERS_COLLECTION), where('username', '==', cleanUsername));
+      const uSnap = await getDocs(uQuery);
+      if (!uSnap.empty) {
+        throw new Error(`O nome de usuário "${cleanUsername}" já está em uso. Por favor, escolha outro.`);
+      }
+    } catch (e: any) {
+      if (e.message && e.message.includes('já está em uso')) throw e;
+    }
+
     const pHash = await hashPassword(pass);
     let targetUid = '';
-    let isNativeAuth = false;
 
     // 1. Tenta criar usuário diretamente no Firebase Authentication
     try {
-      console.log(`[FirebaseAuth] Calling createUserWithEmailAndPassword for email: ${cleanEmail}`);
       const res = await createUserWithEmailAndPassword(auth, cleanEmail, normalizePassword(pass));
       targetUid = res.user.uid;
-      isNativeAuth = true;
-      console.log(`[FirebaseAuth] SUCCESS: User registered in Firebase Authentication! UID: ${res.user.uid}, Email: ${res.user.email}`);
       
       if (res.user && cleanDisplayName) {
-        try {
-          await updateProfile(res.user, { displayName: cleanDisplayName });
-          console.log(`[FirebaseAuth] Profile displayName set to: "${cleanDisplayName}" on Firebase Auth user.`);
-        } catch (profileErr) {
-          console.warn("[FirebaseAuth] Notice setting displayName:", profileErr);
-        }
+        await updateProfile(res.user, { displayName: cleanDisplayName }).catch(() => {});
       }
     } catch (fbErr: any) {
-      console.warn(`[FirebaseAuth] Firebase Auth registration response: code=${fbErr?.code}, message=${fbErr?.message}`);
-      
       if (fbErr?.code === 'auth/email-already-in-use') {
-        // Se já existe no Firebase Auth, tenta autenticar com a senha fornecida para recuperar o UID
         try {
-          console.log(`[FirebaseAuth] Email already in Firebase Auth. Attempting to sign in to link profile: ${cleanEmail}`);
           const signRes = await signInWithEmailAndPassword(auth, cleanEmail, normalizePassword(pass));
           targetUid = signRes.user.uid;
-          isNativeAuth = true;
         } catch {
           throw new Error("Este e-mail já está cadastrado no sistema. Faça login com suas credenciais.");
         }
       } else if (fbErr?.code === 'auth/operation-not-allowed') {
-        console.warn("[FirebaseAuth] Email/Password provider not active in Firebase Console. Using Firestore persistence fallback.");
         try {
           const anonRes = await signInAnonymously(auth);
           targetUid = anonRes.user.uid;
@@ -663,26 +675,27 @@ export const authService = {
       username: cleanUsername,
       email: cleanEmail,
       displayName: cleanDisplayName,
-      cargo: 'Inspetor(a) de Polícia',
+      role: isAdmin ? 'admin' : 'user',
+      isAdmin: Boolean(isAdmin),
+      cargo: isAdmin ? 'Administrador(a) do Sistema' : 'Inspetor(a) de Polícia',
       registrationNumber: '',
       institutionalEmail: cleanEmail.includes('delegacia') ? cleanEmail : '',
       unitName: '1ª Delegacia Metropolitana de Maracanaú',
       phone: '(85) 3101-2830',
       department: 'Cartório de Oitivas',
       authProvider: 'password',
+      createdAt: Date.now(),
       updatedAt: Date.now()
     };
 
     // 2. Salva perfil completo sincronizado no Firestore
     try {
-      console.log(`[FirebaseAuth] Persisting user profile in Firestore collection "${USERS_COLLECTION}" under document ID: ${targetUid}`);
       const userRef = doc(db, USERS_COLLECTION, targetUid);
       await setDoc(userRef, sanitizeData({ ...profile, passwordHash: pHash }), { merge: true });
       
       if (rtdb) {
         await rtdbSet(rtdbRef(rtdb, `users/${targetUid}`), sanitizeData({ ...profile, passwordHash: pHash }));
       }
-      console.log(`[FirebaseAuth] User profile successfully synchronized in Firestore and RTDB for: ${profile.displayName}`);
     } catch (dbErr) {
       console.warn("[FirebaseAuth] Aviso ao salvar perfil no Firestore:", dbErr);
     }
@@ -700,15 +713,20 @@ export const authService = {
 
       let profile: UserProfile;
       if (snap.exists()) {
+        const d = snap.data();
         profile = {
-          ...(snap.data() as UserProfile),
-          uid: res.user.uid
+          ...(d as UserProfile),
+          uid: res.user.uid,
+          role: d.role || (d.isAdmin ? 'admin' : 'user'),
+          isAdmin: Boolean(d.isAdmin || d.role === 'admin')
         };
       } else {
         profile = {
           uid: res.user.uid,
           email: 'delegaciammaracanau@gmail.com',
           displayName: customName,
+          role: 'user',
+          isAdmin: false,
           cargo: 'Equipe de Plantão / Cartório',
           registrationNumber: 'PCCE-PLANTÃO',
           institutionalEmail: 'maracanau.plantao@policiacivil.ce.gov.br',
@@ -716,6 +734,7 @@ export const authService = {
           phone: '(85) 3101-2830',
           department: 'Cartório de Oitivas',
           authProvider: 'anonymous',
+          createdAt: Date.now(),
           updatedAt: Date.now()
         };
         await setDoc(userRef, sanitizeData(profile), { merge: true });
@@ -800,7 +819,6 @@ export const authService = {
       if (auth.currentUser && auth.currentUser.uid === targetUid) {
         try {
           await deleteUser(auth.currentUser);
-          console.log("[FirebaseAuth] Usuário excluído do Firebase Authentication.");
         } catch (authErr: any) {
           console.warn("[FirebaseAuth] Aviso ao deletar no Firebase Auth:", authErr?.code || authErr?.message);
         }
@@ -818,6 +836,233 @@ export const authService = {
     } catch (err: any) {
       console.error("[FirebaseAuth] Erro ao excluir conta do usuário:", err);
       throw new Error("Falha ao excluir a conta: " + (err.message || 'Erro desconhecido'));
+    }
+  },
+
+  // =========================================================================
+  // ADMINISTRAÇÃO TOTAL DE USUÁRIOS (Poder total do Administrador)
+  // =========================================================================
+
+  // Busca todos os usuários cadastrados no banco de dados na nuvem (Firestore)
+  async getAllUsers(): Promise<UserProfile[]> {
+    try {
+      const snap = await getDocs(collection(db, USERS_COLLECTION));
+      const usersList: UserProfile[] = [];
+      snap.forEach((d) => {
+        const data = d.data();
+        const isAdmin = Boolean(data.isAdmin || data.role === 'admin');
+        usersList.push({
+          uid: d.id,
+          username: data.username || d.id,
+          email: data.email || null,
+          displayName: data.displayName || 'Servidor',
+          photoURL: data.photoURL || null,
+          role: isAdmin ? 'admin' : (data.role || 'user'),
+          isAdmin: isAdmin,
+          cargo: data.cargo || 'Inspetor(a) de Polícia',
+          registrationNumber: data.registrationNumber || '',
+          institutionalEmail: data.institutionalEmail || '',
+          unitName: data.unitName || '1ª Delegacia Metropolitana de Maracanaú',
+          phone: data.phone || '',
+          department: data.department || 'Cartório de Oitivas',
+          authProvider: data.authProvider || 'password',
+          createdAt: data.createdAt,
+          updatedAt: data.updatedAt
+        });
+      });
+
+      return usersList.sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''));
+    } catch (err: any) {
+      console.error("Erro ao listar todos os usuários:", err);
+      throw new Error("Falha ao consultar banco de usuários: " + (err.message || 'Erro desconhecido'));
+    }
+  },
+
+  // Inscrição em tempo real para a lista de usuários no Firestore (Admin)
+  subscribeToAllUsers(callback: (users: UserProfile[]) => void): Unsubscribe {
+    const usersCol = collection(db, USERS_COLLECTION);
+    return onSnapshot(usersCol, (snap) => {
+      const usersList: UserProfile[] = [];
+      snap.forEach((d) => {
+        const data = d.data();
+        const isAdmin = Boolean(data.isAdmin || data.role === 'admin');
+        usersList.push({
+          uid: d.id,
+          username: data.username || d.id,
+          email: data.email || null,
+          displayName: data.displayName || 'Servidor',
+          photoURL: data.photoURL || null,
+          role: isAdmin ? 'admin' : (data.role || 'user'),
+          isAdmin: isAdmin,
+          cargo: data.cargo || 'Inspetor(a) de Polícia',
+          registrationNumber: data.registrationNumber || '',
+          institutionalEmail: data.institutionalEmail || '',
+          unitName: data.unitName || '1ª Delegacia Metropolitana de Maracanaú',
+          phone: data.phone || '',
+          department: data.department || 'Cartório de Oitivas',
+          authProvider: data.authProvider || 'password',
+          createdAt: data.createdAt,
+          updatedAt: data.updatedAt
+        });
+      });
+      callback(usersList.sort((a, b) => (a.displayName || '').localeCompare(b.displayName || '')));
+    }, (err) => {
+      console.warn("Snapshot notice em subscribeToAllUsers:", err);
+    });
+  },
+
+  // Criar um novo usuário diretamente pelo Administrador
+  async createUserByAdmin(userData: {
+    username: string;
+    email: string;
+    displayName: string;
+    password: string;
+    role?: 'admin' | 'user' | string;
+    isAdmin?: boolean;
+    cargo?: string;
+    unitName?: string;
+    phone?: string;
+    department?: string;
+    registrationNumber?: string;
+  }): Promise<UserProfile> {
+    if (!userData.username?.trim() || !userData.email?.trim() || !userData.password) {
+      throw new Error("Nome de usuário, e-mail e senha são obrigatórios.");
+    }
+
+    const cleanUsername = userData.username.trim().toLowerCase().replace(/[^a-z0-9_.]/g, '');
+    const cleanEmail = userData.email.trim().toLowerCase();
+    const cleanDisplayName = userData.displayName?.trim() || cleanUsername;
+    const isAdmin = Boolean(userData.isAdmin || userData.role === 'admin');
+
+    // 1. Verifica duplicidade de username
+    const uQuery = query(collection(db, USERS_COLLECTION), where('username', '==', cleanUsername));
+    const uSnap = await getDocs(uQuery);
+    if (!uSnap.empty) {
+      throw new Error(`O nome de usuário "${cleanUsername}" já está cadastrado.`);
+    }
+
+    // 2. Verifica duplicidade de email
+    const eQuery = query(collection(db, USERS_COLLECTION), where('email', '==', cleanEmail));
+    const eSnap = await getDocs(eQuery);
+    if (!eSnap.empty) {
+      throw new Error(`O e-mail "${cleanEmail}" já está cadastrado.`);
+    }
+
+    const targetUid = 'user_' + cleanUsername + '_' + Date.now().toString(36);
+    const pHash = await hashPassword(userData.password);
+
+    const profile: UserProfile = {
+      uid: targetUid,
+      username: cleanUsername,
+      email: cleanEmail,
+      displayName: cleanDisplayName,
+      role: isAdmin ? 'admin' : 'user',
+      isAdmin: isAdmin,
+      cargo: userData.cargo?.trim() || (isAdmin ? 'Administrador(a) do Sistema' : 'Inspetor(a) de Polícia'),
+      registrationNumber: userData.registrationNumber?.trim() || '',
+      institutionalEmail: cleanEmail.includes('policia') ? cleanEmail : '',
+      unitName: userData.unitName?.trim() || '1ª Delegacia Metropolitana de Maracanaú',
+      phone: userData.phone?.trim() || '(85) 3101-2830',
+      department: userData.department?.trim() || 'Cartório de Oitivas',
+      authProvider: 'password',
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+
+    // Salva no Firestore
+    const userRef = doc(db, USERS_COLLECTION, targetUid);
+    await setDoc(userRef, sanitizeData({ ...profile, passwordHash: pHash }));
+
+    // Salva no RTDB
+    if (rtdb) {
+      await rtdbSet(rtdbRef(rtdb, `users/${targetUid}`), sanitizeData({ ...profile, passwordHash: pHash }));
+    }
+
+    return profile;
+  },
+
+  // Editar qualquer usuário pelo Administrador
+  async updateUserByAdmin(
+    targetUid: string, 
+    updates: Partial<UserProfile> & { newPassword?: string }
+  ): Promise<UserProfile> {
+    if (!targetUid) {
+      throw new Error("UID do usuário alvo é obrigatório.");
+    }
+
+    const docRef = doc(db, USERS_COLLECTION, targetUid);
+    const snap = await getDoc(docRef);
+    if (!snap.exists()) {
+      throw new Error("Usuário não encontrado no banco de dados.");
+    }
+
+    const existing = snap.data() as UserProfile & { passwordHash?: string };
+    const isAdmin = updates.isAdmin !== undefined ? Boolean(updates.isAdmin) : (updates.role === 'admin' ? true : existing.isAdmin);
+
+    const merged: UserProfile = {
+      ...existing,
+      ...updates,
+      uid: targetUid,
+      role: isAdmin ? 'admin' : (updates.role || 'user'),
+      isAdmin: isAdmin,
+      updatedAt: Date.now()
+    };
+
+    const payloadToSave: Record<string, any> = { ...merged };
+
+    // Se o admin definiu uma nova senha para este usuário
+    if (updates.newPassword && updates.newPassword.trim().length > 0) {
+      payloadToSave.passwordHash = await hashPassword(updates.newPassword.trim());
+    }
+
+    await setDoc(docRef, sanitizeData(payloadToSave), { merge: true });
+
+    if (rtdb) {
+      await rtdbSet(rtdbRef(rtdb, `users/${targetUid}`), sanitizeData(payloadToSave));
+    }
+
+    // Se o usuário editado for o próprio usuário atualmente logado, atualiza o cache local
+    const current = this.getCurrentUser();
+    if (current && current.uid === targetUid) {
+      localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(merged));
+    }
+
+    return merged;
+  },
+
+  // Deletar qualquer usuário pelo Administrador (incluindo as oitivas associadas a ele)
+  async deleteUserByAdmin(targetUid: string): Promise<void> {
+    if (!targetUid) {
+      throw new Error("UID do usuário alvo é obrigatório.");
+    }
+
+    console.log(`[Admin] Excluindo permanentemente usuário: ${targetUid}`);
+
+    // 1. Exclui oitivas no Firestore deste usuário
+    try {
+      const oitivasSnap = await getDocs(collection(db, 'users', targetUid, 'oitivas'));
+      for (const oDoc of oitivasSnap.docs) {
+        await deleteDoc(doc(db, 'users', targetUid, 'oitivas', oDoc.id));
+      }
+    } catch (e) {
+      console.warn("Aviso ao limpar oitivas do usuário excluído:", e);
+    }
+
+    // 2. Exclui oitivas no RTDB
+    if (rtdb) {
+      try {
+        await rtdbSet(rtdbRef(rtdb, `users/${targetUid}/oitivas`), null);
+      } catch {}
+    }
+
+    // 3. Exclui documento do usuário no Firestore
+    await deleteDoc(doc(db, USERS_COLLECTION, targetUid));
+
+    // 4. Exclui nó no RTDB
+    if (rtdb) {
+      try {
+        await rtdbSet(rtdbRef(rtdb, `users/${targetUid}`), null);
+      } catch {}
     }
   }
 };

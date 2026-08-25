@@ -43,8 +43,31 @@ export const DELEGADOS_PADRAO: DelegadoInfo[] = [
 ];
 
 const LOCAL_STORAGE_DELEGADOS_KEY = 'agenda_delegados_custom_v1';
+const LAST_SELECTED_DELEGADO_KEY = 'oitivas_last_selected_delegado_name';
 
 export const delegadoService = {
+  getLastSelectedDelegado(): string {
+    try {
+      const saved = localStorage.getItem(LAST_SELECTED_DELEGADO_KEY);
+      if (saved && saved.trim()) {
+        return saved.trim();
+      }
+    } catch (e) {
+      console.warn('Erro ao carregar último delegado selecionado:', e);
+    }
+    const delegados = this.getDelegados();
+    return delegados.length > 0 ? delegados[0].nome : 'Fernando Moretto Nachtigall';
+  },
+
+  setLastSelectedDelegado(nome: string) {
+    if (!nome) return;
+    try {
+      localStorage.setItem(LAST_SELECTED_DELEGADO_KEY, nome.trim());
+    } catch (e) {
+      console.warn('Erro ao salvar último delegado selecionado:', e);
+    }
+  },
+
   getDelegados(): DelegadoInfo[] {
     try {
       const saved = localStorage.getItem(LOCAL_STORAGE_DELEGADOS_KEY);

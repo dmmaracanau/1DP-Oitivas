@@ -17,8 +17,8 @@ import {
   FileBadge,
   UserCheck
 } from 'lucide-react';
-import { Oitiva, HearingStatus, HearingRole, ProcedureType, HearingModality } from '../types/oitiva';
-import { formatCPF, formatPhone } from '../utils/formatters';
+import { Oitiva, HearingStatus, HearingRole, ProcedureType, HearingModality, UserProfile } from '../types/oitiva';
+import { formatCPF, formatPhone, getUserInitials } from '../utils/formatters';
 import { DelegadoSelectorModal } from './DelegadoSelectorModal';
 import { DelegadoInfo, delegadoService } from '../services/delegadoService';
 
@@ -28,6 +28,7 @@ interface OitivaModalProps {
   onSave: (data: Omit<Oitiva, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   initialData?: Oitiva | null;
   defaultDate?: string;
+  user?: UserProfile | null;
 }
 
 export const OitivaModal: React.FC<OitivaModalProps> = ({
@@ -35,7 +36,8 @@ export const OitivaModal: React.FC<OitivaModalProps> = ({
   onClose,
   onSave,
   initialData,
-  defaultDate
+  defaultDate,
+  user
 }) => {
   const [activeTab, setActiveTab] = useState<'depoente' | 'procedimento' | 'agendamento'>('depoente');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -81,10 +83,10 @@ export const OitivaModal: React.FC<OitivaModalProps> = ({
         setAddress(initialData.address || '');
         setNeighborhood(initialData.neighborhood || '');
         setCity(initialData.city || 'Maracanaú/CE');
-        setOfficerName(initialData.officerName || 'Fernando Moretto Nachtigall');
-        setClerkName(initialData.clerkName || '');
+        setOfficerName(initialData.officerName || delegadoService.getLastSelectedDelegado());
+        setClerkName(initialData.clerkName || getUserInitials(user));
         setModality(initialData.modality || 'Presencial');
-        setLocationOrLink(initialData.locationOrLink || 'Sala de Oitivas 01');
+        setLocationOrLink(initialData.locationOrLink || (user?.department && user.department.trim()) || 'Sala de Oitivas 01');
         setStatus(initialData.status || 'Agendada');
         setNotes(initialData.notes || '');
         setIntimationSent(Boolean(initialData.intimationSent));
@@ -103,13 +105,20 @@ export const OitivaModal: React.FC<OitivaModalProps> = ({
         setNeighborhood('');
         setCity('Maracanaú/CE');
         
-        // Padrão: primeiro delegado cadastrado no sistema
-        const delegados = delegadoService.getDelegados();
-        setOfficerName(delegados.length > 0 ? delegados[0].nome : 'Fernando Moretto Nachtigall');
+        // Delegado lembrado das últimas entradas
+        const lastDelegado = delegadoService.getLastSelectedDelegado();
+        setOfficerName(lastDelegado);
         
-        setClerkName('');
+        // Escrivão/Responsável preenchido automaticamente com as iniciais do usuário
+        const initials = getUserInitials(user);
+        setClerkName(initials);
+        
         setModality('Presencial');
-        setLocationOrLink('Sala de Oitivas 01');
+        
+        // Sala/Local físico autopreenchido com os dados do usuário em Setor/Cartório
+        const defaultLocation = (user?.department && user.department.trim()) ? user.department.trim() : 'Sala de Oitivas 01';
+        setLocationOrLink(defaultLocation);
+        
         setStatus('Agendada');
         setNotes('');
         setIntimationSent(false);
@@ -117,12 +126,13 @@ export const OitivaModal: React.FC<OitivaModalProps> = ({
       setValidationError(null);
       setActiveTab('depoente');
     }
-  }, [isOpen, initialData, defaultDate]);
+  }, [isOpen, initialData, defaultDate, user]);
 
   if (!isOpen) return null;
 
   const handleSelectDelegado = (delegado: DelegadoInfo) => {
     setOfficerName(delegado.nome);
+    delegadoService.setLastSelectedDelegado(delegado.nome);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -137,6 +147,11 @@ export const OitivaModal: React.FC<OitivaModalProps> = ({
 
     setValidationError(null);
     setIsSubmitting(true);
+
+    // Lembra o delegado escolhido para próximas inserções
+    if (officerName.trim()) {
+      delegadoService.setLastSelectedDelegado(officerName.trim());
+    }
 
     try {
       await onSave({
@@ -153,7 +168,7 @@ export const OitivaModal: React.FC<OitivaModalProps> = ({
         address: address.trim(),
         neighborhood: neighborhood.trim(),
         city: city.trim(),
-        officerName: officerName.trim() || 'Fernando Moretto Nachtigall',
+        officerName: officerName.trim() || delegadoService.getLastSelectedDelegado(),
         clerkName: clerkName.trim(),
         modality,
         locationOrLink: locationOrLink.trim(),
@@ -171,8 +186,8 @@ export const OitivaModal: React.FC<OitivaModalProps> = ({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto no-print">
-        <div className="bg-[#120f1e] border border-purple-900/50 rounded-3xl w-[88vw] max-w-5xl overflow-hidden shadow-2xl shadow-purple-950/70 my-8 flex flex-col max-h-[88vh]">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto no-print">
+        <div className="bg-[#120f1e] border border-purple-900/50 rounded-3xl w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh] overflow-hidden shadow-2xl shadow-purple-950/70 my-auto flex flex-col">
           
           {/* Header */}
           <div className="p-5 border-b border-purple-900/40 bg-[#161226] flex items-center justify-between shrink-0">
@@ -230,7 +245,7 @@ export const OitivaModal: React.FC<OitivaModalProps> = ({
                   : 'bg-[#171326] text-zinc-400 hover:text-zinc-200 border border-purple-900/30'
               }`}
             >
-              <CalendarIcon className="w-3.5 h-3.5" />
+              <CalendarIcon className="w-3.5 h-3.5 text-purple-300" />
               <span>2. Data, Hora & Local</span>
             </button>
 
@@ -276,21 +291,22 @@ export const OitivaModal: React.FC<OitivaModalProps> = ({
                   </p>
                 </div>
 
-                {/* Qualificação / Papel */}
+                {/* Qualificação / Papel - COMPACTO */}
                 <div>
-                  <label className="block text-xs font-semibold text-zinc-300 mb-1">
+                  <label className="block text-xs font-semibold text-zinc-300 mb-1.5">
                     Condição da Pessoa no Procedimento (Opcional)
                   </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-1.5">
                     {(['Testemunha', 'Vítima', 'Investigado', 'Declarante', 'Representante Legal', 'Informante', 'Perito', 'Outro'] as HearingRole[]).map((r) => (
                       <button
                         type="button"
                         key={r}
                         onClick={() => setRole(r)}
-                        className={`py-2 px-2.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                        title={r}
+                        className={`py-1.5 px-2 rounded-lg text-[11px] font-semibold border transition-all cursor-pointer truncate text-center ${
                           role === r
                             ? 'bg-purple-600 text-white border-purple-400 shadow-sm shadow-purple-900/50'
-                            : 'bg-[#171326] text-zinc-400 border-purple-900/40 hover:text-zinc-200'
+                            : 'bg-[#171326] text-zinc-400 border-purple-900/40 hover:text-zinc-200 hover:border-purple-700/50'
                         }`}
                       >
                         {r}
@@ -419,34 +435,40 @@ export const OitivaModal: React.FC<OitivaModalProps> = ({
             {activeTab === 'agendamento' && (
               <div className="space-y-4">
                 
-                {/* Data e Hora */}
+                {/* Data e Hora com Ícones Claros e Visíveis */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-zinc-200 mb-1">
-                      Data da Oitiva
+                    <label className="block text-xs font-bold text-zinc-200 mb-1 flex items-center gap-1.5">
+                      <CalendarIcon className="w-3.5 h-3.5 text-purple-300" />
+                      <span>Data da Oitiva</span>
                     </label>
                     <div className="relative">
-                      <CalendarIcon className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-purple-400" />
+                      <div className="absolute left-2.5 top-1/2 -translate-y-1/2 p-1 rounded-lg bg-purple-950/80 border border-purple-800/40 text-purple-300 pointer-events-none flex items-center justify-center">
+                        <CalendarIcon className="w-3.5 h-3.5 text-purple-300" />
+                      </div>
                       <input
                         type="date"
                         value={date}
                         onChange={(e) => setDate(e.target.value)}
-                        className="w-full bg-[#171326] border border-purple-900/40 focus:border-purple-500 rounded-xl pl-9 pr-3 py-2.5 text-xs text-white focus:outline-none"
+                        className="w-full bg-[#171326] border border-purple-900/40 focus:border-purple-500 rounded-xl pl-10 pr-3 py-2.5 text-xs text-white focus:outline-none [color-scheme:dark]"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-zinc-200 mb-1">
-                      Horário
+                    <label className="block text-xs font-bold text-zinc-200 mb-1 flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-purple-300" />
+                      <span>Horário</span>
                     </label>
                     <div className="relative">
-                      <Clock className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-purple-400" />
+                      <div className="absolute left-2.5 top-1/2 -translate-y-1/2 p-1 rounded-lg bg-purple-950/80 border border-purple-800/40 text-purple-300 pointer-events-none flex items-center justify-center">
+                        <Clock className="w-3.5 h-3.5 text-purple-300" />
+                      </div>
                       <input
                         type="time"
                         value={time}
                         onChange={(e) => setTime(e.target.value)}
-                        className="w-full bg-[#171326] border border-purple-900/40 focus:border-purple-500 rounded-xl pl-9 pr-3 py-2.5 text-xs text-white focus:outline-none font-mono"
+                        className="w-full bg-[#171326] border border-purple-900/40 focus:border-purple-500 rounded-xl pl-10 pr-3 py-2.5 text-xs text-white focus:outline-none font-mono [color-scheme:dark]"
                       />
                     </div>
                   </div>
@@ -467,7 +489,8 @@ export const OitivaModal: React.FC<OitivaModalProps> = ({
                           if (mod === 'Videoconferência' && !locationOrLink.includes('http')) {
                             setLocationOrLink('https://meet.google.com/');
                           } else if (mod === 'Presencial' && locationOrLink.includes('http')) {
-                            setLocationOrLink('Sala de Oitivas 01');
+                            const defaultLoc = (user?.department && user.department.trim()) ? user.department.trim() : 'Sala de Oitivas 01';
+                            setLocationOrLink(defaultLoc);
                           }
                         }}
                         className={`py-2 px-3 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
@@ -482,18 +505,31 @@ export const OitivaModal: React.FC<OitivaModalProps> = ({
                   </div>
                 </div>
 
-                {/* Sala / Link */}
+                {/* Sala / Link - Autopreenchida com Setor/Cartório */}
                 <div>
-                  <label className="block text-xs font-semibold text-zinc-300 mb-1">
-                    {modality === 'Videoconferência' ? 'Link da Videoconferência' : 'Sala / Local Físico'}
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-purple-400" />
+                      <span>{modality === 'Videoconferência' ? 'Link da Videoconferência' : 'Sala / Local Físico'}</span>
+                    </label>
+                    {user?.department && modality !== 'Videoconferência' && (
+                      <span className="text-[10px] text-purple-300 font-medium bg-purple-950/60 px-2 py-0.5 rounded-md border border-purple-800/40">
+                        Setor: {user.department}
+                      </span>
+                    )}
+                  </div>
                   <input
                     type="text"
-                    placeholder={modality === 'Videoconferência' ? 'https://meet.google.com/...' : 'Ex: Sala de Oitivas 01 / Cartório Central'}
+                    placeholder={modality === 'Videoconferência' ? 'https://meet.google.com/...' : 'Ex: Cartório 01 / Sala de Oitivas'}
                     value={locationOrLink}
                     onChange={(e) => setLocationOrLink(e.target.value)}
                     className="w-full bg-[#171326] border border-purple-900/40 focus:border-purple-500 rounded-xl px-3 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none"
                   />
+                  {user?.department && modality !== 'Videoconferência' && (
+                    <p className="text-[10px] text-purple-400/80 mt-1">
+                      * Preenchido automaticamente com seu setor/cartório de lotação ({user.department}).
+                    </p>
+                  )}
                 </div>
 
                 {/* Status */}
@@ -571,7 +607,7 @@ export const OitivaModal: React.FC<OitivaModalProps> = ({
 
                 {/* Delegado (com Seletor Modal DPC) & Escrivão */}
                 <div className="space-y-3 pt-2 border-t border-purple-900/20">
-                  {/* Campo Delegado com Ação de Modal */}
+                  {/* Campo Delegado com Ação de Modal e Memória */}
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <label className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
@@ -595,22 +631,35 @@ export const OitivaModal: React.FC<OitivaModalProps> = ({
                         type="text"
                         placeholder="Ex: Fernando Moretto Nachtigall"
                         value={officerName}
-                        onChange={(e) => setOfficerName(e.target.value)}
+                        onChange={(e) => {
+                          setOfficerName(e.target.value);
+                          if (e.target.value.trim()) {
+                            delegadoService.setLastSelectedDelegado(e.target.value.trim());
+                          }
+                        }}
                         className="w-full bg-[#171326] border border-purple-900/40 focus:border-purple-500 rounded-xl px-3 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none"
                       />
                     </div>
                     <p className="text-[10px] text-zinc-400 mt-1">
-                      * O Delegado selecionado aqui é quem constará como signatário oficial na área de assinatura do Mandado de Intimação (PDF).
+                      * O último Delegado selecionado permanece salvo automaticamente para as próximas marcações.
                     </p>
                   </div>
 
+                  {/* Campo Escrivão com Iniciais Automáticas */}
                   <div>
-                    <label className="block text-xs font-semibold text-zinc-300 mb-1">
-                      Escrivão(ã) / Responsável pelo Cartório
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-semibold text-zinc-300">
+                        Escrivão(ã) / Responsável pelo Cartório
+                      </label>
+                      {user && (
+                        <span className="text-[10px] text-purple-300 font-medium">
+                          Iniciais automáticas: <strong className="text-white">{getUserInitials(user) || 'M.S'}</strong>
+                        </span>
+                      )}
+                    </div>
                     <input
                       type="text"
-                      placeholder="Ex: Escrivão(ã) Fulano / Cartório 01"
+                      placeholder="Ex: M.V.S ou Escrivão Fulano"
                       value={clerkName}
                       onChange={(e) => setClerkName(e.target.value)}
                       className="w-full bg-[#171326] border border-purple-900/40 focus:border-purple-500 rounded-xl px-3 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none"

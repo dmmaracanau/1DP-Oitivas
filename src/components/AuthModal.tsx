@@ -21,6 +21,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Login Field (can be email or username)
   const [loginIdentifier, setLoginIdentifier] = useState('delegaciammaracanau@gmail.com');
@@ -53,7 +54,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           throw new Error('Por favor, informe a Senha.');
         }
 
-        user = await authService.registerWithEmail(email.trim(), password, fullName.trim(), username.trim());
+        user = await authService.registerWithEmail(email.trim(), password, fullName.trim(), username.trim(), isAdmin);
       } else {
         if (!loginIdentifier.trim() || !password) {
           throw new Error('Informe seu usuário ou e-mail e sua senha.');
@@ -254,6 +255,32 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       Livre criação sem limitações de formato.
                     </span>
                   </div>
+                </div>
+
+                {/* Opção discreta de Administrador */}
+                <div className="pt-2">
+                  <label className="flex items-center gap-3 p-3 rounded-2xl bg-[#171328]/80 border border-purple-900/40 hover:border-purple-600/50 transition-all cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={isAdmin}
+                      onChange={(e) => setIsAdmin(e.target.checked)}
+                      className="w-4 h-4 rounded border-purple-800 text-purple-600 focus:ring-purple-500 focus:ring-offset-0 bg-[#120e20] cursor-pointer"
+                    />
+                    <div className="flex items-center gap-2">
+                      <Shield className={`w-4 h-4 ${isAdmin ? 'text-amber-400' : 'text-purple-400/60'}`} />
+                      <span className="text-xs text-zinc-300 font-medium">
+                        Definir este usuário como Administrador do Sistema
+                      </span>
+                    </div>
+                    {isAdmin && (
+                      <span className="ml-auto text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-md">
+                        Acesso Total
+                      </span>
+                    )}
+                  </label>
+                  <span className="text-[10px] text-zinc-400 mt-1 pl-1 block">
+                    Administradores podem gerenciar, criar, editar e excluir todos os outros usuários.
+                  </span>
                 </div>
               </div>
             ) : (

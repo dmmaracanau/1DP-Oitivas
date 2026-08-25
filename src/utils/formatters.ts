@@ -117,12 +117,19 @@ Caso haja impossibilidade justificada de comparecimento, favor entrar em contato
   return `https://wa.me/?text=${encodedText}`;
 }
 
-export function getUserInitials(name?: string | null): string {
-  if (!name || !name.trim()) return 'M.S';
+export function getUserInitials(userOrName?: string | { displayName?: string | null; username?: string | null; email?: string | null } | null): string {
+  if (!userOrName) return '';
+  let name = '';
+  if (typeof userOrName === 'string') {
+    name = userOrName;
+  } else {
+    name = userOrName.displayName || userOrName.username || userOrName.email?.split('@')[0] || '';
+  }
   const clean = name.trim();
+  if (!clean) return '';
   const stopwords = new Set(['de', 'da', 'do', 'das', 'dos', 'e', 'a', 'o', 'em', 'para', 'com']);
   const parts = clean
-    .split(/[\s,.-]+/)
+    .split(/[\s,._-]+/)
     .filter(p => p.length > 0 && !stopwords.has(p.toLowerCase()));
   if (parts.length === 0) return clean.charAt(0).toUpperCase();
   return parts.map(p => p.charAt(0).toUpperCase()).join('.');

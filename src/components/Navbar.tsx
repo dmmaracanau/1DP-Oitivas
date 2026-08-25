@@ -139,9 +139,16 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </div>
                   )}
                   <div className="hidden sm:block text-left">
-                    <p className="text-[11px] font-semibold text-zinc-200 leading-none max-w-[110px] truncate group-hover:text-purple-300 transition-colors">
-                      {user.displayName || 'Servidor'}
-                    </p>
+                    <div className="flex items-center gap-1">
+                      <p className="text-[11px] font-semibold text-zinc-200 leading-none max-w-[110px] truncate group-hover:text-purple-300 transition-colors">
+                        {user.displayName || 'Servidor'}
+                      </p>
+                      {(user.role === 'admin' || user.isAdmin) && (
+                        <span className="px-1 py-0.2 bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded text-[8px] font-bold">
+                          ADMIN
+                        </span>
+                      )}
+                    </div>
                     <p className="text-[9px] text-zinc-400 leading-none mt-0.5 truncate max-w-[110px]">
                       {user.cargo || 'Perfil'}
                     </p>

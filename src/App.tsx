@@ -328,6 +328,7 @@ export default function App() {
         onSave={handleSaveOitiva}
         initialData={editingOitiva}
         defaultDate={defaultModalDate}
+        user={user}
       />
 
       <OitivaDetailModal
