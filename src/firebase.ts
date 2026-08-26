@@ -1,16 +1,25 @@
-import { initializeApp, getApps, getApp } from 'firebase/app';
+import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { 
   initializeFirestore, 
   getFirestore, 
   persistentLocalCache, 
   persistentMultipleTabManager,
+  memoryLocalCache,
+  setLogLevel,
   doc,
   getDocFromServer,
   Firestore
 } from 'firebase/firestore';
 import { getDatabase, Database } from 'firebase/database';
 import firebaseConfigJson from '../firebase-applet-config.json';
+
+// Configura nível de log do Firestore para evitar alertas verbosos de reconexão de streaming
+try {
+  setLogLevel('error');
+} catch {
+  // Ignora se não suportado
+}
 
 // Configuração do projeto Firebase Cloud Firestore
 export const firebaseConfig = {
@@ -59,53 +68,40 @@ try {
 }
 export const rtdb = rtdbInstance;
 
-// Inicializa Firestore com o databaseId correto do projeto e estratégias de fallback resilientes
+// Inicializa Firestore com o databaseId correto do projeto e detecção inteligente de transporte
 let firestoreDb: Firestore;
 
-// Tentativa 1: Cache persistente com suporte multi-abas + experimentalForceLongPolling (ideal para redes instáveis/restritas)
 try {
+  // Tentativa 1: Cache persistente com detecção automática inteligente de transporte / long-polling
   firestoreDb = initializeFirestore(
     app, 
     {
       localCache: persistentLocalCache({
         tabManager: persistentMultipleTabManager()
       }),
-      experimentalForceLongPolling: true,
+      experimentalAutoDetectLongPolling: true,
       ignoreUndefinedProperties: true
     }, 
     firestoreDatabaseId
   );
 } catch (err1) {
-  console.warn('Tentativa 1 de inicialização do Firestore falhou, tentando fallback com auto-detect...', err1);
   try {
-    // Tentativa 2: Cache persistente com auto-detect de long polling
+    // Tentativa 2: Cache em memória com auto-detect de polling
     firestoreDb = initializeFirestore(
       app,
       {
-        localCache: persistentLocalCache({
-          tabManager: persistentMultipleTabManager()
-        }),
+        localCache: memoryLocalCache(),
         experimentalAutoDetectLongPolling: true,
         ignoreUndefinedProperties: true
       },
       firestoreDatabaseId
     );
   } catch (err2) {
-    console.warn('Tentativa 2 de inicialização do Firestore falhou, tentando inicialização sem cache persistente...', err2);
     try {
-      // Tentativa 3: Configuração básica com force long polling
-      firestoreDb = initializeFirestore(
-        app,
-        {
-          experimentalForceLongPolling: true,
-          ignoreUndefinedProperties: true
-        },
-        firestoreDatabaseId
-      );
-    } catch (err3) {
-      console.warn('Tentativa 3 de inicialização do Firestore falhou, usando getFirestore padrão...', err3);
-      // Tentativa 4: Instância padrão
+      // Tentativa 3: Instância com getFirestore padrão
       firestoreDb = getFirestore(app, firestoreDatabaseId);
+    } catch (err3) {
+      firestoreDb = getFirestore(app);
     }
   }
 }
@@ -270,6 +266,18 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     operationType,
     path
   };
-  console.error('Firestore Error Details:', JSON.stringify(errInfo));
+
+  const isTransientNetwork = 
+    errInfo.error.includes('offline') ||
+    errInfo.error.includes('unavailable') ||
+    errInfo.error.includes('transport errored') ||
+    errInfo.error.includes('backend') ||
+    errInfo.error.includes('network');
+
+  if (!isTransientNetwork) {
+    console.error('Firestore Error Details:', JSON.stringify(errInfo));
+  } else {
+    console.warn('Firestore Transitório (Modo Offline / Reconectando):', errInfo.error);
+  }
   return errInfo;
 }

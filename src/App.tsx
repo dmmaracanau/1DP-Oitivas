@@ -389,6 +389,14 @@ export default function App() {
         onEdit={handleEditOitiva}
         onDelete={handleDeleteOitiva}
         onStatusChange={handleStatusChange}
+        onToggleIntimationSent={async (id, nextVal) => {
+          try {
+            await handleUpdateOitivaDirect(id, { intimationSent: nextVal });
+            showToast(nextVal ? 'Intimação marcada como enviada/emitida!' : 'Intimação marcada como pendente de envio.');
+          } catch (e) {
+            showToast('Erro ao atualizar status da intimação.', 'error');
+          }
+        }}
         onOpenPrint={() => setIsPrintModalOpen(true)}
         onOpenPrintIntimacao={() => {
           if (selectedOitiva) {

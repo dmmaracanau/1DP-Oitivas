@@ -15,7 +15,9 @@ import {
   CheckSquare,
   Sparkles,
   FileBadge,
-  UserCheck
+  UserCheck,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { Oitiva, HearingStatus, HearingRole, ProcedureType, HearingModality, UserProfile } from '../types/oitiva';
 import { formatCPF, formatPhone, getUserInitials } from '../utils/formatters';
@@ -232,13 +234,33 @@ export const OitivaModal: React.FC<OitivaModalProps> = ({
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-2 text-zinc-300 hover:text-white rounded-xl hover:bg-purple-950/60 border border-purple-900/40 hover:border-purple-500/50 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            {/* Ações do Header: Botão Salvar sempre visível ao lado do botão Fechar (X) */}
+            <div className="flex items-center gap-2.5">
+              <button
+                id="btn-save-oitiva-header"
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleSubmit(e as any);
+                }}
+                disabled={isSubmitting}
+                className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white border-2 border-emerald-400/80 rounded-xl text-xs font-bold shadow-md shadow-emerald-950/60 transition-all cursor-pointer disabled:opacity-50"
+                title="Salvar Oitiva (Acesso Imediato)"
+              >
+                <Save className="w-4 h-4" />
+                <span>{isSubmitting ? 'Salvando...' : (initialData ? 'Salvar Alterações' : 'Salvar Oitiva')}</span>
+              </button>
+
+              <button
+                id="btn-close-oitiva-modal"
+                type="button"
+                onClick={onClose}
+                className="p-2 text-zinc-300 hover:text-white rounded-xl hover:bg-purple-950/60 border border-purple-900/40 hover:border-purple-500/50 transition-colors"
+                title="Fechar"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </div>
 
           {/* Validation Error Alert */}
@@ -702,38 +724,50 @@ export const OitivaModal: React.FC<OitivaModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border-2 border-zinc-600/70 hover:border-zinc-500 rounded-xl text-xs font-bold transition-all"
+                className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border-2 border-zinc-600/70 hover:border-zinc-500 rounded-xl text-xs font-bold transition-all cursor-pointer"
               >
                 Cancelar
               </button>
 
-              <div className="flex gap-2">
-                {activeTab !== 'depoente' && (
-                  <button
-                    type="button"
-                    onClick={handleGoBack}
-                    className="px-4 py-2 bg-[#171326] hover:bg-purple-950/60 text-zinc-200 hover:text-white border-2 border-purple-600/60 hover:border-purple-400 rounded-xl text-xs font-bold transition-all"
-                  >
-                    Voltar
-                  </button>
-                )}
+              <div className="flex items-center gap-2">
+                {/* Botão Retornar (navega para a aba anterior) */}
+                <button
+                  id="btn-tab-retornar"
+                  type="button"
+                  onClick={handleGoBack}
+                  disabled={activeTab === 'depoente'}
+                  className={`flex items-center gap-1 px-3.5 py-2 rounded-xl text-xs font-bold transition-all border-2 ${
+                    activeTab === 'depoente'
+                      ? 'bg-zinc-900/40 text-zinc-600 border-zinc-800/80 cursor-not-allowed opacity-40'
+                      : 'bg-[#171326] hover:bg-purple-950 text-purple-200 hover:text-white border-purple-600/70 hover:border-purple-400 cursor-pointer shadow-sm'
+                  }`}
+                  title="Retornar para a aba anterior"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  <span>Retornar</span>
+                </button>
 
+                {/* Botão Avançar (navega para a próxima aba) */}
                 {activeTab !== 'procedimento' ? (
                   <button
+                    id="btn-tab-avancar"
                     type="button"
                     onClick={handleGoNext}
-                    className="px-5 py-2 bg-purple-600 hover:bg-purple-500 text-white border-2 border-purple-300 rounded-xl text-xs font-bold shadow-md shadow-purple-900/60 hover:shadow-lg transition-all"
+                    className="flex items-center gap-1 px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white border-2 border-purple-300 rounded-xl text-xs font-bold shadow-md shadow-purple-900/60 hover:shadow-lg transition-all cursor-pointer"
+                    title="Avançar para a próxima aba"
                   >
-                    Avançar
+                    <span>Avançar</span>
+                    <ChevronRight className="w-4 h-4" />
                   </button>
                 ) : (
                   <button
+                    id="btn-save-oitiva-footer"
                     type="submit"
                     disabled={isSubmitting}
-                    className="flex items-center gap-1.5 px-6 py-2 bg-gradient-to-r from-emerald-600 via-purple-600 to-purple-700 hover:from-emerald-500 hover:to-purple-600 text-white border-2 border-emerald-400/80 rounded-xl text-xs font-bold shadow-lg shadow-purple-900/60 transition-all disabled:opacity-50"
+                    className="flex items-center gap-1.5 px-5 py-2 bg-gradient-to-r from-emerald-600 via-purple-600 to-purple-700 hover:from-emerald-500 hover:to-purple-600 text-white border-2 border-emerald-400/80 rounded-xl text-xs font-bold shadow-lg shadow-purple-900/60 transition-all cursor-pointer disabled:opacity-50"
                   >
                     <Save className="w-4 h-4" />
-                    <span>{isSubmitting ? 'Salvando Oitiva...' : 'Salvar Oitiva'}</span>
+                    <span>{isSubmitting ? 'Salvando...' : (initialData ? 'Salvar Alterações' : 'Salvar Oitiva')}</span>
                   </button>
                 )}
               </div>

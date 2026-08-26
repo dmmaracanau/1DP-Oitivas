@@ -38,7 +38,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [isAdmin, setIsAdmin] = useState(false);
 
   // Login Field (can be email or username)
-  const [loginIdentifier, setLoginIdentifier] = useState('delegaciammaracanau@gmail.com');
+  const [loginIdentifier, setLoginIdentifier] = useState('');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
