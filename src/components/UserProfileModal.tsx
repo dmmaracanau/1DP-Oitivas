@@ -787,6 +787,32 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               </div>
             </div>
 
+            {/* Catálogo de Delegados (DPC) Compartilhado */}
+            {onOpenDelegadosModal && (
+              <div className="bg-[#181328] p-5 rounded-2xl border border-purple-900/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-purple-950/80 border border-purple-500/40 flex items-center justify-center text-purple-300">
+                    <Shield className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold text-white uppercase tracking-wider">Catálogo de Delegados (DPC)</h3>
+                    <p className="text-xs text-zinc-300 mt-0.5">
+                      Gerencie as autoridades policiais. Adicione, edite ou exclua DPCs compartilhados com toda a equipe.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={onOpenDelegadosModal}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold shadow-md shadow-purple-950/60 transition-all cursor-pointer shrink-0"
+                >
+                  <Shield className="w-4 h-4" />
+                  <span>Gerenciar Delegados (DPC)</span>
+                </button>
+              </div>
+            )}
+
             {/* Bottom Actions */}
             <div className="flex items-center justify-between pt-2">
               <span className="text-[11px] text-zinc-400">

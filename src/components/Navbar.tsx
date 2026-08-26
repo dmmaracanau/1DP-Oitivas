@@ -25,6 +25,7 @@ interface NavbarProps {
   onOpenWorkspaceModal: () => void;
   onOpenAuthModal: () => void;
   onOpenProfileModal: () => void;
+  onOpenDelegadosModal?: () => void;
   onOpenHolidaysModal?: () => void;
   isAdmin?: boolean;
   hasWorkspaceToken: boolean;
@@ -43,6 +44,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenWorkspaceModal,
   onOpenAuthModal,
   onOpenProfileModal,
+  onOpenDelegadosModal,
   onOpenHolidaysModal,
   isAdmin = false,
   hasWorkspaceToken,
@@ -252,6 +254,19 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span className={`w-2 h-2 rounded-full ${hasWorkspaceToken ? 'bg-emerald-400 ring-2 ring-emerald-950' : 'bg-amber-400 ring-2 ring-amber-950'}`}></span>
               <span>Google Workspace</span>
             </button>
+
+            {/* Delegados (DPC) Button - Available for all users */}
+            {onOpenDelegadosModal && (
+              <button
+                id="delegados-nav-btn"
+                onClick={onOpenDelegadosModal}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#171228] hover:bg-purple-900/60 text-purple-200 hover:text-white border-2 border-purple-600/70 hover:border-purple-400 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
+                title="Catálogo de Autoridades Policiais (DPC)"
+              >
+                <Shield className="w-3.5 h-3.5 text-purple-300" />
+                <span>Delegados (DPC)</span>
+              </button>
+            )}
 
             {/* Admin Feriados & Fins de Semana Button */}
             {isAdmin && onOpenHolidaysModal && (

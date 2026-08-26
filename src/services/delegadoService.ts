@@ -238,8 +238,8 @@ export const delegadoService = {
   },
 
   /**
-   * Adiciona ou atualiza uma Autoridade Policial no catálogo unificado
-   * (Operação exclusiva para Administradores)
+   * Adiciona ou atualiza uma Autoridade Policial no catálogo unificado compartilhado
+   * (Acesso livre e sincronizado em tempo real para todos os usuários)
    */
   async addOrUpdateDelegado(delegado: DelegadoInfo): Promise<DelegadoInfo[]> {
     const id = delegado.id || `dpc_${Date.now()}`;
@@ -290,8 +290,8 @@ export const delegadoService = {
   },
 
   /**
-   * Remove uma Autoridade Policial do catálogo unificado
-   * (Operação exclusiva para Administradores)
+   * Remove uma Autoridade Policial do catálogo unificado compartilhado
+   * (Acesso livre e sincronizado em tempo real para todos os usuários)
    */
   async removeDelegado(id: string): Promise<DelegadoInfo[]> {
     // Atualiza imediatamente cache local

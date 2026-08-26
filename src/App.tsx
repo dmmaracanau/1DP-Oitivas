@@ -287,6 +287,7 @@ export default function App() {
         onOpenWorkspaceModal={() => handleOpenWorkspace('calendar')}
         onOpenAuthModal={() => setIsAuthModalOpen(true)}
         onOpenProfileModal={() => setIsProfileModalOpen(true)}
+        onOpenDelegadosModal={() => setIsDelegadosModalOpen(true)}
         onOpenHolidaysModal={() => handleOpenHolidaysModal()}
         isAdmin={isAdmin}
         hasWorkspaceToken={hasWorkspaceToken}
