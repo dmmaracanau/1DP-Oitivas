@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, 
   User, 
@@ -17,7 +17,9 @@ import {
   FileBadge,
   UserCheck,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  RotateCcw,
+  CheckCircle2
 } from 'lucide-react';
 import { Oitiva, HearingStatus, HearingRole, ProcedureType, HearingModality, UserProfile } from '../types/oitiva';
 import { formatCPF, formatPhone, getUserInitials } from '../utils/formatters';
@@ -46,6 +48,12 @@ export const OitivaModal: React.FC<OitivaModalProps> = ({
   const [validationError, setValidationError] = useState<string | null>(null);
   const [isDelegadoModalOpen, setIsDelegadoModalOpen] = useState(false);
 
+  // Auto-Save Draft States
+  const [hasRecoveredDraft, setHasRecoveredDraft] = useState(false);
+  const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
+  const [lastAutoSavedTime, setLastAutoSavedTime] = useState<string | null>(null);
+  const isInitialLoadRef = useRef(true);
+
   // Form states
   const [personName, setPersonName] = useState('');
   const [date, setDate] = useState('');
@@ -68,67 +76,243 @@ export const OitivaModal: React.FC<OitivaModalProps> = ({
   const [notes, setNotes] = useState('');
   const [intimationSent, setIntimationSent] = useState(false);
 
-  // Reset or populate on open
+  const getDraftKey = () => {
+    const uid = user?.uid || 'guest';
+    const targetId = initialData?.id ? `edit_${initialData.id}` : 'new';
+    return `oitivas_modal_draft_${uid}_${targetId}`;
+  };
+
+  const clearCurrentDraft = () => {
+    try {
+      const key = getDraftKey();
+      localStorage.removeItem(key);
+      setHasRecoveredDraft(false);
+      setDraftSavedAt(null);
+    } catch {}
+  };
+
+  const handleDiscardDraft = () => {
+    clearCurrentDraft();
+    // Restaura valores originais
+    if (initialData) {
+      setPersonName(initialData.personName || '');
+      setDate(initialData.date || new Date().toISOString().split('T')[0]);
+      setTime(initialData.time || '09:30');
+      setProcedureNumber(initialData.procedureNumber || '');
+      setProcedureType(initialData.procedureType || 'Inquérito Policial (IP)');
+      setRole((initialData.role as HearingRole) || 'Testemunha');
+      setCpf(initialData.cpf || '');
+      setRg(initialData.rg || '');
+      setPhone(initialData.phone || '');
+      setEmail(initialData.email || '');
+      setAddress(initialData.address || '');
+      setNeighborhood(initialData.neighborhood || '');
+      setCity(initialData.city || 'Maracanaú/CE');
+      setOfficerName(initialData.officerName || delegadoService.getLastSelectedDelegado());
+      setClerkName(initialData.clerkName || getUserInitials(user));
+      setModality(initialData.modality || 'Presencial');
+      setLocationOrLink(initialData.locationOrLink || (user?.department && user.department.trim()) || 'Sala de Oitivas 01');
+      setStatus(initialData.status || 'Agendada');
+      setNotes(initialData.notes || '');
+      setIntimationSent(Boolean(initialData.intimationSent));
+    } else {
+      setPersonName('');
+      setDate(defaultDate || new Date().toISOString().split('T')[0]);
+      setTime('09:30');
+      setProcedureNumber('');
+      setProcedureType('Inquérito Policial (IP)');
+      setRole('Testemunha');
+      setCpf('');
+      setRg('');
+      setPhone('');
+      setEmail('');
+      setAddress('');
+      setNeighborhood('');
+      setCity('Maracanaú/CE');
+      setOfficerName(delegadoService.getLastSelectedDelegado());
+      setClerkName(getUserInitials(user));
+      setModality('Presencial');
+      setLocationOrLink((user?.department && user.department.trim()) || 'Sala de Oitivas 01');
+      setStatus('Agendada');
+      setNotes('');
+      setIntimationSent(false);
+    }
+  };
+
+  // Reset or populate on open with auto-recovery of draft
   useEffect(() => {
     if (isOpen) {
-      if (initialData) {
-        setPersonName(initialData.personName || '');
-        setDate(initialData.date || new Date().toISOString().split('T')[0]);
-        setTime(initialData.time || '09:30');
-        setProcedureNumber(initialData.procedureNumber || '');
-        setProcedureType(initialData.procedureType || 'Inquérito Policial (IP)');
-        setRole((initialData.role as HearingRole) || 'Testemunha');
-        setCpf(initialData.cpf || '');
-        setRg(initialData.rg || '');
-        setPhone(initialData.phone || '');
-        setEmail(initialData.email || '');
-        setAddress(initialData.address || '');
-        setNeighborhood(initialData.neighborhood || '');
-        setCity(initialData.city || 'Maracanaú/CE');
-        setOfficerName(initialData.officerName || delegadoService.getLastSelectedDelegado());
-        setClerkName(initialData.clerkName || getUserInitials(user));
-        setModality(initialData.modality || 'Presencial');
-        setLocationOrLink(initialData.locationOrLink || (user?.department && user.department.trim()) || 'Sala de Oitivas 01');
-        setStatus(initialData.status || 'Agendada');
-        setNotes(initialData.notes || '');
-        setIntimationSent(Boolean(initialData.intimationSent));
-      } else {
-        setPersonName('');
-        setDate(defaultDate || new Date().toISOString().split('T')[0]);
-        setTime('09:30');
-        setProcedureNumber('');
-        setProcedureType('Inquérito Policial (IP)');
-        setRole('Testemunha');
-        setCpf('');
-        setRg('');
-        setPhone('');
-        setEmail('');
-        setAddress('');
-        setNeighborhood('');
-        setCity('Maracanaú/CE');
-        
-        // Delegado lembrado das últimas entradas
-        const lastDelegado = delegadoService.getLastSelectedDelegado();
-        setOfficerName(lastDelegado);
-        
-        // Escrivão/Responsável preenchido automaticamente com as iniciais do usuário
-        const initials = getUserInitials(user);
-        setClerkName(initials);
-        
-        setModality('Presencial');
-        
-        // Sala/Local físico autopreenchido com os dados do usuário em Setor/Cartório
-        const defaultLocation = (user?.department && user.department.trim()) ? user.department.trim() : 'Sala de Oitivas 01';
-        setLocationOrLink(defaultLocation);
-        
-        setStatus('Agendada');
-        setNotes('');
-        setIntimationSent(false);
+      isInitialLoadRef.current = true;
+      const key = getDraftKey();
+      let restored = false;
+
+      try {
+        const savedDraftRaw = localStorage.getItem(key);
+        if (savedDraftRaw) {
+          const draft = JSON.parse(savedDraftRaw);
+          // Verifica se o rascunho possui dados preenchidos
+          if (draft && (draft.personName || draft.procedureNumber || draft.cpf || draft.notes || draft.address)) {
+            setPersonName(draft.personName || '');
+            setDate(draft.date || defaultDate || new Date().toISOString().split('T')[0]);
+            setTime(draft.time || '09:30');
+            setProcedureNumber(draft.procedureNumber || '');
+            setProcedureType(draft.procedureType || 'Inquérito Policial (IP)');
+            setRole((draft.role as HearingRole) || 'Testemunha');
+            setCpf(draft.cpf || '');
+            setRg(draft.rg || '');
+            setPhone(draft.phone || '');
+            setEmail(draft.email || '');
+            setAddress(draft.address || '');
+            setNeighborhood(draft.neighborhood || '');
+            setCity(draft.city || 'Maracanaú/CE');
+            setOfficerName(draft.officerName || delegadoService.getLastSelectedDelegado());
+            setClerkName(draft.clerkName || getUserInitials(user));
+            setModality(draft.modality || 'Presencial');
+            setLocationOrLink(draft.locationOrLink || (user?.department && user.department.trim()) || 'Sala de Oitivas 01');
+            setStatus(draft.status || 'Agendada');
+            setNotes(draft.notes || '');
+            setIntimationSent(Boolean(draft.intimationSent));
+
+            setHasRecoveredDraft(true);
+            const savedTime = draft.savedAt ? new Date(draft.savedAt).toLocaleTimeString('pt-BR') : 'recente';
+            setDraftSavedAt(savedTime);
+            setLastAutoSavedTime(savedTime);
+            restored = true;
+          }
+        }
+      } catch (err) {
+        console.warn('Erro ao restaurar rascunho:', err);
       }
+
+      if (!restored) {
+        setHasRecoveredDraft(false);
+        setDraftSavedAt(null);
+        if (initialData) {
+          setPersonName(initialData.personName || '');
+          setDate(initialData.date || new Date().toISOString().split('T')[0]);
+          setTime(initialData.time || '09:30');
+          setProcedureNumber(initialData.procedureNumber || '');
+          setProcedureType(initialData.procedureType || 'Inquérito Policial (IP)');
+          setRole((initialData.role as HearingRole) || 'Testemunha');
+          setCpf(initialData.cpf || '');
+          setRg(initialData.rg || '');
+          setPhone(initialData.phone || '');
+          setEmail(initialData.email || '');
+          setAddress(initialData.address || '');
+          setNeighborhood(initialData.neighborhood || '');
+          setCity(initialData.city || 'Maracanaú/CE');
+          setOfficerName(initialData.officerName || delegadoService.getLastSelectedDelegado());
+          setClerkName(initialData.clerkName || getUserInitials(user));
+          setModality(initialData.modality || 'Presencial');
+          setLocationOrLink(initialData.locationOrLink || (user?.department && user.department.trim()) || 'Sala de Oitivas 01');
+          setStatus(initialData.status || 'Agendada');
+          setNotes(initialData.notes || '');
+          setIntimationSent(Boolean(initialData.intimationSent));
+        } else {
+          setPersonName('');
+          setDate(defaultDate || new Date().toISOString().split('T')[0]);
+          setTime('09:30');
+          setProcedureNumber('');
+          setProcedureType('Inquérito Policial (IP)');
+          setRole('Testemunha');
+          setCpf('');
+          setRg('');
+          setPhone('');
+          setEmail('');
+          setAddress('');
+          setNeighborhood('');
+          setCity('Maracanaú/CE');
+          
+          const lastDelegado = delegadoService.getLastSelectedDelegado();
+          setOfficerName(lastDelegado);
+          
+          const initials = getUserInitials(user);
+          setClerkName(initials);
+          
+          setModality('Presencial');
+          const defaultLocation = (user?.department && user.department.trim()) ? user.department.trim() : 'Sala de Oitivas 01';
+          setLocationOrLink(defaultLocation);
+          
+          setStatus('Agendada');
+          setNotes('');
+          setIntimationSent(false);
+        }
+      }
+
       setValidationError(null);
       setActiveTab('depoente');
+
+      const timer = setTimeout(() => {
+        isInitialLoadRef.current = false;
+      }, 300);
+      return () => clearTimeout(timer);
     }
   }, [isOpen, initialData, defaultDate, user]);
+
+  // Auto-Save Effect: salva rascunho no localStorage a cada alteração
+  useEffect(() => {
+    if (!isOpen || isInitialLoadRef.current || isSubmitting) return;
+
+    // Só salva se houver pelo menos algum caractere inserido
+    const hasContent = personName || procedureNumber || cpf || phone || address || notes;
+    if (!hasContent && !initialData) return;
+
+    const draftKey = getDraftKey();
+    const draftPayload = {
+      personName,
+      date,
+      time,
+      procedureNumber,
+      procedureType,
+      role,
+      cpf,
+      rg,
+      phone,
+      email,
+      address,
+      neighborhood,
+      city,
+      officerName,
+      clerkName,
+      modality,
+      locationOrLink,
+      status,
+      notes,
+      intimationSent,
+      savedAt: Date.now()
+    };
+
+    try {
+      localStorage.setItem(draftKey, JSON.stringify(draftPayload));
+      const nowStr = new Date().toLocaleTimeString('pt-BR');
+      setLastAutoSavedTime(nowStr);
+    } catch (err) {
+      console.warn('Erro ao salvar rascunho automático:', err);
+    }
+  }, [
+    isOpen,
+    isSubmitting,
+    personName,
+    date,
+    time,
+    procedureNumber,
+    procedureType,
+    role,
+    cpf,
+    rg,
+    phone,
+    email,
+    address,
+    neighborhood,
+    city,
+    officerName,
+    clerkName,
+    modality,
+    locationOrLink,
+    status,
+    notes,
+    intimationSent
+  ]);
 
   if (!isOpen) return null;
 
@@ -198,6 +382,8 @@ export const OitivaModal: React.FC<OitivaModalProps> = ({
         notes: notes.trim(),
         intimationSent
       });
+      // Limpa rascunho ao salvar com sucesso
+      clearCurrentDraft();
       onClose();
     } catch (err: any) {
       setValidationError(err.message || 'Erro ao salvar oitiva.');
@@ -236,6 +422,13 @@ export const OitivaModal: React.FC<OitivaModalProps> = ({
 
             {/* Ações do Header: Botão Salvar sempre visível ao lado do botão Fechar (X) */}
             <div className="flex items-center gap-2.5">
+              {lastAutoSavedTime && (
+                <div className="hidden md:flex items-center gap-1.5 text-[11px] text-emerald-300 font-semibold bg-emerald-950/70 border border-emerald-400/50 px-2.5 py-1 rounded-lg shadow-sm">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span>Auto-Save {lastAutoSavedTime}</span>
+                </div>
+              )}
+
               <button
                 id="btn-save-oitiva-header"
                 type="button"
@@ -262,6 +455,26 @@ export const OitivaModal: React.FC<OitivaModalProps> = ({
               </button>
             </div>
           </div>
+
+          {/* Draft Recovery Notification Banner */}
+          {hasRecoveredDraft && (
+            <div className="mx-6 mt-3 px-3.5 py-2 bg-[#201538] border-2 border-purple-500/80 rounded-xl flex flex-wrap items-center justify-between gap-2 text-xs text-purple-200 shadow-md">
+              <div className="flex items-center gap-2">
+                <RotateCcw className="w-4 h-4 text-purple-300 shrink-0" />
+                <span>
+                  <strong>Rascunho recuperado automaticamente</strong> {draftSavedAt ? `(salvo às ${draftSavedAt})` : ''}. Seus dados digitados foram preservados.
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={handleDiscardDraft}
+                className="px-2.5 py-1 bg-purple-900/90 hover:bg-rose-900 text-purple-200 hover:text-white border border-purple-400/60 hover:border-rose-400 rounded-lg text-[11px] font-bold transition-all cursor-pointer shrink-0 shadow-sm"
+                title="Descartar rascunho e recarregar dados originais"
+              >
+                Descartar Rascunho
+              </button>
+            </div>
+          )}
 
           {/* Validation Error Alert */}
           {validationError && (

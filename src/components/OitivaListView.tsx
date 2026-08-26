@@ -30,6 +30,7 @@ interface OitivaListViewProps {
   statusFilter: HearingStatus | 'TODOS';
   onStatusFilterChange: (status: HearingStatus | 'TODOS') => void;
   onAddOitiva: () => void;
+  onExportBackup?: () => void;
 }
 
 export const OitivaListView: React.FC<OitivaListViewProps> = ({
@@ -43,7 +44,8 @@ export const OitivaListView: React.FC<OitivaListViewProps> = ({
   onOpenWhatsApp,
   statusFilter,
   onStatusFilterChange,
-  onAddOitiva
+  onAddOitiva,
+  onExportBackup
 }) => {
   const [roleFilter, setRoleFilter] = useState<string>('TODOS');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -97,6 +99,18 @@ export const OitivaListView: React.FC<OitivaListViewProps> = ({
               <option value="Declarante">Declarante</option>
               <option value="Informante">Informante</option>
             </select>
+
+            {onExportBackup && (
+              <button
+                type="button"
+                onClick={onExportBackup}
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-[#121b3b] hover:bg-[#1a2856] text-blue-200 hover:text-white border-2 border-blue-500/70 hover:border-blue-400 rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
+                title="Exportar Backup das oitivas cadastradas em arquivo JSON"
+              >
+                <Download className="w-3.5 h-3.5 text-blue-300" />
+                <span>Exportar Backup</span>
+              </button>
+            )}
 
             <button
               onClick={onAddOitiva}

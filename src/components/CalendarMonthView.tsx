@@ -25,6 +25,8 @@ import { Oitiva, HearingStatus, CalendarSpecialDate } from '../types/oitiva';
 import { getFirstName } from '../utils/formatters';
 import { specialDateService } from '../services/specialDateService';
 import { Sparkles } from 'lucide-react';
+import { OitivaTooltip } from './OitivaTooltip';
+import { HolidayTooltip } from './HolidayTooltip';
 
 interface CalendarMonthViewProps {
   oitivas: Oitiva[];
@@ -32,6 +34,8 @@ interface CalendarMonthViewProps {
   onDateChange: (date: Date) => void;
   onSelectOitiva: (oitiva: Oitiva) => void;
   onAddOitivaForDate: (dateStr: string) => void;
+  onQuickStatusChange?: (id: string, newStatus: HearingStatus) => void;
+  onOpenWhatsApp?: (oitiva: Oitiva) => void;
   statusFilter: HearingStatus | 'TODOS';
   specialDates?: CalendarSpecialDate[];
   onOpenHolidaysModal?: (dateStr?: string) => void;
@@ -44,6 +48,8 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
   onDateChange,
   onSelectOitiva,
   onAddOitivaForDate,
+  onQuickStatusChange,
+  onOpenWhatsApp,
   statusFilter,
   specialDates = [],
   onOpenHolidaysModal,
@@ -225,39 +231,45 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
                   
                   {/* CARDS DE FERIADOS E FINS DE SEMANA (EM VERMELHO) */}
                   {daySpecialDates.map((sp) => (
-                    <div
+                    <HolidayTooltip
                       key={sp.id}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (isAdmin && onOpenHolidaysModal) {
-                          onOpenHolidaysModal(dayStr);
-                        }
-                      }}
-                      className={`p-1.5 sm:p-2 rounded-xl text-left border-2 transition-all shadow-md bg-[#240810] border-2 border-red-500 text-white ${
-                        isAdmin ? 'cursor-pointer hover:scale-[1.02] hover:border-red-300 hover:bg-[#340c18]' : 'cursor-default'
-                      }`}
-                      title={`${sp.title} • ${sp.type === 'ponto_facultativo' ? 'Ponto Facultativo' : sp.type === 'fim_de_semana' ? 'Fim de Semana' : 'Feriado'}${sp.description ? ` (${sp.description})` : ''}${isAdmin ? ' • Clique para gerenciar' : ''}`}
+                      specialDate={sp}
+                      dateStr={dayStr}
+                      isAdmin={isAdmin}
+                      onOpenHolidaysModal={onOpenHolidaysModal}
                     >
-                      <div className="flex items-center justify-between text-[10px] leading-none mb-1">
-                        <span className="font-black text-red-300 flex items-center gap-1 font-mono">
-                          <Sparkles className="w-2.5 h-2.5 text-red-400" />
-                          {sp.type === 'fim_de_semana' ? 'Fim de Semana' : 'Feriado'}
-                        </span>
-                        <span className="text-[8px] font-bold px-1 py-0.2 rounded bg-red-950 text-red-300 border border-red-500/50 uppercase">
-                          {sp.type === 'ponto_facultativo' ? 'Facultativo' : sp.type === 'fim_de_semana' ? 'Não Útil' : 'Oficial'}
-                        </span>
-                      </div>
+                      <div
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (isAdmin && onOpenHolidaysModal) {
+                            onOpenHolidaysModal(dayStr);
+                          }
+                        }}
+                        className={`p-1.5 sm:p-2 rounded-xl text-left border-2 transition-all shadow-md bg-[#240810] border-2 border-red-500 text-white ${
+                          isAdmin ? 'cursor-pointer hover:scale-[1.02] hover:border-red-300 hover:bg-[#340c18]' : 'cursor-default'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between text-[10px] leading-none mb-1">
+                          <span className="font-black text-red-300 flex items-center gap-1 font-mono">
+                            <Sparkles className="w-2.5 h-2.5 text-red-400" />
+                            {sp.type === 'fim_de_semana' ? 'Fim de Semana' : 'Feriado'}
+                          </span>
+                          <span className="text-[8px] font-bold px-1 py-0.2 rounded bg-red-950 text-red-300 border border-red-500/50 uppercase">
+                            {sp.type === 'ponto_facultativo' ? 'Facultativo' : sp.type === 'fim_de_semana' ? 'Não Útil' : 'Oficial'}
+                          </span>
+                        </div>
 
-                      {/* Nome do Feriado / Domingo / Sábado em Vermelho */}
-                      <div className="flex items-center justify-between gap-1 flex-wrap pt-0.5">
-                        <p className="text-xs font-black text-red-400 tracking-tight leading-tight truncate flex-1 min-w-[50px]">
-                          {sp.title}
-                        </p>
-                        <span className="text-[8px] sm:text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider shrink-0 bg-red-950 text-red-300 border-2 border-red-500/80">
-                          {sp.type === 'fim_de_semana' ? 'fim de semana' : 'feriado'}
-                        </span>
+                        {/* Nome do Feriado / Domingo / Sábado em Vermelho */}
+                        <div className="flex items-center justify-between gap-1 flex-wrap pt-0.5">
+                          <p className="text-xs font-black text-red-400 tracking-tight leading-tight truncate flex-1 min-w-[50px]">
+                            {sp.title}
+                          </p>
+                          <span className="text-[8px] sm:text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider shrink-0 bg-red-950 text-red-300 border-2 border-red-500/80">
+                            {sp.type === 'fim_de_semana' ? 'fim de semana' : 'feriado'}
+                          </span>
+                        </div>
                       </div>
-                    </div>
+                    </HolidayTooltip>
                   ))}
 
                   {/* Oitivas agendadas */}
@@ -284,43 +296,49 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
                     }
 
                     return (
-                      <div
+                      <OitivaTooltip
                         key={oitiva.id}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onSelectOitiva(oitiva);
-                        }}
-                        className={`p-1.5 sm:p-2 rounded-xl text-left border-2 cursor-pointer transition-all hover:scale-[1.02] shadow-md ${cardClasses}`}
-                        title={`${oitiva.time || ''} - ${oitiva.personName} (${oitiva.role || 'Oitiva'}) • Status: ${oitiva.status} • Clique para ver detalhes`}
+                        oitiva={oitiva}
+                        onSelectOitiva={onSelectOitiva}
+                        onQuickStatusChange={onQuickStatusChange}
+                        onOpenWhatsApp={onOpenWhatsApp}
                       >
-                        {/* Time & Role / Modality Indicator */}
-                        <div className="flex items-center justify-between gap-1 text-[10px] leading-none mb-1">
-                          <span className="font-black text-white flex items-center gap-1 font-mono">
-                            <Clock className="w-2.5 h-2.5 text-purple-200" />
-                            {oitiva.time || '--:--'}
-                          </span>
-                          <div className="flex items-center gap-1">
-                            {oitiva.modality === 'Videoconferência' && (
-                              <Video className="w-3 h-3 text-cyan-300 shrink-0" title="Videoconferência" />
-                            )}
-                            {oitiva.role && (
-                              <span className="text-[8px] font-bold px-1 py-0.2 rounded bg-black/60 text-white border border-white/30 truncate max-w-[60px]">
-                                {oitiva.role}
-                              </span>
-                            )}
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSelectOitiva(oitiva);
+                          }}
+                          className={`p-1.5 sm:p-2 rounded-xl text-left border-2 cursor-pointer transition-all hover:scale-[1.02] shadow-md ${cardClasses}`}
+                        >
+                          {/* Time & Role / Modality Indicator */}
+                          <div className="flex items-center justify-between gap-1 text-[10px] leading-none mb-1">
+                            <span className="font-black text-white flex items-center gap-1 font-mono">
+                              <Clock className="w-2.5 h-2.5 text-purple-200" />
+                              {oitiva.time || '--:--'}
+                            </span>
+                            <div className="flex items-center gap-1">
+                              {oitiva.modality === 'Videoconferência' && (
+                                <Video className="w-3 h-3 text-cyan-300 shrink-0" title="Videoconferência" />
+                              )}
+                              {oitiva.role && (
+                                <span className="text-[8px] font-bold px-1 py-0.2 rounded bg-black/60 text-white border border-white/30 truncate max-w-[60px]">
+                                  {oitiva.role}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* NOME DO DEPOENTE E LEGENDA DO STATUS AO LADO EM FONTE MENOR */}
+                          <div className="flex items-center justify-between gap-1 flex-wrap pt-0.5">
+                            <p className="text-xs font-black text-white tracking-tight leading-tight truncate flex-1 min-w-[50px]">
+                              {firstName}
+                            </p>
+                            <span className={`text-[8px] sm:text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider shrink-0 ${statusBadgeClasses}`}>
+                              {status.toLowerCase()}
+                            </span>
                           </div>
                         </div>
-
-                        {/* NOME DO DEPOENTE E LEGENDA DO STATUS AO LADO EM FONTE MENOR */}
-                        <div className="flex items-center justify-between gap-1 flex-wrap pt-0.5">
-                          <p className="text-xs font-black text-white tracking-tight leading-tight truncate flex-1 min-w-[50px]">
-                            {firstName}
-                          </p>
-                          <span className={`text-[8px] sm:text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider shrink-0 ${statusBadgeClasses}`}>
-                            {status.toLowerCase()}
-                          </span>
-                        </div>
-                      </div>
+                      </OitivaTooltip>
                     );
                   })}
                 </div>

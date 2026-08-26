@@ -28,11 +28,13 @@ import {
   AlertTriangle,
   FileText,
   GitMerge,
-  Layers
+  Layers,
+  HardDriveDownload
 } from 'lucide-react';
-import { UserProfile, DuplicateUserGroup } from '../types/oitiva';
+import { UserProfile, DuplicateUserGroup, Oitiva, CalendarSpecialDate } from '../types/oitiva';
 import { authService } from '../services/authService';
 import { UnifyDuplicatesModal } from './UnifyDuplicatesModal';
+import { UserBackupPanel } from './UserBackupPanel';
 
 interface UserProfileModalProps {
   isOpen: boolean;
@@ -41,6 +43,9 @@ interface UserProfileModalProps {
   onUpdateProfile: (updated: UserProfile) => void;
   onOpenWorkspaceModal?: () => void;
   onOpenDelegadosModal?: () => void;
+  oitivas?: Oitiva[];
+  specialDates?: CalendarSpecialDate[];
+  onDataRestored?: () => void;
 }
 
 const CARGO_SUGGESTIONS = [
@@ -69,11 +74,14 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   user,
   onUpdateProfile,
   onOpenWorkspaceModal,
-  onOpenDelegadosModal
+  onOpenDelegadosModal,
+  oitivas = [],
+  specialDates = [],
+  onDataRestored
 }) => {
   const isAdminUser = user?.role === 'admin' || Boolean(user?.isAdmin);
 
-  const [activeTab, setActiveTab] = useState<'functional' | 'account' | 'security' | 'admin_users'>('functional');
+  const [activeTab, setActiveTab] = useState<'functional' | 'account' | 'security' | 'backup_data' | 'admin_users'>('functional');
   
   // Profile Form States
   const [username, setUsername] = useState('');
@@ -527,6 +535,20 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
           >
             <KeyRound className="w-4 h-4 text-purple-400" />
             <span>Senha & Segurança</span>
+          </button>
+
+          <button
+            id="tab-backup-data"
+            type="button"
+            onClick={() => setActiveTab('backup_data')}
+            className={`flex items-center gap-2 py-3.5 px-4 text-xs font-bold border-b-2 transition-colors shrink-0 cursor-pointer ${
+              activeTab === 'backup_data'
+                ? 'border-emerald-500 text-emerald-300 bg-emerald-950/20'
+                : 'border-transparent text-emerald-400/80 hover:text-emerald-300 hover:bg-emerald-950/10'
+            }`}
+          >
+            <HardDriveDownload className="w-4 h-4 text-emerald-400" />
+            <span>Backup & Prevenção de Perdas</span>
           </button>
 
           {/* ADMIN EXCLUSIVE TAB */}
@@ -1075,6 +1097,19 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             </div>
 
           </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* TAB: BACKUP & PREVENÇÃO DE PERDA DE DADOS */}
+        {/* ========================================================================= */}
+        {activeTab === 'backup_data' && (
+          <UserBackupPanel
+            user={user}
+            oitivas={oitivas}
+            specialDates={specialDates}
+            onDataRestored={onDataRestored}
+            showToast={showMsg}
+          />
         )}
 
         {/* ========================================================================= */}

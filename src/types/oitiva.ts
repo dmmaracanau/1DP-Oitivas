@@ -119,3 +119,54 @@ export interface MergeUsersResult {
   message: string;
 }
 
+export interface BackupFilePayload {
+  version: string;
+  exportedAt: string;
+  exportedTimestamp: number;
+  exportedBy?: {
+    uid?: string;
+    displayName?: string;
+    email?: string;
+    cargo?: string;
+    unitName?: string;
+  };
+  system: string;
+  counts: {
+    oitivas: number;
+    specialDates?: number;
+  };
+  oitivas: Oitiva[];
+  specialDates?: CalendarSpecialDate[];
+  checksum?: string;
+}
+
+export interface DataSnapshot {
+  id: string;
+  timestamp: number;
+  dateStr: string;
+  reason: string;
+  oitivasCount: number;
+  oitivas: Oitiva[];
+  specialDates?: CalendarSpecialDate[];
+}
+
+export interface DeletedOitivaRecord {
+  id: string;
+  deletedAt: number;
+  deletedDateStr: string;
+  deletedBy?: string;
+  oitiva: Oitiva;
+}
+
+export interface ImportValidationResult {
+  isValid: boolean;
+  errorMessage?: string;
+  version?: string;
+  exportedAt?: string;
+  totalFound: number;
+  newCount: number;
+  updateCount: number;
+  oitivas: Oitiva[];
+  specialDates?: CalendarSpecialDate[];
+}
+

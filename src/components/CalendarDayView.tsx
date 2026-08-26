@@ -18,6 +18,8 @@ import {
 import { Oitiva, HearingStatus, CalendarSpecialDate } from '../types/oitiva';
 import { getRoleBadgeClasses, formatDateBR } from '../utils/formatters';
 import { specialDateService } from '../services/specialDateService';
+import { OitivaTooltip } from './OitivaTooltip';
+import { HolidayTooltip } from './HolidayTooltip';
 
 interface CalendarDayViewProps {
   oitivas: Oitiva[];
@@ -26,6 +28,7 @@ interface CalendarDayViewProps {
   onSelectOitiva: (oitiva: Oitiva) => void;
   onAddOitivaForDate: (dateStr: string) => void;
   onQuickStatusChange: (id: string, newStatus: HearingStatus) => void;
+  onOpenWhatsApp?: (oitiva: Oitiva) => void;
   statusFilter: HearingStatus | 'TODOS';
   specialDates?: CalendarSpecialDate[];
   onOpenHolidaysModal?: (dateStr?: string) => void;
@@ -39,6 +42,7 @@ export const CalendarDayView: React.FC<CalendarDayViewProps> = ({
   onSelectOitiva,
   onAddOitivaForDate,
   onQuickStatusChange,
+  onOpenWhatsApp,
   statusFilter,
   specialDates = [],
   onOpenHolidaysModal,
@@ -125,42 +129,49 @@ export const CalendarDayView: React.FC<CalendarDayViewProps> = ({
           
           {/* SPECIAL DATES / FERIADOS / FINS DE SEMANA BANNER CARD */}
           {daySpecialDates.map((sp) => (
-            <div
+            <HolidayTooltip
               key={sp.id}
-              onClick={() => {
-                if (isAdmin && onOpenHolidaysModal) {
-                  onOpenHolidaysModal(dayStr);
-                }
-              }}
-              className={`p-4 rounded-2xl bg-[#290812] border-2 border-red-500 text-white shadow-xl flex items-center justify-between gap-4 transition-all ${
-                isAdmin ? 'cursor-pointer hover:border-red-300 hover:bg-[#380b19]' : ''
-              }`}
+              specialDate={sp}
+              dateStr={dayStr}
+              isAdmin={isAdmin}
+              onOpenHolidaysModal={onOpenHolidaysModal}
             >
-              <div className="flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-red-950 border-2 border-red-500 flex items-center justify-center text-red-300 shadow-md">
-                  <Sparkles className="w-5 h-5 text-red-400" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="text-base font-black text-red-400">
-                      {sp.title}
-                    </h3>
-                    <span className="text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider bg-red-950 text-red-300 border-2 border-red-500/80">
-                      {sp.type === 'fim_de_semana' ? 'Fim de Semana' : sp.type === 'ponto_facultativo' ? 'Ponto Facultativo' : 'Feriado Oficial'}
-                    </span>
+              <div
+                onClick={() => {
+                  if (isAdmin && onOpenHolidaysModal) {
+                    onOpenHolidaysModal(dayStr);
+                  }
+                }}
+                className={`p-4 rounded-2xl bg-[#290812] border-2 border-red-500 text-white shadow-xl flex items-center justify-between gap-4 transition-all ${
+                  isAdmin ? 'cursor-pointer hover:border-red-300 hover:bg-[#380b19]' : ''
+                }`}
+              >
+                <div className="flex items-center gap-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-red-950 border-2 border-red-500 flex items-center justify-center text-red-300 shadow-md">
+                    <Sparkles className="w-5 h-5 text-red-400" />
                   </div>
-                  {sp.description && (
-                    <p className="text-xs text-zinc-300 mt-0.5">{sp.description}</p>
-                  )}
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-base font-black text-red-400">
+                        {sp.title}
+                      </h3>
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider bg-red-950 text-red-300 border-2 border-red-500/80">
+                        {sp.type === 'fim_de_semana' ? 'Fim de Semana' : sp.type === 'ponto_facultativo' ? 'Ponto Facultativo' : 'Feriado Oficial'}
+                      </span>
+                    </div>
+                    {sp.description && (
+                      <p className="text-xs text-zinc-300 mt-0.5">{sp.description}</p>
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              {isAdmin && (
-                <span className="text-xs text-red-300 font-bold underline shrink-0">
-                  Gerenciar
-                </span>
-              )}
-            </div>
+                {isAdmin && (
+                  <span className="text-xs text-red-300 font-bold underline shrink-0">
+                    Gerenciar
+                  </span>
+                )}
+              </div>
+            </HolidayTooltip>
           ))}
 
           {dayOitivas.length > 0 ? (
@@ -186,86 +197,102 @@ export const CalendarDayView: React.FC<CalendarDayViewProps> = ({
               }
 
               return (
-                <div
+                <OitivaTooltip
                   key={oitiva.id}
-                  className={`p-4 sm:p-5 rounded-2xl transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group shadow-lg ${cardClasses}`}
+                  oitiva={oitiva}
+                  onSelectOitiva={onSelectOitiva}
+                  onQuickStatusChange={onQuickStatusChange}
+                  onOpenWhatsApp={onOpenWhatsApp}
                 >
-                  <div 
-                    onClick={() => onSelectOitiva(oitiva)}
-                    className="flex items-start gap-4 flex-1 cursor-pointer"
+                  <div
+                    className={`p-4 sm:p-5 rounded-2xl transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group shadow-lg ${cardClasses}`}
                   >
-                    <div className="px-3.5 py-2.5 rounded-xl bg-black/60 border-2 border-white/30 text-white font-mono font-black text-sm sm:text-base flex items-center gap-1.5 shadow-sm shrink-0">
-                      <Clock className="w-4 h-4 text-purple-300" />
-                      {oitiva.time || '--:--'}
-                    </div>
-
-                    <div className="space-y-1.5 min-w-0 flex-1">
-                      {/* Name and Status Label next to it */}
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="text-base font-black text-white tracking-tight hover:text-purple-200 transition-colors" title={oitiva.personName}>
-                          {oitiva.personName}
-                        </h3>
-                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider ${statusBadgeClasses}`}>
-                          {status.toLowerCase()}
-                        </span>
-                        {oitiva.role && (
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border-2 ${getRoleBadgeClasses(oitiva.role)}`}>
-                            {oitiva.role}
-                          </span>
-                        )}
+                    <div 
+                      onClick={() => onSelectOitiva(oitiva)}
+                      className="flex items-start gap-4 flex-1 cursor-pointer"
+                    >
+                      <div className="px-3.5 py-2.5 rounded-xl bg-black/60 border-2 border-white/30 text-white font-mono font-black text-sm sm:text-base flex items-center gap-1.5 shadow-sm shrink-0">
+                        <Clock className="w-4 h-4 text-purple-300" />
+                        {oitiva.time || '--:--'}
                       </div>
 
-                      <div className="flex items-center gap-3 text-xs text-zinc-200 flex-wrap font-semibold">
-                        {oitiva.procedureNumber && (
-                          <span className="flex items-center gap-1.5 bg-black/50 px-2 py-0.5 rounded-md border border-white/20 font-mono font-bold text-white">
-                            <FileText className="w-3.5 h-3.5 text-purple-300" />
-                            <span>{oitiva.procedureNumber}</span>
+                      <div className="space-y-1.5 min-w-0 flex-1">
+                        {/* Name and Status Label next to it */}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="text-base font-black text-white tracking-tight hover:text-purple-200 transition-colors" title={oitiva.personName}>
+                            {oitiva.personName}
+                          </h3>
+                          <span className={`text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider ${statusBadgeClasses}`}>
+                            {status.toLowerCase()}
                           </span>
-                        )}
-                        {oitiva.locationOrLink && (
-                          <span className="flex items-center gap-1.5 bg-black/50 px-2 py-0.5 rounded-md border border-white/20">
-                            {oitiva.modality === 'Videoconferência' ? (
-                              <Video className="w-3.5 h-3.5 text-cyan-300" />
-                            ) : (
-                              <MapPin className="w-3.5 h-3.5 text-purple-300" />
-                            )}
-                            <span className="truncate max-w-[200px]">{oitiva.locationOrLink}</span>
-                          </span>
-                        )}
-                        {oitiva.officerName && (
-                          <span className="flex items-center gap-1.5 bg-black/50 px-2 py-0.5 rounded-md border border-white/20">
-                            <User className="w-3.5 h-3.5 text-amber-300" />
-                            <span className="truncate max-w-[180px]">{oitiva.officerName}</span>
-                          </span>
-                        )}
+                          {oitiva.role && (
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border-2 ${getRoleBadgeClasses(oitiva.role)}`}>
+                              {oitiva.role}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-3 text-xs text-zinc-200 flex-wrap font-semibold">
+                          {oitiva.procedureNumber && (
+                            <span className="flex items-center gap-1.5 bg-black/50 px-2 py-0.5 rounded-md border border-white/20 font-mono font-bold text-white">
+                              <FileText className="w-3.5 h-3.5 text-purple-300" />
+                              <span>{oitiva.procedureNumber}</span>
+                            </span>
+                          )}
+                          {oitiva.locationOrLink && (
+                            <span className="flex items-center gap-1.5 bg-black/50 px-2 py-0.5 rounded-md border border-white/20">
+                              {oitiva.modality === 'Videoconferência' ? (
+                                <Video className="w-3.5 h-3.5 text-cyan-300" />
+                              ) : (
+                                <MapPin className="w-3.5 h-3.5 text-purple-300" />
+                              )}
+                              <span className="truncate max-w-[200px]">{oitiva.locationOrLink}</span>
+                            </span>
+                          )}
+                          {oitiva.officerName && (
+                            <span className="flex items-center gap-1.5 bg-black/50 px-2 py-0.5 rounded-md border border-white/20">
+                              <User className="w-3.5 h-3.5 text-amber-300" />
+                              <span className="truncate max-w-[180px]">{oitiva.officerName}</span>
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Quick Status Buttons */}
-                  <div className="flex items-center gap-2 w-full sm:w-auto justify-end border-t sm:border-t-0 pt-3 sm:pt-0 border-white/10 shrink-0">
-                    {oitiva.status !== 'Realizada' && (
-                      <button
-                        onClick={() => onQuickStatusChange(oitiva.id, 'Realizada')}
-                        className="px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white border-2 border-emerald-300 text-xs font-black flex items-center gap-1.5 transition-all shadow-md cursor-pointer"
-                        title="Marcar como Realizada"
-                      >
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>Concluir</span>
-                      </button>
-                    )}
-                    {oitiva.status !== 'Não Compareceu' && oitiva.status !== 'Realizada' && (
-                      <button
-                        onClick={() => onQuickStatusChange(oitiva.id, 'Não Compareceu')}
-                        className="px-3 py-1.5 rounded-xl bg-orange-700 hover:bg-orange-600 text-white border-2 border-orange-300 text-xs font-black flex items-center gap-1.5 transition-all shadow-md cursor-pointer"
-                        title="Marcar Ausência"
-                      >
-                        <AlertCircle className="w-3.5 h-3.5" />
-                        <span>Ausente</span>
-                      </button>
-                    )}
+                    {/* Quick Status Buttons */}
+                    <div className="flex items-center gap-2 w-full sm:w-auto justify-end border-t sm:border-t-0 pt-3 sm:pt-0 border-white/10 shrink-0">
+                      {oitiva.status !== 'Realizada' && (
+                        <button
+                          onClick={() => onQuickStatusChange(oitiva.id, 'Realizada')}
+                          className="px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white border-2 border-emerald-300 text-xs font-black flex items-center gap-1.5 transition-all shadow-md cursor-pointer"
+                          title="Marcar como Realizada"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Concluir</span>
+                        </button>
+                      )}
+                      {oitiva.status !== 'Não Compareceu' && oitiva.status !== 'Realizada' && (
+                        <button
+                          onClick={() => onQuickStatusChange(oitiva.id, 'Não Compareceu')}
+                          className="px-3 py-1.5 rounded-xl bg-orange-700 hover:bg-orange-600 text-white border-2 border-orange-300 text-xs font-black flex items-center gap-1.5 transition-all shadow-md cursor-pointer"
+                          title="Marcar Ausência"
+                        >
+                          <AlertCircle className="w-3.5 h-3.5" />
+                          <span>Ausente</span>
+                        </button>
+                      )}
+                      {oitiva.status !== 'Cancelada' && oitiva.status === 'Agendada' && (
+                        <button
+                          onClick={() => onQuickStatusChange(oitiva.id, 'Cancelada')}
+                          className="px-2.5 py-1.5 rounded-xl bg-rose-950/80 hover:bg-rose-900 text-rose-300 border-2 border-rose-500/70 text-xs font-bold transition-all cursor-pointer"
+                          title="Cancelar Oitiva"
+                        >
+                          Cancelar
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
+                </OitivaTooltip>
               );
             })
           ) : (

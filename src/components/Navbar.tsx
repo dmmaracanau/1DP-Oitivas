@@ -11,7 +11,8 @@ import {
   List, 
   Columns,
   Sparkles,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Download
 } from 'lucide-react';
 import { UserProfile } from '../types/oitiva';
 
@@ -27,6 +28,7 @@ interface NavbarProps {
   onOpenProfileModal: () => void;
   onOpenDelegadosModal?: () => void;
   onOpenHolidaysModal?: () => void;
+  onExportBackup?: () => void;
   isAdmin?: boolean;
   hasWorkspaceToken: boolean;
   syncStatus?: 'connected' | 'syncing' | 'offline';
@@ -46,6 +48,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenProfileModal,
   onOpenDelegadosModal,
   onOpenHolidaysModal,
+  onExportBackup,
   isAdmin = false,
   hasWorkspaceToken,
   syncStatus = 'connected',
@@ -291,6 +294,19 @@ export const Navbar: React.FC<NavbarProps> = ({
               <Printer className="w-3.5 h-3.5 text-purple-300" />
               <span>Pauta do Dia</span>
             </button>
+
+            {/* Exportar Backup Button */}
+            {onExportBackup && (
+              <button
+                id="export-backup-nav-btn"
+                onClick={onExportBackup}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#121a36] hover:bg-[#1a2754] text-blue-200 hover:text-white border-2 border-blue-500/70 hover:border-blue-400 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
+                title="Exportar Backup das Oitivas (Download JSON)"
+              >
+                <Download className="w-3.5 h-3.5 text-blue-300" />
+                <span>Backup</span>
+              </button>
+            )}
 
             {/* Profile Quick Button if user is logged in */}
             {user && (

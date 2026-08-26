@@ -347,17 +347,43 @@ export const oitivaService = {
   },
 
   /**
-   * Exclui oitiva isolada do usuário
+   * Exclui oitiva isolada do usuário com preservação na lixeira e ponto de recuperação
    */
   async delete(id: string, currentUid?: string): Promise<void> {
     const targetUid = resolveActiveUid(currentUid);
 
-    // 1. Atualização no cache local
+    // 1. Localiza o item antes de excluir e envia para a lixeira de segurança
     const current = getLocalCache(targetUid);
+    const itemToDelete = current.find(item => item.id === id);
+    if (itemToDelete) {
+      try {
+        const now = new Date();
+        const trashKey = `oitivas_trash_bin_${targetUid}`;
+        const existingTrashRaw = localStorage.getItem(trashKey);
+        let trashList: any[] = [];
+        if (existingTrashRaw) {
+          try {
+            trashList = JSON.parse(existingTrashRaw) || [];
+          } catch {}
+        }
+        trashList = [{
+          id: `trash_${itemToDelete.id}_${Date.now()}`,
+          deletedAt: now.getTime(),
+          deletedDateStr: now.toLocaleString('pt-BR'),
+          deletedBy: 'Operador',
+          oitiva: itemToDelete
+        }, ...trashList].slice(0, 50);
+        localStorage.setItem(trashKey, JSON.stringify(trashList));
+      } catch (e) {
+        console.warn("Aviso ao preservar na lixeira:", e);
+      }
+    }
+
+    // 2. Atualização no cache local
     const updated = current.filter(item => item.id !== id);
     setLocalCache(targetUid, updated);
 
-    // 2. Exclusão no Firestore com retry robusto
+    // 3. Exclusão no Firestore com retry robusto
     try {
       const docRef = doc(db, 'users', targetUid, 'oitivas', id);
       await executeFirestoreWithRetry(
@@ -369,7 +395,7 @@ export const oitivaService = {
       handleFirestoreError(err, OperationType.DELETE, `users/${targetUid}/oitivas/${id}`);
     }
 
-    // 3. Exclusão no Realtime Database
+    // 4. Exclusão no Realtime Database
     try {
       if (rtdb) {
         const itemRef = rtdbRef(rtdb, `users/${targetUid}/oitivas/${id}`);

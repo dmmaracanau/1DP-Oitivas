@@ -20,6 +20,7 @@ import { authService } from './services/authService';
 import { calendarService } from './services/calendarService';
 import { driveService } from './services/driveService';
 import { specialDateService } from './services/specialDateService';
+import { backupService } from './services/backupService';
 import { Oitiva, HearingStatus, UserProfile, CalendarSpecialDate } from './types/oitiva';
 import { CheckCircle2, Shield, AlertCircle, Info } from 'lucide-react';
 
@@ -104,6 +105,54 @@ export default function App() {
       }
     );
     return () => unsubSpecial();
+  }, []);
+
+  // DLP: Auto-snapshot contínuo de segurança a cada alteração relevante
+  useEffect(() => {
+    if (oitivas.length > 0) {
+      const timer = setTimeout(() => {
+        backupService.createLocalSnapshot(
+          oitivas,
+          'Auto-Save Contínuo de Segurança',
+          user?.uid || 'guest_default',
+          specialDates
+        );
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [oitivas, user?.uid, specialDates]);
+
+  // DLP: Proteção de Perda de Dados contra fechamento acidental da aba enquanto edita
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isNewModalOpen || editingOitiva) {
+        e.preventDefault();
+        e.returnValue = 'Você possui informações de oitiva não salvas. Deseja realmente sair?';
+        return e.returnValue;
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isNewModalOpen, editingOitiva]);
+
+  // DLP: Monitoramento de conectividade em tempo real com auto-recuperação
+  useEffect(() => {
+    const handleOnline = () => {
+      setSyncStatus('connected');
+      showToast('Conexão restabelecida! Banco de dados sincronizado.', 'success');
+    };
+    const handleOffline = () => {
+      setSyncStatus('offline');
+      showToast('Sem conexão com a internet. O modo offline seguro com auto-save está ativo.', 'info');
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
   }, []);
 
   const isAdmin = specialDateService.isUserAdmin(user);
@@ -259,6 +308,15 @@ export default function App() {
     showToast('Sessão encerrada com sucesso.', 'info');
   };
 
+  const handleExportBackup = () => {
+    try {
+      backupService.exportBackup(oitivas, user, specialDates);
+      showToast('Backup JSON gerado com integridade e audit trail!');
+    } catch (err: any) {
+      showToast(err.message || 'Erro ao exportar backup.', 'error');
+    }
+  };
+
   // Filter oitivas by search query if any
   const displayedOitivas = oitivas.filter(item => {
     if (!searchQuery.trim()) return true;
@@ -313,6 +371,8 @@ export default function App() {
             onDateChange={setCurrentDate}
             onSelectOitiva={handleSelectOitiva}
             onAddOitivaForDate={handleAddOitivaForDate}
+            onQuickStatusChange={handleStatusChange}
+            onOpenWhatsApp={handleOpenWhatsApp}
             statusFilter={statusFilter}
             specialDates={specialDates}
             onOpenHolidaysModal={handleOpenHolidaysModal}
@@ -327,6 +387,8 @@ export default function App() {
             onDateChange={setCurrentDate}
             onSelectOitiva={handleSelectOitiva}
             onAddOitivaForDate={handleAddOitivaForDate}
+            onQuickStatusChange={handleStatusChange}
+            onOpenWhatsApp={handleOpenWhatsApp}
             statusFilter={statusFilter}
             specialDates={specialDates}
             onOpenHolidaysModal={handleOpenHolidaysModal}
@@ -342,6 +404,7 @@ export default function App() {
             onSelectOitiva={handleSelectOitiva}
             onAddOitivaForDate={handleAddOitivaForDate}
             onQuickStatusChange={handleStatusChange}
+            onOpenWhatsApp={handleOpenWhatsApp}
             statusFilter={statusFilter}
             specialDates={specialDates}
             onOpenHolidaysModal={handleOpenHolidaysModal}
@@ -362,6 +425,7 @@ export default function App() {
             statusFilter={statusFilter}
             onStatusFilterChange={setStatusFilter}
             onAddOitiva={handleOpenNewModal}
+            onExportBackup={handleExportBackup}
           />
         )}
       </main>
@@ -482,6 +546,12 @@ export default function App() {
         isOpen={isProfileModalOpen}
         onClose={() => setIsProfileModalOpen(false)}
         user={user}
+        oitivas={oitivas}
+        specialDates={specialDates}
+        onDataRestored={async () => {
+          const list = await oitivaService.getAll(user?.uid);
+          setOitivas(list);
+        }}
         onUpdateProfile={(updatedUser) => {
           setUser(updatedUser);
           setHasWorkspaceToken(authService.hasGoogleWorkspaceAccess());
