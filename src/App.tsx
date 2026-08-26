@@ -419,7 +419,7 @@ export default function App() {
         user={user}
         onMarkIntimationSent={async (oitivaId) => {
           try {
-            await oitivaService.update(oitivaId, { intimationSent: true });
+            await handleUpdateOitivaDirect(oitivaId, { intimationSent: true });
             showToast('Intimação marcada como emitida!');
           } catch (e) {
             console.error('Erro ao atualizar status da intimação:', e);
@@ -437,7 +437,7 @@ export default function App() {
         user={user}
         onMarkIntimationSent={async (oitivaId) => {
           try {
-            await oitivaService.update(oitivaId, { intimationSent: true });
+            await handleUpdateOitivaDirect(oitivaId, { intimationSent: true });
             showToast('Intimação via WhatsApp enviada!');
           } catch (e) {
             console.error('Erro ao atualizar status da intimação:', e);

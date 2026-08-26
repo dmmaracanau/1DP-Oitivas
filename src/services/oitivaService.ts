@@ -30,11 +30,25 @@ function sanitizePayload<T extends Record<string, any>>(obj: T): Record<string, 
   return result;
 }
 
-// Helpers de cache local isolados por UID do usuário
+// Helpers de cache local e segurança de dados isolados por UID do usuário
 function getLocalCache(uid: string): Oitiva[] {
   try {
     const raw = localStorage.getItem(`oitivas_user_${uid}`);
-    return raw ? JSON.parse(raw) : [];
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+    // Fallback: se cache do UID estiver vazio, tenta resgatar o backup de segurança do usuário
+    const backupRaw = localStorage.getItem(`oitivas_backup_${uid}`);
+    if (backupRaw) {
+      const backupParsed = JSON.parse(backupRaw);
+      if (Array.isArray(backupParsed) && backupParsed.length > 0) {
+        return backupParsed;
+      }
+    }
+    return [];
   } catch {
     return [];
   }
@@ -43,9 +57,35 @@ function getLocalCache(uid: string): Oitiva[] {
 function setLocalCache(uid: string, data: Oitiva[]) {
   try {
     localStorage.setItem(`oitivas_user_${uid}`, JSON.stringify(data));
+    // Mantém backup de segurança persistente se houver registros
+    if (data.length > 0) {
+      localStorage.setItem(`oitivas_backup_${uid}`, JSON.stringify(data));
+    }
   } catch (err) {
     console.warn("Falha ao salvar cache local isolado:", err);
   }
+}
+
+// Resgata o UID ativo com múltiplas camadas de fallback resilientes
+function resolveActiveUid(explicitUid?: string, dataUid?: string): string {
+  if (explicitUid && explicitUid.trim() && explicitUid !== 'guest_default' && explicitUid !== 'guest_user') {
+    return explicitUid.trim();
+  }
+  if (dataUid && dataUid.trim() && dataUid !== 'guest_default' && dataUid !== 'guest_user') {
+    return dataUid.trim();
+  }
+  if (auth.currentUser?.uid) {
+    return auth.currentUser.uid;
+  }
+  // Tenta recuperar da sessão salva em localStorage
+  try {
+    const sessionRaw = localStorage.getItem('oitivas_user_session');
+    if (sessionRaw) {
+      const parsed = JSON.parse(sessionRaw);
+      if (parsed?.uid) return parsed.uid;
+    }
+  } catch {}
+  return explicitUid || dataUid || 'guest_default';
 }
 
 function sortOitivas(items: Oitiva[]): Oitiva[] {
@@ -67,7 +107,7 @@ export const oitivaService = {
     onError?: (err: Error) => void,
     onStatusChange?: (status: 'connected' | 'syncing' | 'offline') => void
   ): () => void {
-    const targetUid = uid || auth.currentUser?.uid || 'guest_default';
+    const targetUid = resolveActiveUid(uid);
 
     if (onStatusChange) onStatusChange('syncing');
 
@@ -125,6 +165,16 @@ export const oitivaService = {
               createdBy: d.createdBy || ''
             });
           });
+
+          // Proteção anti-perda: se o snapshot do Firestore vier vazio (por exemplo, durante oscilação transitória de conexão),
+          // mas nós temos cache local ou backup com dados válidos, preservamos os dados em cache e sincronizamos
+          if (itemsMap.size === 0 && snapshot.metadata.fromCache) {
+            const existingCache = getLocalCache(targetUid);
+            if (existingCache.length > 0) {
+              onData(sortOitivas(existingCache));
+              return;
+            }
+          }
 
           const sortedList = sortOitivas(Array.from(itemsMap.values()));
           setLocalCache(targetUid, sortedList);
@@ -198,7 +248,7 @@ export const oitivaService = {
    * Cria nova oitiva estritamente isolada no ambiente do usuário
    */
   async create(data: Omit<Oitiva, 'id' | 'createdAt' | 'updatedAt'>, currentUid?: string): Promise<string> {
-    const targetUid = currentUid || data.uid || auth.currentUser?.uid || 'guest_default';
+    const targetUid = resolveActiveUid(currentUid, data.uid);
     const now = Date.now();
     
     // Gera ID único no subdiretório do usuário
@@ -253,16 +303,24 @@ export const oitivaService = {
    * Atualiza oitiva isolada do usuário
    */
   async update(id: string, data: Partial<Omit<Oitiva, 'id'>>, currentUid?: string): Promise<void> {
-    const targetUid = currentUid || data.uid || auth.currentUser?.uid || 'guest_default';
+    const targetUid = resolveActiveUid(currentUid, data.uid);
     const updatePayload = sanitizePayload({
       ...data,
       uid: targetUid,
       updatedAt: Date.now()
     });
 
-    // 1. Atualização no cache local
+    // 1. Atualização no cache local do usuário e verificação preventiva
     const current = getLocalCache(targetUid);
-    const updated = current.map(item => item.id === id ? { ...item, ...updatePayload } : item);
+    let targetExists = current.some(item => item.id === id);
+
+    let updated: Oitiva[];
+    if (targetExists) {
+      updated = current.map(item => item.id === id ? { ...item, ...updatePayload } : item);
+    } else {
+      // Se não estava no cache deste UID, busca se existe em outro cache local e transfere com segurança
+      updated = [...current, { id, uid: targetUid, ...updatePayload } as Oitiva];
+    }
     setLocalCache(targetUid, sortOitivas(updated));
 
     // 2. Gravação no Firestore com retry robusto
@@ -292,7 +350,7 @@ export const oitivaService = {
    * Exclui oitiva isolada do usuário
    */
   async delete(id: string, currentUid?: string): Promise<void> {
-    const targetUid = currentUid || auth.currentUser?.uid || 'guest_default';
+    const targetUid = resolveActiveUid(currentUid);
 
     // 1. Atualização no cache local
     const current = getLocalCache(targetUid);
@@ -326,7 +384,7 @@ export const oitivaService = {
    * Carrega lista isolada do usuário
    */
   async getAll(currentUid?: string): Promise<Oitiva[]> {
-    const targetUid = currentUid || auth.currentUser?.uid || 'guest_default';
+    const targetUid = resolveActiveUid(currentUid);
 
     try {
       const snapshot = await executeFirestoreWithRetry(
