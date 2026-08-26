@@ -59,8 +59,10 @@ try {
 }
 export const rtdb = rtdbInstance;
 
-// Inicializa Firestore com o databaseId correto, detecção de long polling e persistência multi-abas
+// Inicializa Firestore com o databaseId correto do projeto e estratégias de fallback resilientes
 let firestoreDb: Firestore;
+
+// Tentativa 1: Cache persistente com suporte multi-abas + experimentalForceLongPolling (ideal para redes instáveis/restritas)
 try {
   firestoreDb = initializeFirestore(
     app, 
@@ -68,23 +70,43 @@ try {
       localCache: persistentLocalCache({
         tabManager: persistentMultipleTabManager()
       }),
-      experimentalAutoDetectLongPolling: true,
+      experimentalForceLongPolling: true,
       ignoreUndefinedProperties: true
     }, 
     firestoreDatabaseId
   );
-} catch (e) {
+} catch (err1) {
+  console.warn('Tentativa 1 de inicialização do Firestore falhou, tentando fallback com auto-detect...', err1);
   try {
+    // Tentativa 2: Cache persistente com auto-detect de long polling
     firestoreDb = initializeFirestore(
       app,
       {
+        localCache: persistentLocalCache({
+          tabManager: persistentMultipleTabManager()
+        }),
         experimentalAutoDetectLongPolling: true,
         ignoreUndefinedProperties: true
       },
       firestoreDatabaseId
     );
-  } catch {
-    firestoreDb = getFirestore(app, firestoreDatabaseId);
+  } catch (err2) {
+    console.warn('Tentativa 2 de inicialização do Firestore falhou, tentando inicialização sem cache persistente...', err2);
+    try {
+      // Tentativa 3: Configuração básica com force long polling
+      firestoreDb = initializeFirestore(
+        app,
+        {
+          experimentalForceLongPolling: true,
+          ignoreUndefinedProperties: true
+        },
+        firestoreDatabaseId
+      );
+    } catch (err3) {
+      console.warn('Tentativa 3 de inicialização do Firestore falhou, usando getFirestore padrão...', err3);
+      // Tentativa 4: Instância padrão
+      firestoreDb = getFirestore(app, firestoreDatabaseId);
+    }
   }
 }
 
@@ -106,15 +128,102 @@ WORKSPACE_SCOPES.forEach(scope => {
   googleProvider.addScope(scope);
 });
 
-// Teste inicial de conexão com o servidor Firestore com tratamento seguro de offline/unavailable
-export async function testFirestoreConnection(): Promise<boolean> {
-  try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
-    return true;
-  } catch (error: any) {
-    // Normal em inicialização offline ou se conexão ainda estiver negociando transporte
-    return false;
+/**
+ * Utilitário de Retry com Exponential Backoff e Jitter para operações no Firestore
+ * Garante resiliência em conexões instáveis, timeout transitório e restrições de rede.
+ */
+export async function executeFirestoreWithRetry<T>(
+  operation: () => Promise<T>,
+  options: {
+    maxRetries?: number;
+    initialDelayMs?: number;
+    maxDelayMs?: number;
+    backoffFactor?: number;
+    operationName?: string;
+  } = {}
+): Promise<T> {
+  const {
+    maxRetries = 4,
+    initialDelayMs = 400,
+    maxDelayMs = 5000,
+    backoffFactor = 2,
+    operationName = 'FirestoreOperation'
+  } = options;
+
+  let attempt = 0;
+  let delay = initialDelayMs;
+
+  while (attempt <= maxRetries) {
+    try {
+      return await operation();
+    } catch (error: any) {
+      attempt++;
+      
+      const errorCode = error?.code || '';
+      const errorMessage = error?.message || String(error);
+      
+      // Verifica se o erro é transitório / passível de retry
+      const isRetryable = 
+        errorCode === 'unavailable' ||
+        errorCode === 'deadline-exceeded' ||
+        errorCode === 'resource-exhausted' ||
+        errorCode === 'aborted' ||
+        errorCode === 'cancelled' ||
+        errorMessage.includes('Failed to get document because the client is offline') ||
+        errorMessage.includes('Could not reach Cloud Firestore backend') ||
+        errorMessage.includes('network-request-failed') ||
+        errorMessage.includes('transport errored') ||
+        errorMessage.includes('Connection failed');
+
+      if (!isRetryable || attempt > maxRetries) {
+        if (attempt > maxRetries) {
+          console.warn(`[${operationName}] Limite de ${maxRetries} tentativas excedido:`, error);
+        }
+        throw error;
+      }
+
+      // Adiciona jitter para evitar tempestades de requisições simultâneas
+      const jitter = Math.random() * 200;
+      const sleepTime = Math.min(delay + jitter, maxDelayMs);
+
+      console.warn(`[${operationName}] Tentativa ${attempt} falhou (${errorCode || errorMessage}). Nova tentativa em ${Math.round(sleepTime)}ms...`);
+      await new Promise(resolve => setTimeout(resolve, sleepTime));
+      
+      delay *= backoffFactor;
+    }
   }
+
+  throw new Error(`[${operationName}] Falha após ${maxRetries} tentativas.`);
+}
+
+/**
+ * Re-conecta a rede do Firestore caso entre em estado de suspensão ou falha persistente
+ */
+export async function reconnectFirestore(): Promise<void> {
+  try {
+    const { disableNetwork, enableNetwork } = await import('firebase/firestore');
+    await disableNetwork(db);
+    await new Promise(r => setTimeout(r, 200));
+    await enableNetwork(db);
+    console.log('Rede do Firestore reconectada com sucesso.');
+  } catch (err) {
+    console.warn('Aviso ao reconectar rede do Firestore:', err);
+  }
+}
+
+// Teste inicial de conexão com o servidor Firestore com mecanismo de retry robusto
+export async function testFirestoreConnection(maxAttempts: number = 3): Promise<boolean> {
+  for (let i = 1; i <= maxAttempts; i++) {
+    try {
+      await getDocFromServer(doc(db, 'test', 'connection'));
+      return true;
+    } catch (error: any) {
+      if (i < maxAttempts) {
+        await new Promise(r => setTimeout(r, 500 * i));
+      }
+    }
+  }
+  return false;
 }
 
 // Error handling padronizado conforme diretrizes de arquitetura do Firestore

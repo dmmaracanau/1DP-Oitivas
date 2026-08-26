@@ -25,6 +25,8 @@ interface NavbarProps {
   onOpenWorkspaceModal: () => void;
   onOpenAuthModal: () => void;
   onOpenProfileModal: () => void;
+  onOpenHolidaysModal?: () => void;
+  isAdmin?: boolean;
   hasWorkspaceToken: boolean;
   syncStatus?: 'connected' | 'syncing' | 'offline';
   user: UserProfile | null;
@@ -41,6 +43,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenWorkspaceModal,
   onOpenAuthModal,
   onOpenProfileModal,
+  onOpenHolidaysModal,
+  isAdmin = false,
   hasWorkspaceToken,
   syncStatus = 'connected',
   user,
@@ -248,6 +252,19 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span className={`w-2 h-2 rounded-full ${hasWorkspaceToken ? 'bg-emerald-400 ring-2 ring-emerald-950' : 'bg-amber-400 ring-2 ring-amber-950'}`}></span>
               <span>Google Workspace</span>
             </button>
+
+            {/* Admin Feriados & Fins de Semana Button */}
+            {isAdmin && onOpenHolidaysModal && (
+              <button
+                id="admin-holidays-nav-btn"
+                onClick={onOpenHolidaysModal}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#2a0c16] hover:bg-[#3d1220] text-red-300 hover:text-white border-2 border-red-500/80 hover:border-red-400 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
+                title="Gerenciar Feriados e Fins de Semana (Admin)"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-red-400" />
+                <span>Feriados</span>
+              </button>
+            )}
 
             {/* Print Pauta Button */}
             <button

@@ -14,16 +14,19 @@ import { AuthModal } from './components/AuthModal';
 import { GoogleWorkspaceModal } from './components/GoogleWorkspaceModal';
 import { UserProfileModal } from './components/UserProfileModal';
 import { DelegadoSelectorModal } from './components/DelegadoSelectorModal';
+import { HolidaysModal } from './components/HolidaysModal';
 import { oitivaService } from './services/oitivaService';
 import { authService } from './services/authService';
 import { calendarService } from './services/calendarService';
 import { driveService } from './services/driveService';
-import { Oitiva, HearingStatus, UserProfile } from './types/oitiva';
+import { specialDateService } from './services/specialDateService';
+import { Oitiva, HearingStatus, UserProfile, CalendarSpecialDate } from './types/oitiva';
 import { CheckCircle2, Shield, AlertCircle, Info } from 'lucide-react';
 
 export default function App() {
   // State
   const [oitivas, setOitivas] = useState<Oitiva[]>([]);
+  const [specialDates, setSpecialDates] = useState<CalendarSpecialDate[]>([]);
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [currentView, setCurrentView] = useState<'month' | 'week' | 'day' | 'list'>('month');
   const [statusFilter, setStatusFilter] = useState<HearingStatus | 'TODOS'>('TODOS');
@@ -46,6 +49,8 @@ export default function App() {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState<boolean>(false);
   const [isDelegadosModalOpen, setIsDelegadosModalOpen] = useState<boolean>(false);
+  const [isHolidaysModalOpen, setIsHolidaysModalOpen] = useState<boolean>(false);
+  const [selectedDateForHolidays, setSelectedDateForHolidays] = useState<string | undefined>(undefined);
   const [workspaceInitialTab, setWorkspaceInitialTab] = useState<'calendar' | 'gmail' | 'drive'>('calendar');
   const [selectedOitivaForWorkspace, setSelectedOitivaForWorkspace] = useState<Oitiva | null>(null);
   
@@ -87,6 +92,26 @@ export default function App() {
     );
     return () => unsubOitivas();
   }, [user?.uid]);
+
+  // Special Dates real-time listener (Feriados e Fins de Semana no Firestore e RTDB)
+  useEffect(() => {
+    const unsubSpecial = specialDateService.subscribe(
+      (list) => {
+        setSpecialDates(list);
+      },
+      (err) => {
+        console.warn('Special dates sync notice:', err);
+      }
+    );
+    return () => unsubSpecial();
+  }, []);
+
+  const isAdmin = specialDateService.isUserAdmin(user);
+
+  const handleOpenHolidaysModal = (dateStr?: string) => {
+    setSelectedDateForHolidays(dateStr);
+    setIsHolidaysModalOpen(true);
+  };
 
   // Handlers
   const handleAddOitivaForDate = (dateStr: string) => {
@@ -262,6 +287,8 @@ export default function App() {
         onOpenWorkspaceModal={() => handleOpenWorkspace('calendar')}
         onOpenAuthModal={() => setIsAuthModalOpen(true)}
         onOpenProfileModal={() => setIsProfileModalOpen(true)}
+        onOpenHolidaysModal={() => handleOpenHolidaysModal()}
+        isAdmin={isAdmin}
         hasWorkspaceToken={hasWorkspaceToken}
         syncStatus={syncStatus}
         user={user}
@@ -286,6 +313,9 @@ export default function App() {
             onSelectOitiva={handleSelectOitiva}
             onAddOitivaForDate={handleAddOitivaForDate}
             statusFilter={statusFilter}
+            specialDates={specialDates}
+            onOpenHolidaysModal={handleOpenHolidaysModal}
+            isAdmin={isAdmin}
           />
         )}
 
@@ -297,6 +327,9 @@ export default function App() {
             onSelectOitiva={handleSelectOitiva}
             onAddOitivaForDate={handleAddOitivaForDate}
             statusFilter={statusFilter}
+            specialDates={specialDates}
+            onOpenHolidaysModal={handleOpenHolidaysModal}
+            isAdmin={isAdmin}
           />
         )}
 
@@ -309,6 +342,9 @@ export default function App() {
             onAddOitivaForDate={handleAddOitivaForDate}
             onQuickStatusChange={handleStatusChange}
             statusFilter={statusFilter}
+            specialDates={specialDates}
+            onOpenHolidaysModal={handleOpenHolidaysModal}
+            isAdmin={isAdmin}
           />
         )}
 
@@ -460,6 +496,19 @@ export default function App() {
         onSelectDelegado={(del) => {
           showToast(`Delegado(a) ${del.nome} selecionado(a)!`, 'info');
         }}
+      />
+
+      {/* Gestão de Feriados e Fins de Semana (Exclusivo Administrador) */}
+      <HolidaysModal
+        isOpen={isHolidaysModalOpen}
+        onClose={() => {
+          setIsHolidaysModalOpen(false);
+          setSelectedDateForHolidays(undefined);
+        }}
+        user={user}
+        specialDates={specialDates}
+        initialDate={selectedDateForHolidays}
+        onShowToast={showToast}
       />
 
       {/* Floating Toast Notification */}

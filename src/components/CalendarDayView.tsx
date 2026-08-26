@@ -12,10 +12,12 @@ import {
   User, 
   Calendar as CalendarIcon,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Sparkles
 } from 'lucide-react';
-import { Oitiva, HearingStatus } from '../types/oitiva';
+import { Oitiva, HearingStatus, CalendarSpecialDate } from '../types/oitiva';
 import { getRoleBadgeClasses, formatDateBR } from '../utils/formatters';
+import { specialDateService } from '../services/specialDateService';
 
 interface CalendarDayViewProps {
   oitivas: Oitiva[];
@@ -25,6 +27,9 @@ interface CalendarDayViewProps {
   onAddOitivaForDate: (dateStr: string) => void;
   onQuickStatusChange: (id: string, newStatus: HearingStatus) => void;
   statusFilter: HearingStatus | 'TODOS';
+  specialDates?: CalendarSpecialDate[];
+  onOpenHolidaysModal?: (dateStr?: string) => void;
+  isAdmin?: boolean;
 }
 
 export const CalendarDayView: React.FC<CalendarDayViewProps> = ({
@@ -34,11 +39,16 @@ export const CalendarDayView: React.FC<CalendarDayViewProps> = ({
   onSelectOitiva,
   onAddOitivaForDate,
   onQuickStatusChange,
-  statusFilter
+  statusFilter,
+  specialDates = [],
+  onOpenHolidaysModal,
+  isAdmin = false
 }) => {
   const dayStr = format(currentDate, 'yyyy-MM-dd');
   const prevDay = () => onDateChange(subDays(currentDate, 1));
   const nextDay = () => onDateChange(addDays(currentDate, 1));
+
+  const daySpecialDates = specialDateService.getSpecialDatesForDate(dayStr, currentDate.getDay(), specialDates);
 
   const dayOitivas = oitivas
     .filter(o => o.date === dayStr)
@@ -61,12 +71,25 @@ export const CalendarDayView: React.FC<CalendarDayViewProps> = ({
               </h2>
               <p className="text-xs text-purple-300 font-medium">
                 Pauta Diária • {dayOitivas.length} {dayOitivas.length === 1 ? 'oitiva agendada' : 'oitivas agendadas'}
+                {daySpecialDates.length > 0 && ` • ${daySpecialDates.map(x => x.title).join(', ')}`}
               </p>
             </div>
           </div>
 
           {/* Navigation */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => onOpenHolidaysModal && onOpenHolidaysModal(dayStr)}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#2b0c16] hover:bg-[#3d1220] text-red-300 hover:text-white text-xs font-black border-2 border-red-500/70 hover:border-red-400 transition-all cursor-pointer shadow-sm"
+                title="Gerenciar Feriados e Fins de Semana"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-red-400" />
+                <span>Feriados</span>
+              </button>
+            )}
+
             <button
               onClick={prevDay}
               className="p-2 rounded-xl bg-[#1d1633] hover:bg-[#2a204a] text-zinc-200 hover:text-white border-2 border-purple-700/60 hover:border-purple-400 transition-all cursor-pointer shadow-sm"
@@ -99,6 +122,47 @@ export const CalendarDayView: React.FC<CalendarDayViewProps> = ({
 
         {/* Timeline Content */}
         <div className="p-6 space-y-4 bg-[#0c0817]">
+          
+          {/* SPECIAL DATES / FERIADOS / FINS DE SEMANA BANNER CARD */}
+          {daySpecialDates.map((sp) => (
+            <div
+              key={sp.id}
+              onClick={() => {
+                if (isAdmin && onOpenHolidaysModal) {
+                  onOpenHolidaysModal(dayStr);
+                }
+              }}
+              className={`p-4 rounded-2xl bg-[#290812] border-2 border-red-500 text-white shadow-xl flex items-center justify-between gap-4 transition-all ${
+                isAdmin ? 'cursor-pointer hover:border-red-300 hover:bg-[#380b19]' : ''
+              }`}
+            >
+              <div className="flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-red-950 border-2 border-red-500 flex items-center justify-center text-red-300 shadow-md">
+                  <Sparkles className="w-5 h-5 text-red-400" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-base font-black text-red-400">
+                      {sp.title}
+                    </h3>
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider bg-red-950 text-red-300 border-2 border-red-500/80">
+                      {sp.type === 'fim_de_semana' ? 'Fim de Semana' : sp.type === 'ponto_facultativo' ? 'Ponto Facultativo' : 'Feriado Oficial'}
+                    </span>
+                  </div>
+                  {sp.description && (
+                    <p className="text-xs text-zinc-300 mt-0.5">{sp.description}</p>
+                  )}
+                </div>
+              </div>
+
+              {isAdmin && (
+                <span className="text-xs text-red-300 font-bold underline shrink-0">
+                  Gerenciar
+                </span>
+              )}
+            </div>
+          ))}
+
           {dayOitivas.length > 0 ? (
             dayOitivas.map((oitiva) => {
               const status = oitiva.status || 'Agendada';

@@ -91,6 +91,23 @@ export interface DuplicateUserGroup {
   users: UserProfile[];
 }
 
+export type SpecialDateType = 'feriado' | 'fim_de_semana' | 'ponto_facultativo' | 'outro';
+
+export interface CalendarSpecialDate {
+  id: string;
+  title: string; // Ex: "Feriado da Independência", "Domingo", "Sábado"
+  date?: string; // YYYY-MM-DD para feriados específicos
+  dayOfWeek?: number; // 0 = Domingo, 6 = Sábado para fins de semana recorrentes
+  type: SpecialDateType;
+  description?: string;
+  isRecurringWeekend?: boolean; // Se aplica automaticamente a todos os domingos ou sábados
+  enabled?: boolean;
+  color?: string; // Default 'red'
+  createdAt?: number;
+  updatedAt?: number;
+  createdBy?: string;
+}
+
 export interface MergeUsersResult {
   success: boolean;
   primaryUid: string;

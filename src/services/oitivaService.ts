@@ -16,7 +16,7 @@ import {
   onValue as rtdbOnValue,
   Unsubscribe as RTDBUnsubscribe
 } from 'firebase/database';
-import { db, rtdb, auth, handleFirestoreError, OperationType } from '../firebase';
+import { db, rtdb, auth, handleFirestoreError, OperationType, executeFirestoreWithRetry } from '../firebase';
 import { Oitiva } from '../types/oitiva';
 
 // Sanitiza payload para evitar valores undefined no Firestore
@@ -225,9 +225,12 @@ export const oitivaService = {
     const newItems = sortOitivas([payload, ...current.filter(x => x.id !== newId)]);
     setLocalCache(targetUid, newItems);
 
-    // 2. Gravação no Firestore em /users/{uid}/oitivas/{id}
+    // 2. Gravação no Firestore em /users/{uid}/oitivas/{id} com retry robusto
     try {
-      await setDoc(newDocRef, sanitized);
+      await executeFirestoreWithRetry(
+        () => setDoc(newDocRef, sanitized),
+        { operationName: `createOitiva:${newId}` }
+      );
     } catch (err: any) {
       console.warn("Erro ao salvar oitiva no Firestore:", err);
       handleFirestoreError(err, OperationType.CREATE, `users/${targetUid}/oitivas/${newId}`);
@@ -262,10 +265,13 @@ export const oitivaService = {
     const updated = current.map(item => item.id === id ? { ...item, ...updatePayload } : item);
     setLocalCache(targetUid, sortOitivas(updated));
 
-    // 2. Gravação no Firestore
+    // 2. Gravação no Firestore com retry robusto
     try {
       const docRef = doc(db, 'users', targetUid, 'oitivas', id);
-      await setDoc(docRef, updatePayload, { merge: true });
+      await executeFirestoreWithRetry(
+        () => setDoc(docRef, updatePayload, { merge: true }),
+        { operationName: `updateOitiva:${id}` }
+      );
     } catch (err: any) {
       console.warn("Erro ao atualizar oitiva no Firestore:", err);
       handleFirestoreError(err, OperationType.UPDATE, `users/${targetUid}/oitivas/${id}`);
@@ -293,10 +299,13 @@ export const oitivaService = {
     const updated = current.filter(item => item.id !== id);
     setLocalCache(targetUid, updated);
 
-    // 2. Exclusão no Firestore
+    // 2. Exclusão no Firestore com retry robusto
     try {
       const docRef = doc(db, 'users', targetUid, 'oitivas', id);
-      await deleteDoc(docRef);
+      await executeFirestoreWithRetry(
+        () => deleteDoc(docRef),
+        { operationName: `deleteOitiva:${id}` }
+      );
     } catch (err: any) {
       console.warn("Erro ao excluir do Firestore:", err);
       handleFirestoreError(err, OperationType.DELETE, `users/${targetUid}/oitivas/${id}`);
@@ -320,7 +329,10 @@ export const oitivaService = {
     const targetUid = currentUid || auth.currentUser?.uid || 'guest_default';
 
     try {
-      const snapshot = await getDocs(collection(db, 'users', targetUid, 'oitivas'));
+      const snapshot = await executeFirestoreWithRetry(
+        () => getDocs(collection(db, 'users', targetUid, 'oitivas')),
+        { operationName: `getAllOitivas:${targetUid}` }
+      );
       if (!snapshot.empty) {
         const items: Oitiva[] = [];
         snapshot.forEach((docSnap) => {

@@ -274,6 +274,61 @@
         }
       },
       "required": ["id", "nome"]
+    },
+    "specialDate": {
+      "title": "CalendarSpecialDate",
+      "description": "Feriados, pontos facultativos e demarcações de fins de semana aplicados globalmente a todos os usuários",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Identificador único da data especial"
+        },
+        "title": {
+          "type": "string",
+          "description": "Nome do feriado ou demarcação (Ex: Feriado da Independência, Domingo)",
+          "minLength": 1,
+          "maxLength": 150
+        },
+        "date": {
+          "type": "string",
+          "description": "Data no formato YYYY-MM-DD (opcional se for recorrente anual ou dia da semana)"
+        },
+        "dayOfWeek": {
+          "type": "number",
+          "description": "Dia da semana (0 para Domingo, 6 para Sábado)"
+        },
+        "type": {
+          "type": "string",
+          "description": "Tipo de demarcação",
+          "enum": ["feriado_nacional", "feriado_estadual", "feriado_municipal", "ponto_facultativo", "fim_de_semana", "custom"]
+        },
+        "color": {
+          "type": "string",
+          "description": "Código de cor hex ou classe de estilo"
+        },
+        "description": {
+          "type": "string",
+          "description": "Descrição ou fundamentação legal da data"
+        },
+        "isRecurring": {
+          "type": "boolean",
+          "description": "Se a data se repete todos os anos"
+        },
+        "createdAt": {
+          "type": "number",
+          "description": "Timestamp Unix de criação"
+        },
+        "updatedAt": {
+          "type": "number",
+          "description": "Timestamp Unix de atualização"
+        },
+        "createdBy": {
+          "type": "string",
+          "description": "E-mail ou UID do administrador que cadastrou"
+        }
+      },
+      "required": ["id", "title", "type"]
     }
   },
   "firestore": {
@@ -292,6 +347,10 @@
     "/delegados/{delegadoId}": {
       "schema": "delegado",
       "description": "Catálogo unificado de Delegados de Polícia Civil compartilhado entre todos os usuários"
+    },
+    "/special_dates/{dateId}": {
+      "schema": "specialDate",
+      "description": "Demarcação de feriados oficiais e fins de semana sincronizada para todos os usuários"
     },
     "/system_config/{configId}": {
       "schema": "object",

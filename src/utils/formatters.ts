@@ -127,6 +127,8 @@ Informamos que está agendada a sua oitiva referente ao procedimento:
 
 Por favor, compareça portando documento de identificação oficial com foto (RG ou CNH), e apresente essa notificação.
 
+*POR FAVOR CONFIRMAR RECEBIMENTO*
+
 Caso haja impossibilidade justificada de comparecimento, favor entrar em contato.`;
 }
 

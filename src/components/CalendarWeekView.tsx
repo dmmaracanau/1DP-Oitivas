@@ -9,9 +9,10 @@ import {
   isToday 
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Clock, Plus, Video, Calendar as CalendarIcon } from 'lucide-react';
-import { Oitiva, HearingStatus } from '../types/oitiva';
+import { ChevronLeft, ChevronRight, Clock, Plus, Video, Calendar as CalendarIcon, Sparkles } from 'lucide-react';
+import { Oitiva, HearingStatus, CalendarSpecialDate } from '../types/oitiva';
 import { getFirstName } from '../utils/formatters';
+import { specialDateService } from '../services/specialDateService';
 
 interface CalendarWeekViewProps {
   oitivas: Oitiva[];
@@ -20,6 +21,9 @@ interface CalendarWeekViewProps {
   onSelectOitiva: (oitiva: Oitiva) => void;
   onAddOitivaForDate: (dateStr: string) => void;
   statusFilter: HearingStatus | 'TODOS';
+  specialDates?: CalendarSpecialDate[];
+  onOpenHolidaysModal?: (dateStr?: string) => void;
+  isAdmin?: boolean;
 }
 
 export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
@@ -28,7 +32,10 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
   onDateChange,
   onSelectOitiva,
   onAddOitivaForDate,
-  statusFilter
+  statusFilter,
+  specialDates = [],
+  onOpenHolidaysModal,
+  isAdmin = false
 }) => {
   const start = startOfWeek(currentDate, { weekStartsOn: 0 });
   const end = endOfWeek(currentDate, { weekStartsOn: 0 });
@@ -56,11 +63,23 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
               <h2 className="text-lg sm:text-xl font-black text-white tracking-tight">
                 Semana de {format(start, "dd 'de' MMMM", { locale: ptBR })} a {format(end, "dd 'de' MMMM", { locale: ptBR })}
               </h2>
-              <p className="text-[11px] sm:text-xs text-purple-300 font-medium">Visão Semanal • Auto-dimensionamento de Pautas</p>
+              <p className="text-[11px] sm:text-xs text-purple-300 font-medium">Visão Semanal • Pautas, Feriados e Fins de Semana</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => onOpenHolidaysModal && onOpenHolidaysModal()}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#2b0c16] hover:bg-[#3d1220] text-red-300 hover:text-white text-xs font-black border-2 border-red-500/70 hover:border-red-400 transition-all cursor-pointer shadow-sm"
+                title="Gerenciar Feriados e Fins de Semana"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-red-400" />
+                <span>Feriados & Fins de Semana</span>
+              </button>
+            )}
+
             <button
               onClick={prevWeek}
               className="p-2 rounded-xl bg-[#1d1633] hover:bg-[#2a204a] text-zinc-200 hover:text-white border-2 border-purple-700/60 hover:border-purple-400 transition-all cursor-pointer shadow-sm"
@@ -89,22 +108,28 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
           {days.map((day) => {
             const dayStr = format(day, 'yyyy-MM-dd');
             const dayOitivas = filteredOitivas.filter(o => o.date === dayStr).sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+            const daySpecialDates = specialDateService.getSpecialDatesForDate(dayStr, day.getDay(), specialDates);
             const isCurrentDay = isToday(day);
+            const isWeekendDay = day.getDay() === 0 || day.getDay() === 6;
 
             return (
               <div
                 key={dayStr}
                 className={`p-2.5 sm:p-3 flex flex-col justify-between transition-colors ${
-                  isCurrentDay ? 'bg-purple-950/40 ring-2 ring-purple-400 z-10' : 'bg-[#141026] hover:bg-[#1a1432]'
+                  isCurrentDay 
+                    ? 'bg-purple-950/40 ring-2 ring-purple-400 z-10' 
+                    : isWeekendDay 
+                    ? 'bg-[#180f24] hover:bg-[#1f1330]' 
+                    : 'bg-[#141026] hover:bg-[#1a1432]'
                 }`}
               >
                 <div>
                   <div className="flex items-center justify-between pb-2 mb-2 border-b-2 border-purple-700/40">
                     <div>
-                      <p className="text-[11px] font-black uppercase tracking-wider text-purple-300">
+                      <p className={`text-[11px] font-black uppercase tracking-wider ${isWeekendDay ? 'text-red-400' : 'text-purple-300'}`}>
                         {format(day, 'EEE', { locale: ptBR })}
                       </p>
-                      <p className={`text-base font-black ${isCurrentDay ? 'text-purple-200' : 'text-white'}`}>
+                      <p className={`text-base font-black ${isCurrentDay ? 'text-purple-200' : isWeekendDay ? 'text-red-300' : 'text-white'}`}>
                         {format(day, 'dd/MM')}
                       </p>
                     </div>
@@ -131,8 +156,46 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
                     </div>
                   </div>
 
-                  {/* Day items */}
+                  {/* Day items (Special Dates / Feriados / Fins de semana + Oitivas) */}
                   <div className="space-y-1.5 py-1">
+                    
+                    {/* CARDS DE FERIADOS E FINS DE SEMANA (EM VERMELHO) */}
+                    {daySpecialDates.map((sp) => (
+                      <div
+                        key={sp.id}
+                        onClick={() => {
+                          if (isAdmin && onOpenHolidaysModal) {
+                            onOpenHolidaysModal(dayStr);
+                          }
+                        }}
+                        className={`p-2 rounded-xl border-2 transition-all shadow-md bg-[#240810] border-2 border-red-500 text-white ${
+                          isAdmin ? 'cursor-pointer hover:scale-[1.02] hover:border-red-300 hover:bg-[#340c18]' : 'cursor-default'
+                        }`}
+                        title={`${sp.title} • ${sp.type === 'ponto_facultativo' ? 'Ponto Facultativo' : sp.type === 'fim_de_semana' ? 'Fim de Semana' : 'Feriado'}${sp.description ? ` (${sp.description})` : ''}${isAdmin ? ' • Clique para gerenciar' : ''}`}
+                      >
+                        <div className="flex items-center justify-between text-[10px] mb-1">
+                          <span className="font-black text-red-300 flex items-center gap-1 font-mono">
+                            <Sparkles className="w-2.5 h-2.5 text-red-400" />
+                            {sp.type === 'fim_de_semana' ? 'Fim de Semana' : 'Feriado'}
+                          </span>
+                          <span className="text-[8px] font-bold px-1 py-0.2 rounded bg-red-950 text-red-300 border border-red-500/50 uppercase">
+                            {sp.type === 'ponto_facultativo' ? 'Facultativo' : sp.type === 'fim_de_semana' ? 'Não Útil' : 'Oficial'}
+                          </span>
+                        </div>
+
+                        {/* Nome do Feriado / Domingo / Sábado em Vermelho */}
+                        <div className="flex items-center justify-between gap-1 flex-wrap pt-0.5">
+                          <p className="text-xs font-black text-red-400 tracking-tight leading-snug truncate flex-1 min-w-[50px]">
+                            {sp.title}
+                          </p>
+                          <span className="text-[8px] sm:text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider shrink-0 bg-red-950 text-red-300 border-2 border-red-500/80">
+                            {sp.type === 'fim_de_semana' ? 'fim de semana' : 'feriado'}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Oitivas agendadas */}
                     {dayOitivas.map((oitiva) => {
                       const status = oitiva.status || 'Agendada';
                       const firstName = getFirstName(oitiva.personName) || oitiva.personName || 'Depoente';
@@ -196,7 +259,7 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
                       );
                     })}
 
-                    {dayOitivas.length === 0 && (
+                    {dayOitivas.length === 0 && daySpecialDates.length === 0 && (
                       <div 
                         onClick={() => onAddOitivaForDate(dayStr)}
                         className="py-6 text-center text-purple-300 font-bold hover:text-white text-xs border-2 border-dashed border-purple-700/50 hover:border-purple-400 bg-purple-950/20 hover:bg-purple-950/40 rounded-xl cursor-pointer transition-all"
@@ -207,8 +270,13 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
                   </div>
                 </div>
 
-                <div className="pt-2 text-right">
-                  <span className="text-[10px] text-zinc-400 font-bold">
+                <div className="pt-2 flex items-center justify-between text-[10px]">
+                  {daySpecialDates.length > 0 ? (
+                    <span className="text-red-400 font-bold">
+                      {daySpecialDates.length === 1 ? daySpecialDates[0].title : `${daySpecialDates.length} marcas`}
+                    </span>
+                  ) : <span></span>}
+                  <span className="text-zinc-400 font-bold">
                     {dayOitivas.length} {dayOitivas.length === 1 ? 'oitiva' : 'oitivas'}
                   </span>
                 </div>
@@ -221,3 +289,4 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
     </div>
   );
 };
+

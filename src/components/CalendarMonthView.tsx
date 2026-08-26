@@ -21,8 +21,10 @@ import {
   FileText, 
   Calendar as CalendarIcon
 } from 'lucide-react';
-import { Oitiva, HearingStatus } from '../types/oitiva';
+import { Oitiva, HearingStatus, CalendarSpecialDate } from '../types/oitiva';
 import { getFirstName } from '../utils/formatters';
+import { specialDateService } from '../services/specialDateService';
+import { Sparkles } from 'lucide-react';
 
 interface CalendarMonthViewProps {
   oitivas: Oitiva[];
@@ -31,6 +33,9 @@ interface CalendarMonthViewProps {
   onSelectOitiva: (oitiva: Oitiva) => void;
   onAddOitivaForDate: (dateStr: string) => void;
   statusFilter: HearingStatus | 'TODOS';
+  specialDates?: CalendarSpecialDate[];
+  onOpenHolidaysModal?: (dateStr?: string) => void;
+  isAdmin?: boolean;
 }
 
 export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
@@ -39,7 +44,10 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
   onDateChange,
   onSelectOitiva,
   onAddOitivaForDate,
-  statusFilter
+  statusFilter,
+  specialDates = [],
+  onOpenHolidaysModal,
+  isAdmin = false
 }) => {
   const [hoveredDay, setHoveredDay] = useState<string | null>(null);
 
@@ -82,13 +90,25 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
                 {format(currentDate, 'MMMM yyyy', { locale: ptBR })}
               </h2>
               <p className="text-[11px] sm:text-xs text-purple-300 font-medium">
-                Grade Mensal • Dimensionamento Dinâmico de Pautas
+                Grade Mensal • Pautas, Feriados e Fins de Semana
               </p>
             </div>
           </div>
 
           {/* Navigation Buttons */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => onOpenHolidaysModal && onOpenHolidaysModal()}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#2b0c16] hover:bg-[#3d1220] text-red-300 hover:text-white text-xs font-black border-2 border-red-500/70 hover:border-red-400 transition-all cursor-pointer shadow-sm"
+                title="Gerenciar Feriados e Fins de Semana"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-red-400" />
+                <span>Feriados & Fins de Semana</span>
+              </button>
+            )}
+
             <button
               id="month-prev-btn"
               onClick={prevMonth}
@@ -123,7 +143,7 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
             <div
               key={dayName}
               className={`py-2.5 text-center text-[11px] sm:text-xs font-black tracking-wider uppercase ${
-                idx === 0 || idx === 6 ? 'text-purple-300' : 'text-zinc-200'
+                idx === 0 || idx === 6 ? 'text-red-400' : 'text-zinc-200'
               }`}
             >
               {dayName}
@@ -138,7 +158,9 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
             const isCurrentMonth = isSameMonth(day, currentDate);
             const isCurrentDay = isToday(day);
             const dayOitivas = getOitivasForDay(day);
+            const daySpecialDates = specialDateService.getSpecialDatesForDate(dayStr, day.getDay(), specialDates);
             const isHovered = hoveredDay === dayStr;
+            const isWeekendDay = day.getDay() === 0 || day.getDay() === 6;
 
             return (
               <div
@@ -146,7 +168,11 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
                 onMouseEnter={() => setHoveredDay(dayStr)}
                 onMouseLeave={() => setHoveredDay(null)}
                 className={`min-h-[90px] sm:min-h-[105px] p-1.5 sm:p-2 transition-colors flex flex-col justify-between group relative ${
-                  !isCurrentMonth ? 'bg-[#080511]/90 opacity-40' : 'bg-[#141026] hover:bg-[#1a1432]'
+                  !isCurrentMonth 
+                    ? 'bg-[#080511]/90 opacity-40' 
+                    : isWeekendDay
+                    ? 'bg-[#180f24] hover:bg-[#1f1330]'
+                    : 'bg-[#141026] hover:bg-[#1a1432]'
                 } ${isCurrentDay ? 'ring-2 ring-purple-400 bg-purple-950/40 z-10' : ''}`}
               >
                 {/* Day Header: Canto Superior Esquerdo (Dia 01) e Canto Superior Direito (Qtd 05) */}
@@ -157,7 +183,9 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
                       isCurrentDay
                         ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-950 font-black ring-2 ring-purple-300'
                         : isCurrentMonth
-                        ? 'text-white font-extrabold bg-[#1e163b] border-2 border-purple-500/60 shadow-sm'
+                        ? isWeekendDay
+                          ? 'text-red-300 font-extrabold bg-[#2a0c16] border-2 border-red-500/70 shadow-sm'
+                          : 'text-white font-extrabold bg-[#1e163b] border-2 border-purple-500/60 shadow-sm'
                         : 'text-zinc-500 font-semibold'
                     }`}
                   >
@@ -192,8 +220,47 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
                   </div>
                 </div>
 
-                {/* Scheduled Hearings (Oitivas) List: Sem barra de scroll interna, expande a célula para acomodar todos os itens */}
+                {/* Scheduled Hearings & Special Dates List: Sem barra de scroll interna, expande a célula */}
                 <div className="flex-1 space-y-1.5 py-1">
+                  
+                  {/* CARDS DE FERIADOS E FINS DE SEMANA (EM VERMELHO) */}
+                  {daySpecialDates.map((sp) => (
+                    <div
+                      key={sp.id}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isAdmin && onOpenHolidaysModal) {
+                          onOpenHolidaysModal(dayStr);
+                        }
+                      }}
+                      className={`p-1.5 sm:p-2 rounded-xl text-left border-2 transition-all shadow-md bg-[#240810] border-2 border-red-500 text-white ${
+                        isAdmin ? 'cursor-pointer hover:scale-[1.02] hover:border-red-300 hover:bg-[#340c18]' : 'cursor-default'
+                      }`}
+                      title={`${sp.title} • ${sp.type === 'ponto_facultativo' ? 'Ponto Facultativo' : sp.type === 'fim_de_semana' ? 'Fim de Semana' : 'Feriado'}${sp.description ? ` (${sp.description})` : ''}${isAdmin ? ' • Clique para gerenciar' : ''}`}
+                    >
+                      <div className="flex items-center justify-between text-[10px] leading-none mb-1">
+                        <span className="font-black text-red-300 flex items-center gap-1 font-mono">
+                          <Sparkles className="w-2.5 h-2.5 text-red-400" />
+                          {sp.type === 'fim_de_semana' ? 'Fim de Semana' : 'Feriado'}
+                        </span>
+                        <span className="text-[8px] font-bold px-1 py-0.2 rounded bg-red-950 text-red-300 border border-red-500/50 uppercase">
+                          {sp.type === 'ponto_facultativo' ? 'Facultativo' : sp.type === 'fim_de_semana' ? 'Não Útil' : 'Oficial'}
+                        </span>
+                      </div>
+
+                      {/* Nome do Feriado / Domingo / Sábado em Vermelho */}
+                      <div className="flex items-center justify-between gap-1 flex-wrap pt-0.5">
+                        <p className="text-xs font-black text-red-400 tracking-tight leading-tight truncate flex-1 min-w-[50px]">
+                          {sp.title}
+                        </p>
+                        <span className="text-[8px] sm:text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider shrink-0 bg-red-950 text-red-300 border-2 border-red-500/80">
+                          {sp.type === 'fim_de_semana' ? 'fim de semana' : 'feriado'}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Oitivas agendadas */}
                   {dayOitivas.map((oitiva) => {
                     const status = oitiva.status || 'Agendada';
                     const firstName = getFirstName(oitiva.personName) || oitiva.personName || 'Depoente';
@@ -259,7 +326,7 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
                 </div>
 
                 {/* Empty day prompt on hover */}
-                {dayOitivas.length === 0 && isHovered && isCurrentMonth && (
+                {dayOitivas.length === 0 && daySpecialDates.length === 0 && isHovered && isCurrentMonth && (
                   <div
                     onClick={() => onAddOitivaForDate(dayStr)}
                     className="text-[10px] text-purple-300 font-bold hover:text-white text-center py-1 rounded-lg bg-purple-950/60 border-2 border-dashed border-purple-500/50 cursor-pointer transition-colors mt-auto"
@@ -292,10 +359,14 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
               <span className="w-2.5 h-2.5 rounded-full bg-rose-400 border border-white/30"></span>
               <span>Cancelada</span>
             </div>
+            <div className="flex items-center gap-1.5 font-semibold text-red-300">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-500 border border-red-300"></span>
+              <span>Feriados & Fins de Semana</span>
+            </div>
           </div>
 
           <div className="text-xs text-purple-200 font-medium">
-            Ambiente Oficial • Pautas dinâmicas e auto-ajustáveis
+            Ambiente Oficial • Sincronizado no Firebase
           </div>
         </div>
 

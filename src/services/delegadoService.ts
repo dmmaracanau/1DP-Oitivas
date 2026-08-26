@@ -8,7 +8,7 @@ import {
   writeBatch
 } from 'firebase/firestore';
 import { ref, set, remove, onValue } from 'firebase/database';
-import { db, rtdb, auth, handleFirestoreError, OperationType } from '../firebase';
+import { db, rtdb, auth, handleFirestoreError, OperationType, executeFirestoreWithRetry } from '../firebase';
 
 export interface DelegadoInfo {
   id: string;
@@ -265,10 +265,13 @@ export const delegadoService = {
     updatedList.sort((a, b) => a.nome.localeCompare(b.nome));
     notifySubscribers(updatedList);
 
-    // Persiste no Firestore compartilhado
+    // Persiste no Firestore compartilhado com retry robusto
     try {
       const dRef = doc(db, 'delegados', id);
-      await setDoc(dRef, sanitized, { merge: true });
+      await executeFirestoreWithRetry(
+        () => setDoc(dRef, sanitized, { merge: true }),
+        { operationName: `addOrUpdateDelegado:${id}` }
+      );
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, `delegados/${id}`);
     }
@@ -296,10 +299,13 @@ export const delegadoService = {
     const updatedList = currentList.filter(d => d.id !== id);
     notifySubscribers(updatedList);
 
-    // Remove do Firestore compartilhado
+    // Remove do Firestore compartilhado com retry robusto
     try {
       const dRef = doc(db, 'delegados', id);
-      await deleteDoc(dRef);
+      await executeFirestoreWithRetry(
+        () => deleteDoc(dRef),
+        { operationName: `removeDelegado:${id}` }
+      );
     } catch (err) {
       handleFirestoreError(err, OperationType.DELETE, `delegados/${id}`);
     }
