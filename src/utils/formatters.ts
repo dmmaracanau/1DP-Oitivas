@@ -243,3 +243,203 @@ export function formatIntimationNumberDisplay(raw?: string | null): string {
   return clean;
 }
 
+export interface OitivaScheduleAttempt {
+  order: number; // 1, 2, 3...
+  label: string; // "1ª Intimação (Agendamento Inicial)", "2ª Intimação (1º Reagendamento)", etc.
+  date: string; // YYYY-MM-DD
+  time: string; // HH:mm
+  dateFormatted: string; // "10/08/2026"
+  timeFormatted: string; // "09:30h"
+  description?: string; // "Remarcado", "Ausência injustificada", etc.
+  isCurrent?: boolean;
+}
+
+/**
+ * Extrai e consolida todas as datas e horários designados para uma oitiva,
+ * incluindo o agendamento inicial, todas as remarcações gravadas no histórico
+ * e oitivas anteriores vinculadas ao mesmo declarante/procedimento.
+ */
+export function extractOitivaScheduleAttempts(
+  oitiva: {
+    date: string;
+    time?: string;
+    status?: HearingStatus | string;
+    personName?: string;
+    cpf?: string;
+    procedureNumber?: string;
+    history?: Array<{
+      action: string;
+      previousDate?: string;
+      previousTime?: string;
+      newDate?: string;
+      newTime?: string;
+      timestamp?: number;
+      reason?: string;
+    }>;
+    createdAt?: number;
+    updatedAt?: number;
+  },
+  allOitivas?: Array<{
+    id: string;
+    date: string;
+    time?: string;
+    personName?: string;
+    cpf?: string;
+    procedureNumber?: string;
+    status?: HearingStatus | string;
+    createdAt?: number;
+    updatedAt?: number;
+  }>
+): OitivaScheduleAttempt[] {
+  if (!oitiva) return [];
+
+  const rawAppointments: Array<{
+    date: string;
+    time: string;
+    timestamp: number;
+    reason?: string;
+    isCurrent?: boolean;
+  }> = [];
+
+  // 1. Processar histórico da oitiva
+  if (Array.isArray(oitiva.history) && oitiva.history.length > 0) {
+    const sortedHistory = [...oitiva.history].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+
+    sortedHistory.forEach((h, idx) => {
+      if (h.previousDate && (h.action === 'remarcada' || h.action === 'data_alterada')) {
+        rawAppointments.push({
+          date: h.previousDate,
+          time: h.previousTime || '09:00',
+          timestamp: (h.timestamp || Date.now()) - (sortedHistory.length - idx + 1) * 1000,
+          reason: h.reason || 'Data anterior (Remarcada)'
+        });
+      }
+      if (h.newDate && (h.action === 'remarcada' || h.action === 'data_alterada')) {
+        rawAppointments.push({
+          date: h.newDate,
+          time: h.newTime || oitiva.time || '09:00',
+          timestamp: h.timestamp || Date.now(),
+          reason: h.reason || (h.action === 'remarcada' ? 'Remarcação solicitada' : 'Alteração de data')
+        });
+      }
+    });
+  }
+
+  // 2. Se houver allOitivas, buscar oitivas associadas à mesma pessoa / CPF / procedimento
+  if (allOitivas && allOitivas.length > 0) {
+    const cleanName = (oitiva.personName || '').trim().toLowerCase();
+    const cleanCpf = (oitiva.cpf || '').replace(/\D/g, '');
+    const procNum = (oitiva.procedureNumber || '').trim();
+
+    allOitivas.forEach(other => {
+      const otherName = (other.personName || '').trim().toLowerCase();
+      const otherCpf = (other.cpf || '').replace(/\D/g, '');
+      const otherProc = (other.procedureNumber || '').trim();
+
+      const matchName = cleanName && otherName && cleanName === otherName;
+      const matchCpf = cleanCpf && otherCpf && cleanCpf === otherCpf;
+      const matchProc = procNum && otherProc && procNum === otherProc;
+
+      if ((matchCpf || matchName) && (matchProc || !procNum || !otherProc)) {
+        if (other.date) {
+          rawAppointments.push({
+            date: other.date,
+            time: other.time || '09:00',
+            timestamp: other.createdAt || other.updatedAt || 0,
+            reason: other.status === 'Não Compareceu' ? 'Ausência anterior' : `Designação (${other.status || 'Remarcada'})`
+          });
+        }
+      }
+    });
+  }
+
+  // 3. Adiciona a data e hora atual da oitiva
+  if (oitiva.date) {
+    rawAppointments.push({
+      date: oitiva.date,
+      time: oitiva.time || '09:00',
+      timestamp: oitiva.updatedAt || Date.now() + 1000,
+      reason: oitiva.status === 'Não Compareceu' ? 'Ausência constatada' : 'Designação Atual',
+      isCurrent: true
+    });
+  }
+
+  // 4. Deduplicar por chave (date + time) preservando flag isCurrent
+  const uniqueMap = new Map<string, {
+    date: string;
+    time: string;
+    timestamp: number;
+    reason?: string;
+    isCurrent?: boolean;
+  }>();
+
+  rawAppointments.forEach(item => {
+    if (!item.date) return;
+    const cleanTime = (item.time || '09:00').trim().replace(/h$/i, '');
+    const key = `${item.date}_${cleanTime}`;
+    const existing = uniqueMap.get(key);
+    if (!existing) {
+      uniqueMap.set(key, {
+        date: item.date,
+        time: cleanTime,
+        timestamp: item.timestamp,
+        reason: item.reason,
+        isCurrent: item.isCurrent
+      });
+    } else {
+      if (item.isCurrent) {
+        existing.isCurrent = true;
+        if (item.reason) existing.reason = item.reason;
+      }
+    }
+  });
+
+  const distinctList = Array.from(uniqueMap.values());
+  if (distinctList.length === 0) {
+    const today = new Date().toISOString().split('T')[0];
+    distinctList.push({
+      date: oitiva.date || today,
+      time: (oitiva.time || '09:00').replace(/h$/i, ''),
+      timestamp: Date.now(),
+      isCurrent: true,
+      reason: 'Designação Atual'
+    });
+  }
+
+  // Ordenar cronologicamente por date e time
+  distinctList.sort((a, b) => {
+    const dComp = a.date.localeCompare(b.date);
+    if (dComp !== 0) return dComp;
+    return (a.time || '00:00').localeCompare(b.time || '00:00');
+  });
+
+  // Marca o último como isCurrent se nenhum foi explicitamente marcado
+  const hasCurrent = distinctList.some(x => x.isCurrent);
+  if (!hasCurrent && distinctList.length > 0) {
+    distinctList[distinctList.length - 1].isCurrent = true;
+  }
+
+  // 5. Construir os labels ordinais e contagem de notificações/tentativas (apenas data e contagem)
+  const total = distinctList.length;
+  return distinctList.map((item, idx) => {
+    const order = idx + 1;
+    let label = '';
+    if (total === 1) {
+      label = '1ª Notificação';
+    } else {
+      label = `${order}ª Notificação`;
+    }
+
+    return {
+      order,
+      label,
+      date: item.date,
+      time: item.time,
+      dateFormatted: formatDateBR(item.date),
+      timeFormatted: item.time ? `${item.time}h` : 'horário aprazado',
+      description: undefined,
+      isCurrent: item.isCurrent || idx === total - 1
+    };
+  });
+}
+

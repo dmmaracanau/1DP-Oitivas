@@ -445,6 +445,15 @@ export async function getMandadoPdfFile(data: MandadoPdfData, fileName?: string)
   return new File([blob], name, { type: 'application/pdf' });
 }
 
+export interface TermoScheduleAttempt {
+  order: number;
+  label: string;
+  dateFormatted: string;
+  timeFormatted: string;
+  description?: string;
+  isCurrent?: boolean;
+}
+
 export interface TermoNaoComparecimentoPdfData {
   procedureRef: string;
   personName: string;
@@ -455,6 +464,7 @@ export interface TermoNaoComparecimentoPdfData {
   role?: string;
   dateFormatted: string;
   timeFormatted: string;
+  scheduleAttempts?: TermoScheduleAttempt[];
   termoDateFormatted?: string;
   motivoCategoria: string;
   motivoDetalhado: string;
@@ -471,7 +481,7 @@ export interface TermoNaoComparecimentoPdfData {
 
 /**
  * Direct PDF vector generator for "TERMO DE NÃO COMPARECIMENTO"
- * With official PCCE header, legal text, reason details, and signatures for 1 DPC and 2 OIPs.
+ * With official PCCE header, legal text, reason details, full notifications/reschedules list, and signatures for 1 DPC and 2 OIPs.
  */
 export async function generateTermoNaoComparecimentoPdf(data: TermoNaoComparecimentoPdfData): Promise<jsPDF> {
   const doc = new jsPDF({
@@ -555,7 +565,7 @@ export async function generateTermoNaoComparecimentoPdf(data: TermoNaoComparecim
   currentY = renderFormattedParagraph(doc, introSpans, marginX, currentY, contentWidth, 4.4);
   currentY += 2.5;
 
-  // 4. Box de Qualificação do Intimado
+  // 4. Box de Qualificação do Intimado com Todas as Datas/Horários e Notificações Tentadas
   doc.setFillColor(248, 248, 248);
   doc.setDrawColor(180, 180, 180);
   doc.setLineWidth(0.3);
@@ -585,9 +595,34 @@ export async function generateTermoNaoComparecimentoPdf(data: TermoNaoComparecim
   boxTextY += 4.2;
   doc.text(`Endereço: ${addrStr}`, marginX + 3, boxTextY);
 
-  boxTextY += 4.2;
-  doc.setFont('helvetica', 'bold');
-  doc.text(`Data e Horário Designados: ${data.dateFormatted} às ${timeDisplay}`, marginX + 3, boxTextY);
+  const attempts = data.scheduleAttempts && data.scheduleAttempts.length > 0
+    ? data.scheduleAttempts
+    : [{
+        order: 1,
+        label: '1ª Notificação',
+        dateFormatted: data.dateFormatted,
+        timeFormatted: timeDisplay,
+        isCurrent: true
+      }];
+
+  if (attempts.length > 1) {
+    boxTextY += 4.5;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.text(`Datas Designadas (${attempts.length} Notificações):`, marginX + 3, boxTextY);
+
+    attempts.forEach((att) => {
+      boxTextY += 3.8;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.text(`• ${att.label}: ${att.dateFormatted} às ${att.timeFormatted}`, marginX + 5, boxTextY);
+    });
+  } else {
+    boxTextY += 4.2;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.text(`Data e Horário Designados: ${data.dateFormatted} às ${timeDisplay}`, marginX + 3, boxTextY);
+  }
 
   const boxHeight = (boxTextY - boxStartY) + 3.5;
   doc.roundedRect(marginX, boxStartY, contentWidth, boxHeight, 1.5, 1.5, 'S');
@@ -616,16 +651,17 @@ export async function generateTermoNaoComparecimentoPdf(data: TermoNaoComparecim
   ];
 
   currentY = renderFormattedParagraph(doc, closingSpans, marginX, currentY, contentWidth, 4.4);
-  currentY += 3;
+  currentY += 3.5;
 
-  // 7. Local e Data
+  // 7. Local e Data (alinhado à direita para não conflitar com a assinatura central da Autoridade Policial)
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   const localDataStr = `Maracanaú/CE, ${termoDataStr}.`;
-  doc.text(localDataStr, pageWidth / 2, currentY, { align: 'center' });
+  doc.text(localDataStr, pageWidth - marginX, currentY, { align: 'right' });
 
   // 8. Seção de Assinaturas (1 DPC no centro superior + 2 OIPs abaixo lado a lado)
-  currentY += 12;
+  // Espaçamento vertical amplo (18mm) garantindo que a rubrica/assinatura não sobreponha a data nem o texto
+  currentY += 18;
 
   // DPC (Centro)
   const dpcLineWidth = 85;

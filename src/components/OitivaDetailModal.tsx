@@ -791,6 +791,7 @@ export const OitivaDetailModal: React.FC<OitivaDetailModalProps> = ({
         isOpen={isTermoModalOpen}
         onClose={() => setIsTermoModalOpen(false)}
         oitiva={oitiva}
+        allOitivas={allOitivas}
         user={user}
         onMarkStatusAsAbsent={async (id) => {
           await onStatusChange(id, 'Não Compareceu');

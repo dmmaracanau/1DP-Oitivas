@@ -12,14 +12,19 @@ import {
   Calendar as CalendarIcon, 
   Clock, 
   UserX,
-  FileCheck
+  FileCheck,
+  Plus,
+  Trash2,
+  History
 } from 'lucide-react';
 import { Oitiva, UserProfile } from '../types/oitiva';
 import { delegadoService, DelegadoInfo } from '../services/delegadoService';
 import { 
   formatDateExtenso, 
   formatAddressCompleto, 
-  formatDateBR 
+  formatDateBR,
+  extractOitivaScheduleAttempts,
+  OitivaScheduleAttempt
 } from '../utils/formatters';
 import { 
   TermoNaoComparecimentoPdfData, 
@@ -31,6 +36,7 @@ interface TermoNaoComparecimentoModalProps {
   isOpen: boolean;
   onClose: () => void;
   oitiva: Oitiva | null;
+  allOitivas?: Oitiva[];
   user?: UserProfile | null;
   onMarkStatusAsAbsent?: (oitivaId: string) => Promise<void> | void;
 }
@@ -77,10 +83,18 @@ export const TermoNaoComparecimentoModal: React.FC<TermoNaoComparecimentoModalPr
   isOpen,
   onClose,
   oitiva,
+  allOitivas = [],
   user,
   onMarkStatusAsAbsent
 }) => {
   const [delegadosList, setDelegadosList] = useState<DelegadoInfo[]>([]);
+
+  // Histórico consolidado de agendamentos e notificações tentadas
+  const [scheduleAttempts, setScheduleAttempts] = useState<OitivaScheduleAttempt[]>([]);
+  const [showAddAttemptForm, setShowAddAttemptForm] = useState(false);
+  const [newAttemptDate, setNewAttemptDate] = useState('');
+  const [newAttemptTime, setNewAttemptTime] = useState('09:00');
+  const [newAttemptReason, setNewAttemptReason] = useState('Remarcação anterior');
 
   // Motivo
   const [selectedMotivoCategoria, setSelectedMotivoCategoria] = useState<string>(MOTIVOS_PREDEFINIDOS[0].value);
@@ -121,6 +135,11 @@ export const TermoNaoComparecimentoModal: React.FC<TermoNaoComparecimentoModalPr
   // Preenche dados padrão quando a oitiva é aberta
   useEffect(() => {
     if (!oitiva) return;
+
+    // Extrai todo o histórico de agendamentos e notificações tentadas
+    const attempts = extractOitivaScheduleAttempts(oitiva, allOitivas);
+    setScheduleAttempts(attempts);
+    setShowAddAttemptForm(false);
 
     // Motivo default
     setSelectedMotivoCategoria(MOTIVOS_PREDEFINIDOS[0].value);
@@ -173,6 +192,57 @@ export const TermoNaoComparecimentoModal: React.FC<TermoNaoComparecimentoModalPr
   }, [oitiva, user, isOpen]);
 
   if (!isOpen || !oitiva) return null;
+
+  const handleAddAttempt = () => {
+    if (!newAttemptDate) return;
+    const cleanTime = (newAttemptTime || '09:00').trim().replace(/h$/i, '');
+    const newEntry: OitivaScheduleAttempt = {
+      order: scheduleAttempts.length + 1,
+      label: `Notificação`,
+      date: newAttemptDate,
+      time: cleanTime,
+      dateFormatted: formatDateBR(newAttemptDate),
+      timeFormatted: `${cleanTime}h`,
+      isCurrent: false
+    };
+
+    const combined = [...scheduleAttempts, newEntry].sort((a, b) => {
+      const d = a.date.localeCompare(b.date);
+      if (d !== 0) return d;
+      return (a.time || '00:00').localeCompare(b.time || '00:00');
+    });
+
+    const total = combined.length;
+    const reindexed = combined.map((item, idx) => {
+      const ord = idx + 1;
+      return {
+        ...item,
+        order: ord,
+        label: `${ord}ª Notificação`,
+        isCurrent: idx === total - 1
+      };
+    });
+
+    setScheduleAttempts(reindexed);
+    setNewAttemptDate('');
+    setShowAddAttemptForm(false);
+  };
+
+  const handleRemoveAttempt = (idxToRemove: number) => {
+    if (scheduleAttempts.length <= 1) return;
+    const filtered = scheduleAttempts.filter((_, idx) => idx !== idxToRemove);
+    const total = filtered.length;
+    const reindexed = filtered.map((item, idx) => {
+      const ord = idx + 1;
+      return {
+        ...item,
+        order: ord,
+        label: `${ord}ª Notificação`,
+        isCurrent: idx === total - 1
+      };
+    });
+    setScheduleAttempts(reindexed);
+  };
 
   const handleSelectMotivo = (value: string) => {
     setSelectedMotivoCategoria(value);
@@ -230,6 +300,14 @@ export const TermoNaoComparecimentoModal: React.FC<TermoNaoComparecimentoModalPr
       role: oitiva.role || 'Declarante',
       dateFormatted: formatDateExtenso(oitiva.date),
       timeFormatted: oitiva.time || '',
+      scheduleAttempts: scheduleAttempts.map(att => ({
+        order: att.order,
+        label: att.label,
+        dateFormatted: att.dateFormatted,
+        timeFormatted: att.timeFormatted,
+        description: att.description,
+        isCurrent: att.isCurrent
+      })),
       termoDateFormatted: formatDateExtenso(termoDate),
       motivoCategoria: selectedMotivoCategoria,
       motivoDetalhado: motivoDetalhado.trim(),
@@ -275,13 +353,23 @@ export const TermoNaoComparecimentoModal: React.FC<TermoNaoComparecimentoModalPr
 
   const handleCopyText = () => {
     const data = buildPdfData();
+    const attemptsSummary = scheduleAttempts.length > 1
+      ? `DATAS E HORÁRIOS DESIGNADOS (${scheduleAttempts.length} tentativas de notificação/agendamento):\n` +
+        scheduleAttempts.map(a => `• ${a.label}: ${a.dateFormatted} às ${a.timeFormatted}${a.description ? ` (${a.description})` : ''}`).join('\n')
+      : `Data e Horário Designados: ${data.dateFormatted} às ${data.timeFormatted}h`;
+
     const textToCopy = `POLÍCIA CIVIL DO ESTADO DO CEARÁ
 1ª DELEGACIA METROPOLITANA DE MARACANAÚ
 
 TERMO DE NÃO COMPARECIMENTO
 Procedimento: ${data.procedureRef}
 
-Aos ${data.termoDateFormatted}, nesta cidade de Maracanaú/CE, no Cartório da 1ª Delegacia Metropolitana de Maracanaú, sob a presidência do(a) Delegado(a) de Polícia Civil ${data.dpcName.toUpperCase()} (${data.dpcMatricula || 'DPC'}), com a presença dos Oficiais de Investigação Policial (OIP) adiante assinados, foi formalmente CERTIFICADA A AUSÊNCIA E NÃO COMPARECIMENTO da pessoa de ${data.personName.toUpperCase()}, CPF: ${data.cpf || 'Não informado'}, qualificada como ${data.role}, que estava devidamente intimada para comparecer no dia ${data.dateFormatted} às ${data.timeFormatted}h.
+Aos ${data.termoDateFormatted}, nesta cidade de Maracanaú/CE, no Cartório da 1ª Delegacia Metropolitana de Maracanaú, sob a presidência do(a) Delegado(a) de Polícia Civil ${data.dpcName.toUpperCase()} (${data.dpcMatricula || 'DPC'}), com a presença dos Oficiais de Investigação Policial (OIP) adiante assinados, foi formalmente CERTIFICADA A AUSÊNCIA E NÃO COMPARECIMENTO da pessoa de ${data.personName.toUpperCase()}, CPF: ${data.cpf || 'Não informado'}, qualificada como ${data.role}.
+
+${scheduleAttempts.length > 1
+  ? `DATAS DESIGNADAS (${scheduleAttempts.length} Notificações):\n` +
+    scheduleAttempts.map(a => `• ${a.label}: ${a.dateFormatted} às ${a.timeFormatted}`).join('\n')
+  : `Data e Horário Designados: ${data.dateFormatted} às ${data.timeFormatted}h`}
 
 MOTIVO / CIRCUNSTÂNCIAS:
 ${data.motivoCategoria}
@@ -308,7 +396,7 @@ ${data.oip1Cargo}                ${data.oip2Cargo}`;
   return (
     <div 
       className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-sm overflow-y-auto no-print"
-      // Note: No backdrop click close per explicit user requirement - closes only via X or action buttons
+      // Closes only via close buttons (X or Fechar)
     >
       <div className="bg-[#120f1e] border-2 border-purple-600/70 rounded-3xl w-[95vw] max-w-[95vw] h-[95vh] max-h-[95vh] flex flex-col shadow-2xl shadow-purple-950/90 my-auto overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         
@@ -372,6 +460,111 @@ ${data.oip1Cargo}                ${data.oip2Cargo}`;
                   Proc: {oitiva.procedureType || 'Proc.'} nº {oitiva.procedureNumber || 'S/N'}
                 </span>
               </div>
+            </div>
+
+            {/* Seção Nova: Histórico de Notificações */}
+            <div className="bg-[#181329] p-4 rounded-2xl border-2 border-purple-800/50 space-y-3">
+              <div className="flex items-center justify-between pb-1 border-b border-purple-900/30">
+                <div className="flex items-center gap-2">
+                  <History className="w-4 h-4 text-purple-400" />
+                  <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                    Notificações Designadas ({scheduleAttempts.length} {scheduleAttempts.length === 1 ? 'tentativa' : 'tentativas'})
+                  </h3>
+                </div>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                  scheduleAttempts.length > 1 
+                    ? 'bg-purple-950 text-purple-300 border-purple-500/50' 
+                    : 'bg-zinc-800 text-zinc-300 border-zinc-700'
+                }`}>
+                  {scheduleAttempts.length} {scheduleAttempts.length === 1 ? 'Notificação' : 'Notificações'}
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                {scheduleAttempts.map((att, idx) => (
+                  <div 
+                    key={idx}
+                    className="flex items-center justify-between p-2.5 rounded-xl border bg-[#120d20] border-purple-900/30 transition-all"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span className="w-6 h-6 rounded-lg flex items-center justify-center font-black text-[10px] bg-purple-600/30 text-purple-200 border border-purple-500/30">
+                        {att.order}ª
+                      </span>
+                      <div>
+                        <span className="font-bold text-white text-xs">
+                          {att.label}: {att.dateFormatted} às {att.timeFormatted}
+                        </span>
+                      </div>
+                    </div>
+
+                    {scheduleAttempts.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveAttempt(idx)}
+                        className="p-1.5 text-zinc-400 hover:text-rose-300 hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer"
+                        title="Remover esta data do termo"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Botão para adicionar notificação anterior manualmente se necessário */}
+              {!showAddAttemptForm ? (
+                <button
+                  type="button"
+                  onClick={() => setShowAddAttemptForm(true)}
+                  className="flex items-center gap-1.5 text-[11px] text-purple-300 hover:text-white font-semibold py-1.5 px-2.5 rounded-lg bg-[#140e24] hover:bg-purple-950/80 border border-purple-700/40 transition-colors cursor-pointer mt-1"
+                >
+                  <Plus className="w-3.5 h-3.5 text-purple-400" />
+                  <span>Adicionar Data de Notificação</span>
+                </button>
+              ) : (
+                <div className="bg-[#120d20] p-3 rounded-xl border border-purple-700/60 space-y-2 mt-2">
+                  <span className="text-[10px] font-bold text-purple-300 block uppercase">
+                    Adicionar Data de Notificação:
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[9px] text-zinc-400 mb-0.5">Data:</label>
+                      <input 
+                        type="date"
+                        value={newAttemptDate}
+                        onChange={(e) => setNewAttemptDate(e.target.value)}
+                        className="w-full bg-[#0a0714] border border-purple-700/70 rounded-lg px-2 py-1 text-xs text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] text-zinc-400 mb-0.5">Horário:</label>
+                      <input 
+                        type="time"
+                        value={newAttemptTime}
+                        onChange={(e) => setNewAttemptTime(e.target.value)}
+                        className="w-full bg-[#0a0714] border border-purple-700/70 rounded-lg px-2 py-1 text-xs text-white"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 justify-end pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setShowAddAttemptForm(false)}
+                      className="px-2.5 py-1 text-[11px] text-zinc-400 hover:text-zinc-200"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAddAttempt}
+                      disabled={!newAttemptDate}
+                      className="px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white text-[11px] font-bold rounded-lg disabled:opacity-50 cursor-pointer"
+                    >
+                      Adicionar
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Seção 1: Motivo do Não Comparecimento */}
@@ -613,8 +806,8 @@ ${data.oip1Cargo}                ${data.oip2Cargo}`;
                 Aos <strong className="font-bold">{formatDateExtenso(termoDate)}</strong>, nesta cidade de Maracanaú, Estado do Ceará, no Cartório da <strong className="font-bold">1ª DELEGACIA METROPOLITANA DE MARACANAÚ</strong>, sob a presidência do(a) Delegado(a) de Polícia Civil <strong className="font-bold">{(dpcName.trim() || 'FERNANDO MORETTO NACHTIGALL').toUpperCase()}</strong>{dpcMatricula.trim() ? ` (${dpcMatricula.trim()})` : ''}, com a presença dos Oficiais de Investigação Policial (OIP) adiante qualificados e assinados, foi formalmente <u className="font-black"><strong>CERTIFICADA A AUSÊNCIA E NÃO COMPARECIMENTO</strong></u> da seguinte pessoa intimada:
               </p>
 
-              {/* 4. Box de Qualificação do Intimado */}
-              <div className="bg-[#f8f8f8] border border-zinc-300 rounded-md p-2.5 text-[9.5px] text-black leading-relaxed space-y-0.5 my-2">
+              {/* 4. Box de Qualificação do Intimado com Todas as Datas/Notificações */}
+              <div className="bg-[#f8f8f8] border border-zinc-300 rounded-md p-2.5 text-[9.5px] text-black leading-relaxed space-y-1 my-2">
                 <div>
                   <span className="font-bold">INTIMANDO(A): </span>
                   <span className="font-bold uppercase">{oitiva.personName || 'NÃO INFORMADO'}</span>
@@ -633,9 +826,38 @@ ${data.oip1Cargo}                ${data.oip2Cargo}`;
                 <div>
                   <span>Endereço: {formatAddressCompleto(oitiva) || 'Endereço não informado'}</span>
                 </div>
-                <div>
-                  <span className="font-bold">Data e Horário Designados: </span>
-                  <span>{formatDateExtenso(oitiva.date)} às {oitiva.time ? `${oitiva.time}h` : 'horário aprazado'}</span>
+
+                <div className="pt-1 border-t border-zinc-200">
+                  <div className="flex items-center justify-between mb-0.5">
+                    <span className="font-bold text-black text-[9.5px]">
+                      {scheduleAttempts.length > 1 
+                        ? `Datas Designadas (${scheduleAttempts.length} Notificações):`
+                        : 'Data e Horário Designados:'
+                      }
+                    </span>
+                    {scheduleAttempts.length > 1 && (
+                      <span className="text-[8px] font-bold px-1.5 py-0.2 rounded bg-purple-100 text-purple-900 border border-purple-300">
+                        {scheduleAttempts.length} notificações
+                      </span>
+                    )}
+                  </div>
+
+                  {scheduleAttempts.length > 1 ? (
+                    <div className="space-y-0.5 pl-1.5 mt-0.5">
+                      {scheduleAttempts.map((att, idx) => (
+                        <div key={idx} className="text-[9px] text-black">
+                          <span>
+                            • <strong className="font-semibold">{att.label}: </strong>
+                            {att.dateFormatted} às {att.timeFormatted}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-[9.5px] text-black">
+                      <span className="font-bold">{formatDateExtenso(oitiva.date)}</span> às <span className="font-bold">{oitiva.time ? `${oitiva.time}h` : 'horário aprazado'}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -656,13 +878,13 @@ ${data.oip1Cargo}                ${data.oip2Cargo}`;
                 Do que, para constar e produzir os regulares efeitos legais e jurídicos nos autos do procedimento em epígrafe, determinou a Autoridade Policial a lavratura do presente <strong className="font-bold">TERMO DE NÃO COMPARECIMENTO</strong>, o qual lido e achado conforme, vai devidamente assinado pela Autoridade Policial e pelos Oficiais de Investigação Policial presentes.
               </p>
 
-              {/* 7. Local e Data */}
-              <p className="text-center text-[10px] text-black mt-2.5">
+              {/* 7. Local e Data (Alinhado à direita para padrão oficial e evitar sobreposição com assinatura) */}
+              <p className="text-right text-[10px] text-black mt-3 mb-6">
                 Maracanaú/CE, {formatDateExtenso(termoDate)}.
               </p>
 
               {/* 8. Signatures Section */}
-              <div className="pt-4 space-y-4 text-center">
+              <div className="pt-2 space-y-4 text-center">
                 {/* DPC Signature */}
                 <div className="w-56 mx-auto">
                   <div className="w-full border-b border-black mb-1"></div>
@@ -774,3 +996,4 @@ ${data.oip1Cargo}                ${data.oip2Cargo}`;
     </div>
   );
 };
+
