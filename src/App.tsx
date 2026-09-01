@@ -30,7 +30,14 @@ export default function App() {
   const [oitivas, setOitivas] = useState<Oitiva[]>([]);
   const [specialDates, setSpecialDates] = useState<CalendarSpecialDate[]>([]);
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
-  const [currentView, setCurrentView] = useState<'month' | 'week' | 'day' | 'list'>('week');
+  // Default view: 'month' on desktop (>= 768px), 'week' on mobile (< 768px)
+  const [currentView, setCurrentView] = useState<'month' | 'week' | 'day' | 'list'>(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 768 ? 'month' : 'week';
+    }
+    return 'month';
+  });
+  const [userSelectedView, setUserSelectedView] = useState<boolean>(false);
   const [statusFilter, setStatusFilter] = useState<HearingStatus | 'TODOS'>('TODOS');
   const [searchQuery, setSearchQuery] = useState<string>('');
   
@@ -162,6 +169,26 @@ export default function App() {
     setSelectedDateForHolidays(dateStr);
     setIsHolidaysModalOpen(true);
   };
+
+  // View Change Handler
+  const handleViewChange = (view: 'month' | 'week' | 'day' | 'list') => {
+    setUserSelectedView(true);
+    setCurrentView(view);
+  };
+
+  // DLP: Responsive default view adaptation (Desktop: month, Mobile: week)
+  useEffect(() => {
+    const handleResize = () => {
+      // If user has not manually clicked/selected a specific view mode, adapt intelligently to screen size
+      if (!userSelectedView) {
+        const isDesktop = window.innerWidth >= 768;
+        setCurrentView(isDesktop ? 'month' : 'week');
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [userSelectedView]);
 
   // Handlers
   const handleAddOitivaForDate = (dateStr: string) => {
@@ -409,7 +436,7 @@ export default function App() {
       {/* Top Navigation */}
       <Navbar
         currentView={currentView}
-        onViewChange={setCurrentView}
+        onViewChange={handleViewChange}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         onOpenNewModal={handleOpenNewModal}
