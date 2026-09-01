@@ -71,7 +71,7 @@ export const OitivaListView: React.FC<OitivaListViewProps> = ({
   });
 
   return (
-    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pb-12">
+    <div className="w-full max-w-[98.5%] 2xl:max-w-[1920px] mx-auto px-1 sm:px-2.5 lg:px-4 pb-10">
       <div className="bg-[#0e0a1a] border-2 border-purple-700/60 rounded-3xl overflow-hidden shadow-2xl shadow-purple-950/60">
         
         {/* Table Toolbar */}

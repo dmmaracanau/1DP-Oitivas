@@ -12,7 +12,8 @@ import {
   RefreshCw,
   Sun,
   Flame,
-  Info
+  Info,
+  RotateCcw
 } from 'lucide-react';
 import { CalendarSpecialDate, SpecialDateType, UserProfile } from '../types/oitiva';
 import { specialDateService, isUserAdmin, DEFAULT_FERIADOS_MARACANAU } from '../services/specialDateService';
@@ -43,6 +44,7 @@ export const HolidaysModal: React.FC<HolidaysModalProps> = ({
   const [date, setDate] = useState<string>(defaultSelectedDate || new Date().toISOString().split('T')[0]);
   const [type, setType] = useState<SpecialDateType>('feriado');
   const [description, setDescription] = useState<string>('');
+  const [isRecurringAnnual, setIsRecurringAnnual] = useState<boolean>(true);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>('');
 
@@ -60,6 +62,7 @@ export const HolidaysModal: React.FC<HolidaysModalProps> = ({
     setDate(item.date || new Date().toISOString().split('T')[0]);
     setType(item.type || 'feriado');
     setDescription(item.description || '');
+    setIsRecurringAnnual(item.isRecurringAnnual !== false);
   };
 
   const handleCancelEdit = () => {
@@ -68,6 +71,7 @@ export const HolidaysModal: React.FC<HolidaysModalProps> = ({
     setDate(defaultSelectedDate || new Date().toISOString().split('T')[0]);
     setType('feriado');
     setDescription('');
+    setIsRecurringAnnual(true);
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -95,6 +99,7 @@ export const HolidaysModal: React.FC<HolidaysModalProps> = ({
         date,
         type,
         description: description.trim(),
+        isRecurringAnnual,
         enabled: true,
         color: 'red'
       }, user);
@@ -234,81 +239,51 @@ export const HolidaysModal: React.FC<HolidaysModalProps> = ({
         {/* Content Body */}
         <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-6">
 
-          {/* Configuração Rápida de Fins de Semana (Domingo e Sábado) */}
-          <div className="bg-[#18112e] border-2 border-purple-700/50 rounded-2xl p-4 space-y-3">
+          {/* Informativo de Fins de Semana (Tonalidade Vermelha Escura) */}
+          <div className="bg-[#18112e] border-2 border-red-900/60 rounded-2xl p-4 space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-purple-800/40">
               <div className="flex items-center gap-2">
                 <Sun className="w-4 h-4 text-amber-400" />
                 <h3 className="text-xs font-black text-white uppercase tracking-wider">
-                  Cards Automáticos de Fins de Semana (Em Vermelho)
+                  Destaque Visual de Fins de Semana (Tonalidade Vermelha)
                 </h3>
               </div>
               <span className="text-[11px] text-zinc-400">
-                Exibe automaticamente o card no domingo e/ou sábado
+                Sábados e domingos sinalizados sem poluição visual de cards
               </span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-              {/* Card Domingo */}
-              <div className="flex items-center justify-between p-3 rounded-xl bg-[#220a10] border-2 border-red-500/70">
+              {/* Info Domingo */}
+              <div className="flex items-center justify-between p-3 rounded-xl bg-[#220a10] border-2 border-red-800/70">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-lg bg-red-950 border border-red-500/80 flex items-center justify-center font-black text-red-400 text-xs font-mono">
                     DOM
                   </div>
                   <div>
-                    <p className="text-xs font-black text-red-400">Card "Domingo"</p>
-                    <p className="text-[10px] text-zinc-300">Exibido em todos os domingos</p>
+                    <p className="text-xs font-black text-red-300">Domingos</p>
+                    <p className="text-[10px] text-zinc-400">Fundo e cabeçalho em vermelho escuro</p>
                   </div>
                 </div>
-
-                {isAdmin ? (
-                  <button
-                    type="button"
-                    onClick={() => handleToggleWeekend(0, isSundayEnabled)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all border cursor-pointer ${
-                      isSundayEnabled
-                        ? 'bg-red-600 hover:bg-red-500 text-white border-red-300 shadow-md'
-                        : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-400 border-zinc-600'
-                    }`}
-                  >
-                    {isSundayEnabled ? 'Ativado' : 'Desativado'}
-                  </button>
-                ) : (
-                  <span className="text-xs font-bold text-red-300 bg-red-950/80 px-2.5 py-1 rounded border border-red-500/40">
-                    {isSundayEnabled ? 'Ativo' : 'Inativo'}
-                  </span>
-                )}
+                <span className="text-[10px] font-black uppercase text-red-300 bg-red-950/90 px-2.5 py-1 rounded-md border border-red-500/50">
+                  Dia Não Útil
+                </span>
               </div>
 
-              {/* Card Sábado */}
-              <div className="flex items-center justify-between p-3 rounded-xl bg-[#220a10] border-2 border-red-500/70">
+              {/* Info Sábado */}
+              <div className="flex items-center justify-between p-3 rounded-xl bg-[#220a10] border-2 border-red-800/70">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-lg bg-red-950 border border-red-500/80 flex items-center justify-center font-black text-red-400 text-xs font-mono">
                     SÁB
                   </div>
                   <div>
-                    <p className="text-xs font-black text-red-400">Card "Sábado"</p>
-                    <p className="text-[10px] text-zinc-300">Exibido em todos os sábados</p>
+                    <p className="text-xs font-black text-red-300">Sábados</p>
+                    <p className="text-[10px] text-zinc-400">Fundo e cabeçalho em vermelho escuro</p>
                   </div>
                 </div>
-
-                {isAdmin ? (
-                  <button
-                    type="button"
-                    onClick={() => handleToggleWeekend(6, isSaturdayEnabled)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all border cursor-pointer ${
-                      isSaturdayEnabled
-                        ? 'bg-red-600 hover:bg-red-500 text-white border-red-300 shadow-md'
-                        : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-400 border-zinc-600'
-                    }`}
-                  >
-                    {isSaturdayEnabled ? 'Ativado' : 'Desativado'}
-                  </button>
-                ) : (
-                  <span className="text-xs font-bold text-red-300 bg-red-950/80 px-2.5 py-1 rounded border border-red-500/40">
-                    {isSaturdayEnabled ? 'Ativo' : 'Inativo'}
-                  </span>
-                )}
+                <span className="text-[10px] font-black uppercase text-red-300 bg-red-950/90 px-2.5 py-1 rounded-md border border-red-500/50">
+                  Dia Não Útil
+                </span>
               </div>
             </div>
           </div>
@@ -382,7 +357,7 @@ export const HolidaysModal: React.FC<HolidaysModalProps> = ({
                 </div>
 
                 {/* Descrição / Observação */}
-                <div className="sm:col-span-9 space-y-1">
+                <div className="sm:col-span-12 space-y-1">
                   <label className="text-[11px] font-bold text-zinc-300 block">
                     Descrição ou Base Legal (Opcional)
                   </label>
@@ -395,8 +370,40 @@ export const HolidaysModal: React.FC<HolidaysModalProps> = ({
                   />
                 </div>
 
+                {/* Opção de Feriado Recorrente (Repetir todo ano) */}
+                <div className="sm:col-span-8 bg-[#120a24] border-2 border-purple-600/50 rounded-xl p-3 flex items-center justify-between gap-2.5 shadow-sm">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border ${
+                      isRecurringAnnual ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300' : 'bg-zinc-800 border-zinc-700 text-zinc-400'
+                    }`}>
+                      <RotateCcw className="w-4 h-4 text-emerald-400" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-black text-white">
+                        Repetir Todo Ano (Feriado Recorrente)
+                      </p>
+                      <p className="text-[10px] text-purple-300 truncate">
+                        {isRecurringAnnual 
+                          ? 'Se repetirá automaticamente nesta mesma data nos anos futuros' 
+                          : 'Válido apenas para o ano selecionado'}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsRecurringAnnual(!isRecurringAnnual)}
+                    className={`px-3 py-1.5 rounded-xl text-[11px] font-black border-2 transition-all cursor-pointer shrink-0 ${
+                      isRecurringAnnual
+                        ? 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-300 shadow-md shadow-emerald-950'
+                        : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-400 border-zinc-600'
+                    }`}
+                  >
+                    {isRecurringAnnual ? '✓ Repetir Todo Ano' : 'Apenas Este Ano'}
+                  </button>
+                </div>
+
                 {/* Botão de Ação */}
-                <div className="sm:col-span-3 flex items-end">
+                <div className="sm:col-span-4 flex items-end">
                   <button
                     type="submit"
                     disabled={isSubmitting}
@@ -471,6 +478,15 @@ export const HolidaysModal: React.FC<HolidaysModalProps> = ({
                         <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-red-950 text-red-300 border border-red-500/60 shrink-0">
                           {item.type === 'ponto_facultativo' ? 'Ponto Facultativo' : 'Feriado'}
                         </span>
+                        {item.isRecurringAnnual !== false ? (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-500/50 flex items-center gap-1 shrink-0">
+                            <RotateCcw className="w-2.5 h-2.5" /> Todo ano
+                          </span>
+                        ) : (
+                          <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700 shrink-0">
+                            Data pontual
+                          </span>
+                        )}
                       </div>
                       {item.description && (
                         <p className="text-[11px] text-zinc-300 truncate" title={item.description}>
@@ -478,7 +494,7 @@ export const HolidaysModal: React.FC<HolidaysModalProps> = ({
                         </p>
                       )}
                       <p className="text-[10px] text-purple-300 font-medium">
-                        Data completa: {item.date ? formatDateBR(item.date) : 'Data recorrente'}
+                        Data base: {item.date ? formatDateBR(item.date) : 'Data recorrente'}
                       </p>
                     </div>
                   </div>

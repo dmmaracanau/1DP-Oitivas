@@ -28,6 +28,7 @@ interface CalendarDayViewProps {
   onSelectOitiva: (oitiva: Oitiva) => void;
   onAddOitivaForDate: (dateStr: string) => void;
   onQuickStatusChange: (id: string, newStatus: HearingStatus) => void;
+  onToggleIntimationSent?: (id: string, nextSent: boolean) => void;
   onOpenWhatsApp?: (oitiva: Oitiva) => void;
   statusFilter: HearingStatus | 'TODOS';
   specialDates?: CalendarSpecialDate[];
@@ -42,6 +43,7 @@ export const CalendarDayView: React.FC<CalendarDayViewProps> = ({
   onSelectOitiva,
   onAddOitivaForDate,
   onQuickStatusChange,
+  onToggleIntimationSent,
   onOpenWhatsApp,
   statusFilter,
   specialDates = [],
@@ -52,7 +54,10 @@ export const CalendarDayView: React.FC<CalendarDayViewProps> = ({
   const prevDay = () => onDateChange(subDays(currentDate, 1));
   const nextDay = () => onDateChange(addDays(currentDate, 1));
 
-  const daySpecialDates = specialDateService.getSpecialDatesForDate(dayStr, currentDate.getDay(), specialDates);
+  const isWeekendDay = currentDate.getDay() === 0 || currentDate.getDay() === 6;
+  const daySpecialDates = specialDateService
+    .getSpecialDatesForDate(dayStr, currentDate.getDay(), specialDates)
+    .filter(sp => sp.type !== 'fim_de_semana' && !sp.isRecurringWeekend);
 
   const dayOitivas = oitivas
     .filter(o => o.date === dayStr)
@@ -60,20 +65,39 @@ export const CalendarDayView: React.FC<CalendarDayViewProps> = ({
     .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
 
   return (
-    <div className="max-w-4xl mx-auto px-4 lg:px-8 pb-12">
-      <div className="bg-[#0e0a1b] border-2 border-purple-600/70 rounded-3xl overflow-hidden shadow-2xl shadow-purple-950/80">
+    <div className="w-full max-w-5xl 2xl:max-w-6xl mx-auto px-1 sm:px-2.5 lg:px-4 pb-10">
+      <div className={`border-2 rounded-3xl overflow-hidden shadow-2xl transition-all ${
+        isWeekendDay 
+          ? 'bg-[#18080f] border-red-800/80 shadow-red-950/80' 
+          : 'bg-[#0e0a1b] border-purple-600/70 shadow-purple-950/80'
+      }`}>
         
         {/* Day Header */}
-        <div className="flex flex-col sm:flex-row items-center justify-between p-5 border-b-2 border-purple-700/60 bg-[#151026] gap-4">
+        <div className={`flex flex-col sm:flex-row items-center justify-between p-5 border-b-2 gap-4 ${
+          isWeekendDay 
+            ? 'border-red-800/60 bg-[#220912]' 
+            : 'border-purple-700/60 bg-[#151026]'
+        }`}>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-purple-950 border-2 border-purple-400/80 flex items-center justify-center text-purple-200 shadow-md">
+            <div className={`w-10 h-10 rounded-2xl border-2 flex items-center justify-center shadow-md ${
+              isWeekendDay 
+                ? 'bg-red-950 border-red-500/80 text-red-200' 
+                : 'bg-purple-950 border-purple-400/80 text-purple-200'
+            }`}>
               <CalendarIcon className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight capitalize">
-                {format(currentDate, "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
-              </h2>
-              <p className="text-xs text-purple-300 font-medium">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight capitalize">
+                  {format(currentDate, "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                </h2>
+                {isWeekendDay && (
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider bg-red-950 text-red-300 border border-red-500/70">
+                    Fim de Semana (Não Útil)
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-zinc-300 font-medium">
                 Pauta Diária • {dayOitivas.length} {dayOitivas.length === 1 ? 'oitiva agendada' : 'oitivas agendadas'}
                 {daySpecialDates.length > 0 && ` • ${daySpecialDates.map(x => x.title).join(', ')}`}
               </p>
@@ -202,6 +226,7 @@ export const CalendarDayView: React.FC<CalendarDayViewProps> = ({
                   oitiva={oitiva}
                   onSelectOitiva={onSelectOitiva}
                   onQuickStatusChange={onQuickStatusChange}
+                  onToggleIntimationSent={onToggleIntimationSent}
                   onOpenWhatsApp={onOpenWhatsApp}
                 >
                   <div

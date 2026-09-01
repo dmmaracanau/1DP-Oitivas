@@ -26,6 +26,7 @@ interface OitivaTooltipProps {
   children: React.ReactNode;
   onSelectOitiva?: (oitiva: Oitiva) => void;
   onQuickStatusChange?: (id: string, newStatus: HearingStatus) => void;
+  onToggleIntimationSent?: (id: string, nextSent: boolean) => void;
   onOpenWhatsApp?: (oitiva: Oitiva) => void;
   disabled?: boolean;
 }
@@ -86,57 +87,99 @@ const STATUS_LIST: {
   }
 ];
 
+// Global timestamp to support warm hover transitions (instant preview when hovering across cards)
+let globalLastTooltipCloseTime = 0;
+
+type Placement = 'right' | 'left' | 'bottom' | 'top';
+
+interface TooltipCoords {
+  top?: number;
+  bottom?: number;
+  left?: number;
+  right?: number;
+  placement: Placement;
+  arrowOffset?: number;
+}
+
 export const OitivaTooltip: React.FC<OitivaTooltipProps> = ({
   oitiva,
   children,
   onSelectOitiva,
   onQuickStatusChange,
+  onToggleIntimationSent,
   onOpenWhatsApp,
   disabled = false
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [coords, setCoords] = useState<{ top?: number; bottom?: number; left: number; placement: 'top' | 'bottom' }>({
-    left: 0,
-    placement: 'bottom'
+  const [coords, setCoords] = useState<TooltipCoords>({
+    placement: 'right'
   });
   const [statusChanging, setStatusChanging] = useState<HearingStatus | null>(null);
 
   const triggerRef = useRef<HTMLDivElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
   const enterTimerRef = useRef<any>(null);
   const leaveTimerRef = useRef<any>(null);
 
-  const TOOLTIP_WIDTH = 360;
+  const TOOLTIP_WIDTH = 340;
+  const ESTIMATED_HEIGHT = 370;
 
-  const updatePosition = () => {
-    if (!triggerRef.current) return;
+  const calculateSmartPosition = (): TooltipCoords => {
+    if (!triggerRef.current) return { placement: 'bottom', left: 14, top: 100 };
     const rect = triggerRef.current.getBoundingClientRect();
     const windowW = window.innerWidth;
     const windowH = window.innerHeight;
 
-    // Calcular posição horizontal (centralizado ou ajustado às bordas da tela)
-    let left = rect.left + rect.width / 2 - TOOLTIP_WIDTH / 2;
-    if (left < 14) left = 14;
-    if (left + TOOLTIP_WIDTH > windowW - 14) left = windowW - TOOLTIP_WIDTH - 14;
-
-    // Decidir se posiciona acima ou abaixo
+    const spaceRight = windowW - rect.right;
+    const spaceLeft = rect.left;
     const spaceBelow = windowH - rect.bottom;
     const spaceAbove = rect.top;
-    const estimatedHeight = 360;
 
-    if (spaceBelow < estimatedHeight && spaceAbove > spaceBelow) {
-      // Posicionar Acima
-      setCoords({
-        bottom: windowH - rect.top + 8,
-        left,
-        placement: 'top'
-      });
-    } else {
-      // Posicionar Abaixo
-      setCoords({
+    // Prioridade 1: Posicionar à DIREITA se houver espaço (não obstrui navegação vertical de oitivas no calendário)
+    if (spaceRight >= TOOLTIP_WIDTH + 14) {
+      const topPos = Math.max(12, Math.min(rect.top + (rect.height / 2) - 100, windowH - ESTIMATED_HEIGHT - 16));
+      return {
+        placement: 'right',
+        left: rect.right + 10,
+        top: topPos,
+        arrowOffset: Math.max(20, Math.min(rect.top + (rect.height / 2) - topPos, ESTIMATED_HEIGHT - 30))
+      };
+    }
+
+    // Prioridade 2: Posicionar à ESQUERDA se houver espaço (para colunas no lado direito do calendário)
+    if (spaceLeft >= TOOLTIP_WIDTH + 14) {
+      const topPos = Math.max(12, Math.min(rect.top + (rect.height / 2) - 100, windowH - ESTIMATED_HEIGHT - 16));
+      return {
+        placement: 'left',
+        left: rect.left - TOOLTIP_WIDTH - 10,
+        top: topPos,
+        arrowOffset: Math.max(20, Math.min(rect.top + (rect.height / 2) - topPos, ESTIMATED_HEIGHT - 30))
+      };
+    }
+
+    // Prioridade 3: Se as laterais forem estreitas (telas pequenas ou visão diária cheia), posicionar ABAIXO ou ACIMA
+    if (spaceBelow >= ESTIMATED_HEIGHT + 14 || spaceBelow >= spaceAbove) {
+      let left = rect.left + (rect.width / 2) - (TOOLTIP_WIDTH / 2);
+      if (left < 14) left = 14;
+      if (left + TOOLTIP_WIDTH > windowW - 14) left = windowW - TOOLTIP_WIDTH - 14;
+
+      return {
+        placement: 'bottom',
         top: rect.bottom + 8,
         left,
-        placement: 'bottom'
-      });
+        arrowOffset: Math.max(20, Math.min(rect.left + (rect.width / 2) - left, TOOLTIP_WIDTH - 20))
+      };
+    } else {
+      let left = rect.left + (rect.width / 2) - (TOOLTIP_WIDTH / 2);
+      if (left < 14) left = 14;
+      if (left + TOOLTIP_WIDTH > windowW - 14) left = windowW - TOOLTIP_WIDTH - 14;
+
+      return {
+        placement: 'top',
+        bottom: windowH - rect.top + 8,
+        left,
+        arrowOffset: Math.max(20, Math.min(rect.left + (rect.width / 2) - left, TOOLTIP_WIDTH - 20))
+      };
     }
   };
 
@@ -146,10 +189,16 @@ export const OitivaTooltip: React.FC<OitivaTooltipProps> = ({
       clearTimeout(leaveTimerRef.current);
       leaveTimerRef.current = null;
     }
+
+    // Warm hover: se o usuário já estava navegando em outro tooltip há menos de 350ms, abre quase instantaneamente (20ms)
+    const isWarmHover = Date.now() - globalLastTooltipCloseTime < 350;
+    const delay = isWarmHover ? 20 : 140;
+
     enterTimerRef.current = setTimeout(() => {
-      updatePosition();
+      const pos = calculateSmartPosition();
+      setCoords(pos);
       setIsOpen(true);
-    }, 120);
+    }, delay);
   };
 
   const handleMouseLeave = () => {
@@ -159,7 +208,8 @@ export const OitivaTooltip: React.FC<OitivaTooltipProps> = ({
     }
     leaveTimerRef.current = setTimeout(() => {
       setIsOpen(false);
-    }, 320); // Tempo hábil para o usuário transitar com o mouse
+      globalLastTooltipCloseTime = Date.now();
+    }, 140); // 140ms é ágil o suficiente para não travar a tela e dar tempo de transitar para a tooltip
   };
 
   const handleTooltipMouseEnter = () => {
@@ -172,8 +222,28 @@ export const OitivaTooltip: React.FC<OitivaTooltipProps> = ({
   const handleTooltipMouseLeave = () => {
     leaveTimerRef.current = setTimeout(() => {
       setIsOpen(false);
-    }, 280);
+      globalLastTooltipCloseTime = Date.now();
+    }, 120);
   };
+
+  // Fechar ao rolar ou apertar ESC para nunca obstruir o operador
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleScrollOrKey = (e: Event) => {
+      if (e instanceof KeyboardEvent && e.key !== 'Escape') return;
+      setIsOpen(false);
+      globalLastTooltipCloseTime = Date.now();
+    };
+
+    window.addEventListener('scroll', handleScrollOrKey, { passive: true, capture: true });
+    window.addEventListener('keydown', handleScrollOrKey);
+
+    return () => {
+      window.removeEventListener('scroll', handleScrollOrKey, { capture: true });
+      window.removeEventListener('keydown', handleScrollOrKey);
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     return () => {
@@ -193,7 +263,7 @@ export const OitivaTooltip: React.FC<OitivaTooltipProps> = ({
     }
     setTimeout(() => {
       setStatusChanging(null);
-    }, 1200);
+    }, 1000);
   };
 
   // Status atual estilizado
@@ -205,33 +275,49 @@ export const OitivaTooltip: React.FC<OitivaTooltipProps> = ({
       ref={triggerRef}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className="inline-block w-full"
+      className="inline-block w-full relative"
     >
       {children}
 
       {isOpen && typeof document !== 'undefined' && createPortal(
         <div
+          ref={tooltipRef}
           onMouseEnter={handleTooltipMouseEnter}
           onMouseLeave={handleTooltipMouseLeave}
           style={{
             position: 'fixed',
-            left: `${coords.left}px`,
-            ...(coords.top !== undefined ? { top: `${coords.top}px` } : {}),
-            ...(coords.bottom !== undefined ? { bottom: `${coords.bottom}px` } : {}),
+            left: coords.left !== undefined ? `${coords.left}px` : undefined,
+            right: coords.right !== undefined ? `${coords.right}px` : undefined,
+            top: coords.top !== undefined ? `${coords.top}px` : undefined,
+            bottom: coords.bottom !== undefined ? `${coords.bottom}px` : undefined,
             width: `${TOOLTIP_WIDTH}px`,
             zIndex: 99999
           }}
-          className="animate-in fade-in zoom-in-95 duration-150 ease-out select-none"
+          className="animate-in fade-in zoom-in-95 duration-100 ease-out select-none pointer-events-auto"
         >
+          {/* Hover Bridge (Invisível para permitir trânsito fluido do mouse entre card e tooltip sem fechar) */}
+          {coords.placement === 'right' && (
+            <div className="absolute -left-3 top-0 bottom-0 w-3.5 pointer-events-auto bg-transparent" />
+          )}
+          {coords.placement === 'left' && (
+            <div className="absolute -right-3 top-0 bottom-0 w-3.5 pointer-events-auto bg-transparent" />
+          )}
+          {coords.placement === 'bottom' && (
+            <div className="absolute -top-3 left-0 right-0 h-3.5 pointer-events-auto bg-transparent" />
+          )}
+          {coords.placement === 'top' && (
+            <div className="absolute -bottom-3 left-0 right-0 h-3.5 pointer-events-auto bg-transparent" />
+          )}
+
           {/* Tooltip Content Container */}
-          <div className="bg-[#120a24] border-2 border-purple-500/80 rounded-2xl p-4 shadow-2xl shadow-purple-950/90 text-white backdrop-blur-xl ring-1 ring-white/10 relative overflow-hidden">
+          <div className="bg-[#120a24] border-2 border-purple-500/90 rounded-2xl p-3.5 shadow-2xl shadow-purple-950/90 text-white backdrop-blur-xl ring-1 ring-white/15 relative overflow-hidden">
             
             {/* Background subtle glow */}
             <div className="absolute -top-16 -right-16 w-32 h-32 bg-purple-600/20 rounded-full blur-2xl pointer-events-none" />
             <div className="absolute -bottom-16 -left-16 w-32 h-32 bg-indigo-600/15 rounded-full blur-2xl pointer-events-none" />
 
             {/* Top Bar: Data, Horário & Condição */}
-            <div className="flex items-center justify-between gap-2 pb-2.5 mb-2.5 border-b border-purple-700/50">
+            <div className="flex items-center justify-between gap-2 pb-2 mb-2 border-b border-purple-700/50">
               <div className="flex items-center gap-1.5 font-mono text-xs font-black text-purple-200">
                 <Clock className="w-3.5 h-3.5 text-purple-400" />
                 <span>{oitiva.time || '--:--'}</span>
@@ -254,19 +340,18 @@ export const OitivaTooltip: React.FC<OitivaTooltipProps> = ({
             </div>
 
             {/* Person Name (Full Name) */}
-            <div className="mb-2.5">
-              <p className="text-[10px] uppercase tracking-wider font-extrabold text-purple-300 flex items-center gap-1">
+            <div className="mb-2">
+              <p className="text-[9px] uppercase tracking-wider font-extrabold text-purple-300 flex items-center gap-1">
                 <User className="w-3 h-3 text-purple-400" />
                 Depoente / Ouvido(a)
               </p>
-              <h4 className="text-sm font-black text-white tracking-tight leading-snug break-words">
+              <h4 className="text-[13px] font-black text-white tracking-tight leading-snug break-words">
                 {oitiva.personName}
               </h4>
             </div>
 
-            {/* Quick Details Grid (Phone, Procedure, Location) */}
-            <div className="space-y-1.5 text-[11px] mb-3 bg-[#180f30] p-2.5 rounded-xl border border-purple-700/40">
-              
+            {/* Quick Details Grid (Phone, Procedure, Location, Delegado) */}
+            <div className="space-y-1 text-[11px] mb-2.5 bg-[#180f30] p-2 rounded-xl border border-purple-700/40">
               {/* Telefone */}
               <div className="flex items-center justify-between gap-2">
                 <span className="text-purple-300 font-bold flex items-center gap-1">
@@ -285,7 +370,7 @@ export const OitivaTooltip: React.FC<OitivaTooltipProps> = ({
                     <FileText className="w-3 h-3 text-blue-400" />
                     Procedimento:
                   </span>
-                  <span className="font-mono font-black text-blue-200 truncate max-w-[180px]" title={oitiva.procedureNumber}>
+                  <span className="font-mono font-black text-blue-200 truncate max-w-[170px]" title={oitiva.procedureNumber}>
                     {oitiva.procedureNumber || oitiva.procedureType || 'Em andamento'}
                   </span>
                 </div>
@@ -298,7 +383,7 @@ export const OitivaTooltip: React.FC<OitivaTooltipProps> = ({
                     <MapPin className="w-3 h-3 text-amber-400" />
                     Local:
                   </span>
-                  <span className="text-zinc-200 truncate max-w-[180px]" title={oitiva.locationOrLink}>
+                  <span className="text-zinc-200 truncate max-w-[170px]" title={oitiva.locationOrLink}>
                     {oitiva.locationOrLink}
                   </span>
                 </div>
@@ -311,19 +396,63 @@ export const OitivaTooltip: React.FC<OitivaTooltipProps> = ({
                     <Shield className="w-3 h-3 text-purple-400" />
                     Delegado:
                   </span>
-                  <span className="text-zinc-200 truncate max-w-[180px]" title={oitiva.officerName}>
+                  <span className="text-zinc-200 truncate max-w-[170px]" title={oitiva.officerName}>
                     {oitiva.officerName}
                   </span>
                 </div>
               )}
             </div>
 
+            {/* Status da Intimação com alteração manual direta */}
+            <div className="mb-2">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  if (onToggleIntimationSent) {
+                    onToggleIntimationSent(oitiva.id, !oitiva.intimationSent);
+                  }
+                }}
+                className={`w-full p-2 rounded-xl border flex items-center justify-between transition-all cursor-pointer shadow-sm ${
+                  oitiva.intimationSent
+                    ? 'bg-emerald-950/90 hover:bg-emerald-900 border-emerald-500/70 text-emerald-200'
+                    : 'bg-amber-950/70 hover:bg-amber-900/80 border-amber-500/60 text-amber-200'
+                }`}
+                title="Clique para alternar o status da intimação manualmente"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  {oitiva.intimationSent ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+                  )}
+                  <div className="text-left truncate">
+                    <span className="text-[9px] uppercase font-extrabold tracking-wider block opacity-80 leading-tight">
+                      Intimação:
+                    </span>
+                    <span className="text-[11px] font-black text-white truncate block leading-tight">
+                      {oitiva.intimationSent ? 'ENVIADA / EMITIDA' : 'PENDENTE DE ENVIO'}
+                    </span>
+                  </div>
+                </div>
+
+                <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-wider shrink-0 ${
+                  oitiva.intimationSent
+                    ? 'bg-emerald-500 text-emerald-950'
+                    : 'bg-amber-500/30 text-amber-300 border border-amber-500/50'
+                }`}>
+                  {oitiva.intimationSent ? 'Enviada' : 'Mudar'}
+                </span>
+              </button>
+            </div>
+
             {/* Current Status Display */}
-            <div className="flex items-center justify-between gap-2 mb-2 px-1">
-              <span className="text-[11px] font-extrabold text-zinc-300 uppercase tracking-wider">
+            <div className="flex items-center justify-between gap-2 mb-1.5 px-0.5">
+              <span className="text-[10px] font-extrabold text-zinc-300 uppercase tracking-wider">
                 Status Atual:
               </span>
-              <span className={`inline-flex items-center gap-1 text-[11px] font-black px-2 py-0.5 rounded-lg border uppercase tracking-wider ${currentStatusConfig.badgeBg}`}>
+              <span className={`inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-lg border uppercase tracking-wider ${currentStatusConfig.badgeBg}`}>
                 <CurrentIcon className="w-3 h-3" />
                 {oitiva.status}
               </span>
@@ -331,10 +460,10 @@ export const OitivaTooltip: React.FC<OitivaTooltipProps> = ({
 
             {/* Status Change Shortcut Buttons */}
             {onQuickStatusChange && (
-              <div className="pt-2 border-t border-purple-700/50">
-                <p className="text-[10px] font-black uppercase tracking-wider text-purple-300 mb-1.5 flex items-center justify-between">
-                  <span>Atalho de Status:</span>
-                  <span className="text-[9px] text-zinc-400 normal-case font-medium">Clique para mudar</span>
+              <div className="pt-1.5 border-t border-purple-700/50">
+                <p className="text-[9px] font-black uppercase tracking-wider text-purple-300 mb-1 flex items-center justify-between">
+                  <span>Atalho Rápido de Status:</span>
+                  <span className="text-[8px] text-zinc-400 normal-case font-medium">1-clique</span>
                 </p>
                 
                 <div className="grid grid-cols-5 gap-1">
@@ -356,9 +485,9 @@ export const OitivaTooltip: React.FC<OitivaTooltipProps> = ({
                         title={`Alterar para ${item.label}`}
                       >
                         {isPendingThis ? (
-                          <Check className="w-3.5 h-3.5 text-white animate-bounce" />
+                          <Check className="w-3 h-3 text-white animate-bounce" />
                         ) : (
-                          <ItemIcon className={`w-3.5 h-3.5 ${isCurrent ? 'text-white' : ''}`} />
+                          <ItemIcon className={`w-3 h-3 ${isCurrent ? 'text-white' : ''}`} />
                         )}
                         <span className="truncate w-full text-center leading-tight">
                           {item.label === 'Não Compareceu' ? 'Faltou' : item.label}
@@ -371,7 +500,7 @@ export const OitivaTooltip: React.FC<OitivaTooltipProps> = ({
             )}
 
             {/* Footer Action Links */}
-            <div className="mt-3 pt-2.5 border-t border-purple-700/50 flex items-center justify-between gap-2">
+            <div className="mt-2.5 pt-2 border-t border-purple-700/50 flex items-center justify-between gap-2">
               {oitiva.phone && onOpenWhatsApp && (
                 <button
                   type="button"
@@ -380,10 +509,10 @@ export const OitivaTooltip: React.FC<OitivaTooltipProps> = ({
                     setIsOpen(false);
                     onOpenWhatsApp(oitiva);
                   }}
-                  className="flex items-center gap-1 text-[11px] font-bold text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer py-1 px-2 rounded-lg hover:bg-emerald-950/40 border border-emerald-500/30"
+                  className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer py-1 px-2 rounded-lg hover:bg-emerald-950/40 border border-emerald-500/30"
                 >
                   <MessageSquare className="w-3 h-3" />
-                  <span>Notificar WhatsApp</span>
+                  <span>WhatsApp</span>
                 </button>
               )}
 
@@ -395,7 +524,7 @@ export const OitivaTooltip: React.FC<OitivaTooltipProps> = ({
                     setIsOpen(false);
                     onSelectOitiva(oitiva);
                   }}
-                  className="ml-auto flex items-center gap-1 text-[11px] font-black text-purple-300 hover:text-white transition-colors cursor-pointer py-1 px-2.5 rounded-lg bg-purple-950/80 hover:bg-purple-900 border border-purple-500/60 shadow-sm"
+                  className="ml-auto flex items-center gap-1 text-[10px] font-black text-purple-300 hover:text-white transition-colors cursor-pointer py-1 px-2.5 rounded-lg bg-purple-950/80 hover:bg-purple-900 border border-purple-500/60 shadow-sm"
                 >
                   <span>Ver Detalhes</span>
                   <ExternalLink className="w-3 h-3" />

@@ -56,8 +56,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onLogout
 }) => {
   return (
-    <header className="sticky top-0 z-30 bg-[#0c0a14]/98 backdrop-blur-md border-b-2 border-purple-700/60 px-3 sm:px-6 py-2.5 transition-colors no-print shadow-xl shadow-purple-950/40">
-      <div className="max-w-7xl mx-auto space-y-2.5">
+    <header className="sticky top-0 z-30 bg-[#0c0a14]/98 backdrop-blur-md border-b-2 border-purple-700/60 px-2 sm:px-4 py-2.5 transition-colors no-print shadow-xl shadow-purple-950/40">
+      <div className="w-full max-w-[98.5%] 2xl:max-w-[1920px] mx-auto space-y-2.5">
         
         {/* ROW 1: Brand & Sync Status (Left) | Search (Center) | User / Entrar (Right) */}
         <div className="flex flex-wrap md:flex-nowrap items-center justify-between gap-3">
@@ -187,15 +187,15 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         </div>
 
-        {/* ROW 2: Compact Multi-Column Navigation & Action Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t-2 border-purple-700/40">
+        {/* ROW 2: Multi-Column Navigation & Action Bar (Mobile-Optimized) */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-1 border-t-2 border-purple-700/40">
           
           {/* Col 1: View Mode Toggles (Highlighted & Prominent) */}
-          <div className="flex items-center bg-[#130e24] border-2 border-purple-400 p-1 rounded-2xl gap-1 shadow-lg shadow-purple-950/80">
+          <div className="flex items-center justify-between sm:justify-start bg-[#130e24] border-2 border-purple-400 p-1 rounded-2xl gap-1 shadow-lg shadow-purple-950/80 w-full sm:w-auto">
             <button
               id="view-mode-month-btn"
               onClick={() => onViewChange('month')}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-[13px] font-black transition-all cursor-pointer ${
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 sm:px-3.5 py-2 sm:py-1.5 rounded-xl text-xs sm:text-[13px] font-black transition-all cursor-pointer min-h-[38px] sm:min-h-0 ${
                 currentView === 'month'
                   ? 'bg-gradient-to-r from-purple-600 via-purple-500 to-indigo-600 text-white shadow-md shadow-purple-950 ring-2 ring-purple-300 scale-[1.02]'
                   : 'text-zinc-200 hover:text-white hover:bg-purple-900/60'
@@ -208,7 +208,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               id="view-mode-week-btn"
               onClick={() => onViewChange('week')}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-[13px] font-black transition-all cursor-pointer ${
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 sm:px-3.5 py-2 sm:py-1.5 rounded-xl text-xs sm:text-[13px] font-black transition-all cursor-pointer min-h-[38px] sm:min-h-0 ${
                 currentView === 'week'
                   ? 'bg-gradient-to-r from-purple-600 via-purple-500 to-indigo-600 text-white shadow-md shadow-purple-950 ring-2 ring-purple-300 scale-[1.02]'
                   : 'text-zinc-200 hover:text-white hover:bg-purple-900/60'
@@ -221,7 +221,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               id="view-mode-day-btn"
               onClick={() => onViewChange('day')}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-[13px] font-black transition-all cursor-pointer ${
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 sm:px-3.5 py-2 sm:py-1.5 rounded-xl text-xs sm:text-[13px] font-black transition-all cursor-pointer min-h-[38px] sm:min-h-0 ${
                 currentView === 'day'
                   ? 'bg-gradient-to-r from-purple-600 via-purple-500 to-indigo-600 text-white shadow-md shadow-purple-950 ring-2 ring-purple-300 scale-[1.02]'
                   : 'text-zinc-200 hover:text-white hover:bg-purple-900/60'
@@ -234,7 +234,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               id="view-mode-list-btn"
               onClick={() => onViewChange('list')}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-[13px] font-black transition-all cursor-pointer ${
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 sm:px-3.5 py-2 sm:py-1.5 rounded-xl text-xs sm:text-[13px] font-black transition-all cursor-pointer min-h-[38px] sm:min-h-0 ${
                 currentView === 'list'
                   ? 'bg-gradient-to-r from-purple-600 via-purple-500 to-indigo-600 text-white shadow-md shadow-purple-950 ring-2 ring-purple-300 scale-[1.02]'
                   : 'text-zinc-200 hover:text-white hover:bg-purple-900/60'
@@ -245,29 +245,29 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           </div>
 
-          {/* Col 2 & 3 & 4: Quick Action Buttons Group */}
-          <div className="flex items-center gap-2 flex-wrap">
+          {/* Col 2: Action Buttons Group (Horizontal scroll on mobile without breaking) */}
+          <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 sm:pb-0 max-w-full no-scrollbar">
             {/* Google Workspace Button */}
             <button
               id="google-workspace-nav-btn"
               onClick={onOpenWorkspaceModal}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#171228] hover:bg-purple-900/60 text-purple-200 hover:text-white border-2 border-purple-600/70 hover:border-purple-400 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
+              className="flex items-center gap-1.5 px-3 py-2 sm:py-1.5 bg-[#171228] hover:bg-purple-900/60 text-purple-200 hover:text-white border-2 border-purple-600/70 hover:border-purple-400 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm shrink-0 min-h-[38px] sm:min-h-0"
               title="Google Workspace (Drive, Gmail, Agenda)"
             >
               <span className={`w-2 h-2 rounded-full ${hasWorkspaceToken ? 'bg-emerald-400 ring-2 ring-emerald-950' : 'bg-amber-400 ring-2 ring-amber-950'}`}></span>
-              <span>Google Workspace</span>
+              <span>Workspace</span>
             </button>
 
-            {/* Delegados (DPC) Button - Available for all users */}
+            {/* Delegados & Oficiais (DPC / OIP) Button */}
             {onOpenDelegadosModal && (
               <button
                 id="delegados-nav-btn"
                 onClick={onOpenDelegadosModal}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#171228] hover:bg-purple-900/60 text-purple-200 hover:text-white border-2 border-purple-600/70 hover:border-purple-400 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
-                title="Catálogo de Autoridades Policiais (DPC)"
+                className="flex items-center gap-1.5 px-3 py-2 sm:py-1.5 bg-[#171228] hover:bg-purple-900/60 text-purple-200 hover:text-white border-2 border-purple-600/70 hover:border-purple-400 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm shrink-0 min-h-[38px] sm:min-h-0"
+                title="Catálogo de Autoridades & Oficiais Policiais (DPC / OIP)"
               >
                 <Shield className="w-3.5 h-3.5 text-purple-300" />
-                <span>Delegados (DPC)</span>
+                <span>DPC / OIP</span>
               </button>
             )}
 
@@ -276,7 +276,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <button
                 id="admin-holidays-nav-btn"
                 onClick={onOpenHolidaysModal}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#2a0c16] hover:bg-[#3d1220] text-red-300 hover:text-white border-2 border-red-500/80 hover:border-red-400 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
+                className="flex items-center gap-1.5 px-3 py-2 sm:py-1.5 bg-[#2a0c16] hover:bg-[#3d1220] text-red-300 hover:text-white border-2 border-red-500/80 hover:border-red-400 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm shrink-0 min-h-[38px] sm:min-h-0"
                 title="Gerenciar Feriados e Fins de Semana (Admin)"
               >
                 <Sparkles className="w-3.5 h-3.5 text-red-400" />
@@ -288,11 +288,12 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               id="print-pauta-btn"
               onClick={onOpenPrintModal}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#171228] hover:bg-[#251e3d] text-zinc-100 hover:text-white border-2 border-purple-600/70 hover:border-purple-400 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
+              className="flex items-center gap-1.5 px-3 py-2 sm:py-1.5 bg-[#171228] hover:bg-[#251e3d] text-zinc-100 hover:text-white border-2 border-purple-600/70 hover:border-purple-400 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm shrink-0 min-h-[38px] sm:min-h-0"
               title="Imprimir Pauta Oficial de Oitivas"
             >
               <Printer className="w-3.5 h-3.5 text-purple-300" />
-              <span>Pauta do Dia</span>
+              <span className="hidden xs:inline">Pauta do Dia</span>
+              <span className="xs:hidden">Pauta</span>
             </button>
 
             {/* Exportar Backup Button */}
@@ -300,7 +301,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <button
                 id="export-backup-nav-btn"
                 onClick={onExportBackup}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#121a36] hover:bg-[#1a2754] text-blue-200 hover:text-white border-2 border-blue-500/70 hover:border-blue-400 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
+                className="flex items-center gap-1.5 px-3 py-2 sm:py-1.5 bg-[#121a36] hover:bg-[#1a2754] text-blue-200 hover:text-white border-2 border-blue-500/70 hover:border-blue-400 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm shrink-0 min-h-[38px] sm:min-h-0"
                 title="Exportar Backup das Oitivas (Download JSON)"
               >
                 <Download className="w-3.5 h-3.5 text-blue-300" />
@@ -308,24 +309,11 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             )}
 
-            {/* Profile Quick Button if user is logged in */}
-            {user && (
-              <button
-                id="profile-badge-btn"
-                onClick={onOpenProfileModal}
-                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-[#171228] hover:bg-purple-900/60 text-purple-200 border-2 border-purple-600/70 hover:border-purple-400 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
-                title="Configurar Perfil e Senha"
-              >
-                <SlidersHorizontal className="w-3.5 h-3.5 text-purple-300" />
-                <span>Meu Perfil</span>
-              </button>
-            )}
-
             {/* Nova Oitiva Button */}
             <button
               id="header-new-oitiva-btn"
               onClick={onOpenNewModal}
-              className="flex items-center gap-1.5 px-4 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-black shadow-md shadow-purple-950/80 border-2 border-purple-300/80 transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-4 py-2 sm:py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-black shadow-md shadow-purple-950/80 border-2 border-purple-300/80 transition-all cursor-pointer shrink-0 min-h-[38px] sm:min-h-0"
             >
               <Plus className="w-4 h-4" />
               <span>Nova Oitiva</span>

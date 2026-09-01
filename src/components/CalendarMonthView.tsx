@@ -35,7 +35,9 @@ interface CalendarMonthViewProps {
   onSelectOitiva: (oitiva: Oitiva) => void;
   onAddOitivaForDate: (dateStr: string) => void;
   onQuickStatusChange?: (id: string, newStatus: HearingStatus) => void;
+  onToggleIntimationSent?: (id: string, nextSent: boolean) => void;
   onOpenWhatsApp?: (oitiva: Oitiva) => void;
+  onMoveOitivaDate?: (oitivaId: string, newDate: string) => Promise<void> | void;
   statusFilter: HearingStatus | 'TODOS';
   specialDates?: CalendarSpecialDate[];
   onOpenHolidaysModal?: (dateStr?: string) => void;
@@ -49,13 +51,17 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
   onSelectOitiva,
   onAddOitivaForDate,
   onQuickStatusChange,
+  onToggleIntimationSent,
   onOpenWhatsApp,
+  onMoveOitivaDate,
   statusFilter,
   specialDates = [],
   onOpenHolidaysModal,
   isAdmin = false
 }) => {
   const [hoveredDay, setHoveredDay] = useState<string | null>(null);
+  const [draggedOitivaId, setDraggedOitivaId] = useState<string | null>(null);
+  const [dragOverDay, setDragOverDay] = useState<string | null>(null);
 
   // Month navigation
   const prevMonth = () => onDateChange(subMonths(currentDate, 1));
@@ -82,7 +88,7 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pb-12">
+    <div className="w-full max-w-[98.5%] 2xl:max-w-[1920px] mx-auto px-1 sm:px-2.5 lg:px-4 pb-10">
       <div className="bg-[#0e0a1b] border-2 border-purple-600/70 rounded-3xl overflow-hidden shadow-2xl shadow-purple-950/80 transition-all">
         
         {/* Calendar Header / Navigation Controls */}
@@ -149,7 +155,7 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
             <div
               key={dayName}
               className={`py-2.5 text-center text-[11px] sm:text-xs font-black tracking-wider uppercase ${
-                idx === 0 || idx === 6 ? 'text-red-400' : 'text-zinc-200'
+                idx === 0 || idx === 6 ? 'text-red-400 bg-[#220811]/90' : 'text-zinc-200'
               }`}
             >
               {dayName}
@@ -164,23 +170,59 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
             const isCurrentMonth = isSameMonth(day, currentDate);
             const isCurrentDay = isToday(day);
             const dayOitivas = getOitivasForDay(day);
-            const daySpecialDates = specialDateService.getSpecialDatesForDate(dayStr, day.getDay(), specialDates);
+            const daySpecialDates = specialDateService
+              .getSpecialDatesForDate(dayStr, day.getDay(), specialDates)
+              .filter(sp => sp.type !== 'fim_de_semana' && !sp.isRecurringWeekend);
             const isHovered = hoveredDay === dayStr;
             const isWeekendDay = day.getDay() === 0 || day.getDay() === 6;
+
+            const isDragTarget = dragOverDay === dayStr;
 
             return (
               <div
                 key={dayStr}
                 onMouseEnter={() => setHoveredDay(dayStr)}
                 onMouseLeave={() => setHoveredDay(null)}
-                className={`min-h-[90px] sm:min-h-[105px] p-1.5 sm:p-2 transition-colors flex flex-col justify-between group relative ${
-                  !isCurrentMonth 
-                    ? 'bg-[#080511]/90 opacity-40' 
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = 'move';
+                  if (dragOverDay !== dayStr) {
+                    setDragOverDay(dayStr);
+                  }
+                }}
+                onDragLeave={(e) => {
+                  if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+                  if (dragOverDay === dayStr) {
+                    setDragOverDay(null);
+                  }
+                }}
+                onDrop={async (e) => {
+                  e.preventDefault();
+                  setDragOverDay(null);
+                  setDraggedOitivaId(null);
+                  const oitivaId = e.dataTransfer.getData('text/plain');
+                  if (oitivaId && onMoveOitivaDate) {
+                    await onMoveOitivaDate(oitivaId, dayStr);
+                  }
+                }}
+                className={`min-h-[90px] sm:min-h-[105px] p-1.5 sm:p-2 transition-all flex flex-col justify-between group relative ${
+                  isDragTarget
+                    ? 'ring-4 ring-purple-400 bg-purple-900/60 shadow-2xl scale-[1.01] z-20'
+                    : !isCurrentMonth 
+                    ? isWeekendDay ? 'bg-[#15040a]/90 opacity-40' : 'bg-[#080511]/90 opacity-40' 
                     : isWeekendDay
-                    ? 'bg-[#180f24] hover:bg-[#1f1330]'
+                    ? 'bg-[#220710] hover:bg-[#2c0a15]'
                     : 'bg-[#141026] hover:bg-[#1a1432]'
-                } ${isCurrentDay ? 'ring-2 ring-purple-400 bg-purple-950/40 z-10' : ''}`}
+                } ${isCurrentDay && !isDragTarget ? 'ring-2 ring-purple-400 bg-purple-950/40 z-10' : ''}`}
               >
+                {/* Visual feedback when dragging over this day */}
+                {isDragTarget && (
+                  <div className="absolute inset-0 bg-purple-600/30 border-2 border-dashed border-purple-300 rounded-xl flex items-center justify-center pointer-events-none z-30 backdrop-blur-[2px]">
+                    <span className="text-[11px] font-black text-white bg-purple-950/90 px-2.5 py-1 rounded-lg border border-purple-400 shadow-lg">
+                      Mover p/ {format(day, 'dd/MM')}
+                    </span>
+                  </div>
+                )}
                 {/* Day Header: Canto Superior Esquerdo (Dia 01) e Canto Superior Direito (Qtd 05) */}
                 <div className="flex items-center justify-between mb-1.5 gap-1">
                   {/* Canto Superior Esquerdo: Dia com 2 dígitos (ex: 01, 02) */}
@@ -190,8 +232,10 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
                         ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-950 font-black ring-2 ring-purple-300'
                         : isCurrentMonth
                         ? isWeekendDay
-                          ? 'text-red-300 font-extrabold bg-[#2a0c16] border-2 border-red-500/70 shadow-sm'
+                          ? 'text-red-300 font-extrabold bg-[#3b0d1a] border-2 border-red-500/70 shadow-sm'
                           : 'text-white font-extrabold bg-[#1e163b] border-2 border-purple-500/60 shadow-sm'
+                        : isWeekendDay
+                        ? 'text-red-900/60 font-semibold'
                         : 'text-zinc-500 font-semibold'
                     }`}
                   >
@@ -216,7 +260,9 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
                         dayOitivas.length > 0
                           ? 'bg-purple-900 text-white border-2 border-purple-400 shadow-sm'
                           : isCurrentMonth
-                          ? 'text-zinc-400 bg-purple-950/40 border border-purple-900/60'
+                          ? isWeekendDay
+                            ? 'text-red-400/80 bg-[#340b17]/60 border border-red-900/60'
+                            : 'text-zinc-400 bg-purple-950/40 border border-purple-900/60'
                           : 'text-zinc-600'
                       }`}
                       title={`${dayOitivas.length} oitiva(s) no dia ${format(day, 'dd/MM/yyyy')}`}
@@ -229,7 +275,7 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
                 {/* Scheduled Hearings & Special Dates List: Sem barra de scroll interna, expande a célula */}
                 <div className="flex-1 space-y-1.5 py-1">
                   
-                  {/* CARDS DE FERIADOS E FINS DE SEMANA (EM VERMELHO) */}
+                  {/* CARDS DE FERIADOS (EM VERMELHO) */}
                   {daySpecialDates.map((sp) => (
                     <HolidayTooltip
                       key={sp.id}
@@ -249,24 +295,22 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
                           isAdmin ? 'cursor-pointer hover:scale-[1.02] hover:border-red-300 hover:bg-[#340c18]' : 'cursor-default'
                         }`}
                       >
-                        <div className="flex items-center justify-between text-[10px] leading-none mb-1">
-                          <span className="font-black text-red-300 flex items-center gap-1 font-mono">
+                        {/* CARDS DE FERIADOS (EM VERMELHO) */}
+                        <div className="flex items-center justify-between gap-1 text-[10px] leading-none mb-1">
+                          <span className="font-black text-red-300 flex items-center gap-1 font-mono shrink-0">
                             <Sparkles className="w-2.5 h-2.5 text-red-400" />
-                            {sp.type === 'fim_de_semana' ? 'Fim de Semana' : 'Feriado'}
+                            Feriado
                           </span>
-                          <span className="text-[8px] font-bold px-1 py-0.2 rounded bg-red-950 text-red-300 border border-red-500/50 uppercase">
-                            {sp.type === 'ponto_facultativo' ? 'Facultativo' : sp.type === 'fim_de_semana' ? 'Não Útil' : 'Oficial'}
+                          <span className="text-[8px] sm:text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider shrink-0 bg-red-950 text-red-300 border-2 border-red-500/80">
+                            {sp.type === 'ponto_facultativo' ? 'facultativo' : 'feriado'}
                           </span>
                         </div>
 
-                        {/* Nome do Feriado / Domingo / Sábado em Vermelho */}
-                        <div className="flex items-center justify-between gap-1 flex-wrap pt-0.5">
-                          <p className="text-xs font-black text-red-400 tracking-tight leading-tight truncate flex-1 min-w-[50px]">
+                        {/* Nome do Feriado em Vermelho */}
+                        <div className="pt-0.5">
+                          <p className="text-xs font-black text-red-400 tracking-tight leading-tight break-words">
                             {sp.title}
                           </p>
-                          <span className="text-[8px] sm:text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider shrink-0 bg-red-950 text-red-300 border-2 border-red-500/80">
-                            {sp.type === 'fim_de_semana' ? 'fim de semana' : 'feriado'}
-                          </span>
                         </div>
                       </div>
                     </HolidayTooltip>
@@ -295,47 +339,63 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
                       statusBadgeClasses = 'bg-amber-950 text-amber-200 border-2 border-amber-400/80';
                     }
 
+                    const isBeingDragged = draggedOitivaId === oitiva.id;
+
                     return (
                       <OitivaTooltip
                         key={oitiva.id}
                         oitiva={oitiva}
                         onSelectOitiva={onSelectOitiva}
                         onQuickStatusChange={onQuickStatusChange}
+                        onToggleIntimationSent={onToggleIntimationSent}
                         onOpenWhatsApp={onOpenWhatsApp}
                       >
                         <div
+                          draggable={true}
+                          onDragStart={(e) => {
+                            e.dataTransfer.setData('text/plain', oitiva.id);
+                            e.dataTransfer.effectAllowed = 'move';
+                            setDraggedOitivaId(oitiva.id);
+                          }}
+                          onDragEnd={() => {
+                            setDraggedOitivaId(null);
+                            setDragOverDay(null);
+                          }}
                           onClick={(e) => {
                             e.stopPropagation();
                             onSelectOitiva(oitiva);
                           }}
-                          className={`p-1.5 sm:p-2 rounded-xl text-left border-2 cursor-pointer transition-all hover:scale-[1.02] shadow-md ${cardClasses}`}
+                          className={`p-1.5 sm:p-2 rounded-xl text-left border-2 cursor-grab active:cursor-grabbing transition-all hover:scale-[1.02] shadow-md select-none ${
+                            isBeingDragged ? 'opacity-40 ring-2 ring-purple-300 scale-95' : ''
+                          } ${cardClasses}`}
+                          title="Clique para detalhes ou arraste para outro dia"
                         >
-                          {/* Time & Role / Modality Indicator */}
+                          {/* Linha Superior: Horário + Modalidade + Status Badge */}
                           <div className="flex items-center justify-between gap-1 text-[10px] leading-none mb-1">
-                            <span className="font-black text-white flex items-center gap-1 font-mono">
+                            <span className="font-black text-white flex items-center gap-1 font-mono shrink-0">
                               <Clock className="w-2.5 h-2.5 text-purple-200" />
                               {oitiva.time || '--:--'}
                             </span>
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-1 min-w-0">
                               {oitiva.modality === 'Videoconferência' && (
                                 <Video className="w-3 h-3 text-cyan-300 shrink-0" title="Videoconferência" />
                               )}
-                              {oitiva.role && (
-                                <span className="text-[8px] font-bold px-1 py-0.2 rounded bg-black/60 text-white border border-white/30 truncate max-w-[60px]">
-                                  {oitiva.role}
-                                </span>
-                              )}
+                              <span className={`text-[8px] sm:text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider shrink-0 ${statusBadgeClasses}`}>
+                                {status.toLowerCase()}
+                              </span>
                             </div>
                           </div>
 
-                          {/* NOME DO DEPOENTE E LEGENDA DO STATUS AO LADO EM FONTE MENOR */}
-                          <div className="flex items-center justify-between gap-1 flex-wrap pt-0.5">
-                            <p className="text-xs font-black text-white tracking-tight leading-tight truncate flex-1 min-w-[50px]">
+                          {/* Linha Principal: Primeiro Nome (Sem truncar, quebrando linhas se necessário) e Tag de Papel */}
+                          <div className="flex items-center justify-between gap-1 pt-0.5 min-w-0">
+                            <p className="text-xs font-black text-white tracking-tight leading-tight break-words min-w-0 flex-1">
                               {firstName}
                             </p>
-                            <span className={`text-[8px] sm:text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider shrink-0 ${statusBadgeClasses}`}>
-                              {status.toLowerCase()}
-                            </span>
+                            {oitiva.role && (
+                              <span className="text-[8px] font-bold px-1 py-0.2 rounded bg-black/60 text-white/90 border border-white/30 shrink-0 max-w-[65px] truncate" title={oitiva.role}>
+                                {oitiva.role}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </OitivaTooltip>

@@ -11,20 +11,19 @@ import {
   ShieldCheck, 
   Info,
   Sparkles,
-  UserCheck,
   Calendar,
   Clock,
   MapPin,
   Send,
-  AlertCircle,
   FileCheck2,
-  Paperclip,
-  ArrowRight
+  Hash
 } from 'lucide-react';
 import { Oitiva, UserProfile } from '../types/oitiva';
 import { 
   formatWhatsAppMessageText, 
-  formatDateBR 
+  formatDateBR,
+  calculateAttemptNumber,
+  formatIntimationNumberDisplay
 } from '../utils/formatters';
 import { 
   extractMandadoData, 
@@ -32,7 +31,9 @@ import {
   MandadoPdfData 
 } from '../utils/pdfGenerator';
 import { DelegadoSelectorModal } from './DelegadoSelectorModal';
+import { IntimationNumberPromptModal } from './IntimationNumberPromptModal';
 import { DelegadoInfo, delegadoService } from '../services/delegadoService';
+import { oitivaService } from '../services/oitivaService';
 
 interface WhatsAppShareModalProps {
   isOpen: boolean;
@@ -49,10 +50,14 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
   user,
   onMarkIntimationSent
 }) => {
+  const currentYear = new Date().getFullYear();
+
   const [personName, setPersonName] = useState('');
   const [phone, setPhone] = useState('');
   const [procedureNumber, setProcedureNumber] = useState('');
   const [procedureType, setProcedureType] = useState('');
+  const [intimationNumber, setIntimationNumber] = useState(`01/${currentYear}`);
+  const [attemptNumber, setAttemptNumber] = useState<number>(1);
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [locationOrLink, setLocationOrLink] = useState('');
@@ -63,8 +68,10 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
   const [copied, setCopied] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isDelegadoModalOpen, setIsDelegadoModalOpen] = useState(false);
+  const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState<'both' | 'pdf' | null>(null);
   const [feedback, setFeedback] = useState<{ text: string; type: 'success' | 'info' | 'error' } | null>(null);
-  const [lastAction, setLastAction] = useState<'both' | 'text' | 'pdf' | null>(null);
+  const [, setLastAction] = useState<'both' | 'text' | 'pdf' | null>(null);
 
   useEffect(() => {
     if (oitiva && isOpen) {
@@ -75,6 +82,12 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
       setDate(oitiva.date || '');
       setTime(oitiva.time || '');
       setLocationOrLink(oitiva.locationOrLink || oitiva.modality || '1ª Delegacia de Polícia de Maracanaú');
+
+      // Intimation number & Attempt calculation
+      const initialIntimationNum = formatIntimationNumberDisplay(oitiva.intimationNumber);
+      setIntimationNumber(initialIntimationNum);
+      const calculatedAttempt = calculateAttemptNumber(oitiva);
+      setAttemptNumber(calculatedAttempt);
 
       // Delegado de Polícia
       const targetOfficerName = oitiva.officerName || 'Fernando Moretto Nachtigall';
@@ -93,7 +106,7 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
       setFeedback(null);
       setLastAction(null);
     }
-  }, [oitiva, user, isOpen]);
+  }, [oitiva, user, isOpen, currentYear]);
 
   if (!isOpen || !oitiva) return null;
 
@@ -130,20 +143,12 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
     return `https://web.whatsapp.com/send?text=${encoded}`;
   };
 
-  // Universal WhatsApp API fallback link
-  const getWhatsAppApiUrl = (): string => {
-    const fullPhone = getCleanPhone();
-    const encoded = encodeURIComponent(currentMessageText);
-    if (fullPhone) {
-      return `https://api.whatsapp.com/send?phone=${fullPhone}&text=${encoded}`;
-    }
-    return `https://api.whatsapp.com/send?text=${encoded}`;
-  };
-
-  const getMandadoData = (): MandadoPdfData => {
+  const getMandadoData = (overrideNum?: string, overrideAttempt?: number): MandadoPdfData => {
     const base = extractMandadoData(oitiva, user);
     return {
       ...base,
+      intimationNumber: overrideNum || intimationNumber,
+      attemptNumber: overrideAttempt || attemptNumber,
       personName,
       procedureRef: procedureNumber ? (procedureType ? `${procedureType} nº ${procedureNumber}` : procedureNumber) : base.procedureRef,
       phone,
@@ -165,14 +170,29 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
     }
   };
 
+  const saveIntimationNumberInBackground = async (num: string) => {
+    if (oitiva) {
+      try {
+        const currentUid = user?.uid || oitiva.uid || 'cartorio_maracanau';
+        await oitivaService.update(oitiva.id, { intimationNumber: num }, currentUid);
+      } catch (err) {
+        console.warn('Erro ao salvar número da intimação:', err);
+      }
+    }
+  };
+
   // 1. APENAS PDF
-  const handleDownloadOnlyPdf = () => {
+  const executeDownloadOnlyPdf = async (num: string, attempt: number) => {
     try {
       setIsGeneratingPdf(true);
-      const data = getMandadoData();
+      setIntimationNumber(num);
+      setAttemptNumber(attempt);
+      saveIntimationNumberInBackground(num);
+
+      const data = getMandadoData(num, attempt);
       const cleanName = data.personName ? data.personName.replace(/[^a-zA-Z0-9]/g, '_') : 'Intimacao';
       const fileName = `Mandado_Intimacao_${cleanName}.pdf`;
-      downloadMandadoPdf(data, fileName);
+      await downloadMandadoPdf(data, fileName);
       setLastAction('pdf');
       showMsg('Mandado de Intimação em PDF baixado com sucesso!', 'success');
       if (onMarkIntimationSent) {
@@ -188,7 +208,6 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
   // 2. APENAS MENSAGEM WHATSAPP WEB
   const handleSendTextOnly = () => {
     try {
-      // Copy to clipboard as safety backup
       navigator.clipboard?.writeText(currentMessageText).catch(() => {});
     } catch {}
 
@@ -201,15 +220,19 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
-  // 3. MENSAGEM + PDF DIRETO NO WHATSAPP WEB (Sem pedir aplicativo no OS)
-  const handleSendTextAndPdf = async () => {
+  // 3. MENSAGEM + PDF DIRETO NO WHATSAPP WEB
+  const executeSendTextAndPdf = async (num: string, attempt: number) => {
     setIsGeneratingPdf(true);
-    const data = getMandadoData();
+    setIntimationNumber(num);
+    setAttemptNumber(attempt);
+    saveIntimationNumberInBackground(num);
+
+    const data = getMandadoData(num, attempt);
     const cleanName = data.personName ? data.personName.replace(/[^a-zA-Z0-9]/g, '_') : 'Intimacao';
     const fileName = `Mandado_Intimacao_${cleanName}.pdf`;
 
     try {
-      // 1. Download the PDF directly so the user has the file in their downloads immediately
+      // 1. Download the PDF directly
       await downloadMandadoPdf(data, fileName);
 
       // 2. Copy the text to clipboard as safety
@@ -217,7 +240,7 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
         await navigator.clipboard.writeText(currentMessageText);
       } catch {}
 
-      // 3. Open WhatsApp Web directly in a new tab (Never call navigator.share which triggers OS app prompt)
+      // 3. Open WhatsApp Web directly in a new tab
       const url = getWhatsAppWebUrl();
       window.open(url, '_blank', 'noopener,noreferrer');
 
@@ -232,6 +255,15 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
       window.open(getWhatsAppWebUrl(), '_blank', 'noopener,noreferrer');
     } finally {
       setIsGeneratingPdf(false);
+    }
+  };
+
+  const handlePromptConfirm = (num: string, attempt: number) => {
+    setIsPromptModalOpen(false);
+    if (pendingAction === 'both') {
+      executeSendTextAndPdf(num, attempt);
+    } else if (pendingAction === 'pdf') {
+      executeDownloadOnlyPdf(num, attempt);
     }
   };
 
@@ -265,8 +297,11 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
                   <h2 className="text-base font-bold text-white tracking-tight">
                     Notificação Oficial de Intimação via WhatsApp Web
                   </h2>
-                  <span className="px-2.5 py-0.5 text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 rounded-full">
-                    Direto no Navegador
+                  <span className="px-2.5 py-0.5 text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40 rounded-full font-mono">
+                    INTIMAÇÃO {intimationNumber}
+                  </span>
+                  <span className="px-2.5 py-0.5 text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded-full">
+                    {attemptNumber}ª Tentativa
                   </span>
                 </div>
                 <p className="text-xs text-zinc-300">
@@ -275,13 +310,28 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-2 text-zinc-300 hover:text-white rounded-xl hover:bg-purple-950/60 border border-purple-900/40 transition-colors cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setPendingAction('both');
+                  setIsPromptModalOpen(true);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-950/80 hover:bg-purple-900 text-purple-300 border border-purple-500/40 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                title="Ajustar Número da Intimação"
+              >
+                <Hash className="w-3.5 h-3.5" />
+                <span>Nº Intimação ({intimationNumber})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={onClose}
+                className="p-2 text-zinc-300 hover:text-white rounded-xl hover:bg-purple-950/60 border border-purple-900/40 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </div>
 
           {/* Feedback alert */}
@@ -340,6 +390,34 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
                   <h3 className="text-xs font-bold text-white uppercase tracking-wider">
                     Dados do Mandado
                   </h3>
+                </div>
+
+                {/* Número da Intimação & Tentativa */}
+                <div className="grid grid-cols-2 gap-2 bg-[#171326] p-3 rounded-2xl border border-purple-900/30">
+                  <div>
+                    <label className="text-[10px] font-semibold text-zinc-400 block">Nº da Intimação:</label>
+                    <input
+                      type="text"
+                      value={intimationNumber}
+                      onChange={(e) => setIntimationNumber(e.target.value)}
+                      placeholder={`01/${currentYear}`}
+                      className="w-full bg-[#110d1e] border border-purple-900/50 rounded-xl px-2.5 py-1.5 text-xs text-white font-mono font-bold focus:outline-none focus:border-purple-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-semibold text-zinc-400 block">Tentativa:</label>
+                    <select
+                      value={attemptNumber}
+                      onChange={(e) => setAttemptNumber(Number(e.target.value))}
+                      className="w-full bg-[#110d1e] border border-purple-900/50 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-purple-500"
+                    >
+                      <option value={1}>1ª Tentativa</option>
+                      <option value={2}>2ª Tentativa</option>
+                      <option value={3}>3ª Tentativa</option>
+                      <option value={4}>4ª Tentativa</option>
+                      <option value={5}>5ª Tentativa</option>
+                    </select>
+                  </div>
                 </div>
 
                 {/* Intimado & Telefone */}
@@ -501,13 +579,16 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
                     </h4>
                   </div>
                   <p className="text-[11px] text-zinc-300 leading-relaxed">
-                    Baixa o Mandado em PDF automaticamente e abre o WhatsApp Web com o texto preenchido no chat.
+                    Pede o número da intimação, baixa o Mandado em PDF automaticamente e abre o WhatsApp Web com o texto pronto.
                   </p>
                   
                   <button
                     id="btn-send-whatsapp-both"
                     type="button"
-                    onClick={handleSendTextAndPdf}
+                    onClick={() => {
+                      setPendingAction('both');
+                      setIsPromptModalOpen(true);
+                    }}
                     disabled={isGeneratingPdf}
                     className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-950 transition-all cursor-pointer disabled:opacity-50"
                   >
@@ -552,12 +633,15 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
                     </h4>
                   </div>
                   <p className="text-[10px] text-zinc-400">
-                    Gera e salva o arquivo PDF do Mandado no computador.
+                    Pede o número da intimação e gera o arquivo PDF do Mandado.
                   </p>
 
                   <button
                     type="button"
-                    onClick={handleDownloadOnlyPdf}
+                    onClick={() => {
+                      setPendingAction('pdf');
+                      setIsPromptModalOpen(true);
+                    }}
                     disabled={isGeneratingPdf}
                     className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-[#241a3f] hover:bg-purple-950 text-purple-200 hover:text-white border border-purple-700/40 rounded-xl text-xs font-semibold transition-all cursor-pointer disabled:opacity-50"
                   >
@@ -599,6 +683,16 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
 
         </div>
       </div>
+
+      {/* Modal Prompt do Número da Intimação e Tentativa */}
+      <IntimationNumberPromptModal
+        isOpen={isPromptModalOpen}
+        onClose={() => setIsPromptModalOpen(false)}
+        onConfirm={handlePromptConfirm}
+        initialNumber={intimationNumber}
+        initialAttempt={attemptNumber}
+        actionTitle={pendingAction === 'both' ? 'Confirmar e Abrir WhatsApp' : 'Confirmar e Baixar PDF'}
+      />
 
       {/* Selector de Delegado */}
       <DelegadoSelectorModal

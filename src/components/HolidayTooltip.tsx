@@ -80,7 +80,7 @@ export const HolidayTooltip: React.FC<HolidayTooltipProps> = ({
     enterTimerRef.current = setTimeout(() => {
       updatePosition();
       setIsOpen(true);
-    }, 120);
+    }, 140);
   };
 
   const handleMouseLeave = () => {
@@ -90,7 +90,7 @@ export const HolidayTooltip: React.FC<HolidayTooltipProps> = ({
     }
     leaveTimerRef.current = setTimeout(() => {
       setIsOpen(false);
-    }, 300);
+    }, 140);
   };
 
   const handleTooltipMouseEnter = () => {
@@ -103,8 +103,25 @@ export const HolidayTooltip: React.FC<HolidayTooltipProps> = ({
   const handleTooltipMouseLeave = () => {
     leaveTimerRef.current = setTimeout(() => {
       setIsOpen(false);
-    }, 250);
+    }, 120);
   };
+
+  // Close on scroll or ESC key
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleScrollOrKey = (e: Event) => {
+      if (e instanceof KeyboardEvent && e.key !== 'Escape') return;
+      setIsOpen(false);
+    };
+
+    window.addEventListener('scroll', handleScrollOrKey, { passive: true, capture: true });
+    window.addEventListener('keydown', handleScrollOrKey);
+
+    return () => {
+      window.removeEventListener('scroll', handleScrollOrKey, { capture: true });
+      window.removeEventListener('keydown', handleScrollOrKey);
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     return () => {
@@ -179,12 +196,19 @@ export const HolidayTooltip: React.FC<HolidayTooltipProps> = ({
                 <span>{getTypeBadgeLabel()}</span>
               </div>
 
-              <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-red-950 text-red-200 border border-red-500/60 uppercase tracking-wider">
-                {specialDate.isRecurringWeekend 
-                  ? 'Recorrente' 
-                  : (dateStr ? formatDateBR(dateStr) : (specialDate.date ? formatDateBR(specialDate.date) : 'Data Especial'))
-                }
-              </span>
+              <div className="flex items-center gap-1">
+                {specialDate.isRecurringAnnual !== false && !specialDate.isRecurringWeekend && (
+                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-emerald-950 text-emerald-300 border border-emerald-500/50 uppercase tracking-wider">
+                    Anual
+                  </span>
+                )}
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-red-950 text-red-200 border border-red-500/60 uppercase tracking-wider">
+                  {specialDate.isRecurringWeekend 
+                    ? 'Recorrente' 
+                    : (dateStr ? formatDateBR(dateStr) : (specialDate.date ? formatDateBR(specialDate.date) : 'Data Especial'))
+                  }
+                </span>
+              </div>
             </div>
 
             {/* Title */}

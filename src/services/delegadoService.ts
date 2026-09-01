@@ -10,8 +10,11 @@ import {
 import { ref, set, remove, onValue } from 'firebase/database';
 import { db, rtdb, auth, handleFirestoreError, OperationType, executeFirestoreWithRetry } from '../firebase';
 
+export type AuthorityCategory = 'dpc' | 'oip';
+
 export interface DelegadoInfo {
   id: string;
+  category?: AuthorityCategory; // 'dpc' = Delegado de Polícia Civil | 'oip' = Oficial de Investigação Policial
   nome: string;
   cargo: string;
   matricula: string;
@@ -34,8 +37,10 @@ function sanitizePayload<T extends Record<string, any>>(obj: T): Record<string, 
 }
 
 export const DELEGADOS_PADRAO: DelegadoInfo[] = [
+  // DPC - Delegados de Polícia Civil
   {
     id: 'dpc_fernando_nachtigall',
+    category: 'dpc',
     nome: 'Fernando Moretto Nachtigall',
     cargo: 'Delegado de Polícia Civil',
     matricula: '301.942-1-0',
@@ -45,6 +50,7 @@ export const DELEGADOS_PADRAO: DelegadoInfo[] = [
   },
   {
     id: 'dpc_plantao_maracanau',
+    category: 'dpc',
     nome: 'Delegado(a) Plantonista',
     cargo: 'Delegado(a) de Polícia Civil',
     matricula: '300.811-2-5',
@@ -54,12 +60,34 @@ export const DELEGADOS_PADRAO: DelegadoInfo[] = [
   },
   {
     id: 'dpc_adjunto_maracanau',
+    category: 'dpc',
     nome: 'Delegado(a) Adjunto(a)',
     cargo: 'Delegado(a) de Polícia Civil - Adjunto(a)',
     matricula: '302.155-4-9',
     delegacia: '1ª Delegacia Metropolitana de Maracanaú',
     municipio: 'Maracanaú/CE',
     portariaOuObs: 'Equipe de Inquéritos e Procedimentos'
+  },
+  // OIP - Oficiais de Investigação Policial / Inspetores / Escrivães
+  {
+    id: 'oip_inspetor_chefe',
+    category: 'oip',
+    nome: 'Oficial de Investigação Policial - Chefe',
+    cargo: 'Oficial de Investigação Policial (OIP)',
+    matricula: '304.582-1-7',
+    delegacia: '1ª Delegacia Metropolitana de Maracanaú',
+    municipio: 'Maracanaú/CE',
+    portariaOuObs: 'Chefe do Setor de Investigações e Oitivas'
+  },
+  {
+    id: 'oip_escrivao_cartorio',
+    category: 'oip',
+    nome: 'Escrivão(ã) de Polícia Civil',
+    cargo: 'Escrivão de Polícia Civil (EPC)',
+    matricula: '303.921-8-4',
+    delegacia: '1ª Delegacia Metropolitana de Maracanaú',
+    municipio: 'Maracanaú/CE',
+    portariaOuObs: 'Cartório Central de Intimações e Termos'
   }
 ];
 
@@ -183,7 +211,8 @@ export const delegadoService = {
                 const data = docSnap.data() as DelegadoInfo;
                 list.push({
                   id: docSnap.id,
-                  nome: data.nome || 'Delegado(a)',
+                  category: data.category || (data.id.startsWith('oip_') ? 'oip' : 'dpc'),
+                  nome: data.nome || 'Autoridade / Oficial',
                   cargo: data.cargo || 'Delegado de Polícia Civil',
                   matricula: data.matricula || '',
                   delegacia: data.delegacia || '1ª Delegacia Metropolitana de Maracanaú',

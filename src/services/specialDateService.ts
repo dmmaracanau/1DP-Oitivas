@@ -28,6 +28,7 @@ export const DEFAULT_FERIADOS_MARACANAU: Omit<CalendarSpecialDate, 'id' | 'creat
     date: '2026-01-01',
     type: 'feriado',
     description: 'Ano Novo (Feriado Nacional)',
+    isRecurringAnnual: true,
     enabled: true,
     color: 'red'
   },
@@ -36,6 +37,7 @@ export const DEFAULT_FERIADOS_MARACANAU: Omit<CalendarSpecialDate, 'id' | 'creat
     date: '2026-02-16',
     type: 'ponto_facultativo',
     description: 'Carnaval (Ponto Facultativo)',
+    isRecurringAnnual: false,
     enabled: true,
     color: 'red'
   },
@@ -44,6 +46,7 @@ export const DEFAULT_FERIADOS_MARACANAU: Omit<CalendarSpecialDate, 'id' | 'creat
     date: '2026-02-17',
     type: 'feriado',
     description: 'Feriado de Carnaval',
+    isRecurringAnnual: false,
     enabled: true,
     color: 'red'
   },
@@ -52,6 +55,7 @@ export const DEFAULT_FERIADOS_MARACANAU: Omit<CalendarSpecialDate, 'id' | 'creat
     date: '2026-02-18',
     type: 'ponto_facultativo',
     description: 'Ponto Facultativo até 14h',
+    isRecurringAnnual: false,
     enabled: true,
     color: 'red'
   },
@@ -60,6 +64,7 @@ export const DEFAULT_FERIADOS_MARACANAU: Omit<CalendarSpecialDate, 'id' | 'creat
     date: '2026-03-06',
     type: 'feriado',
     description: 'Emancipação Política do Município de Maracanaú (Feriado Municipal)',
+    isRecurringAnnual: true,
     enabled: true,
     color: 'red'
   },
@@ -68,6 +73,7 @@ export const DEFAULT_FERIADOS_MARACANAU: Omit<CalendarSpecialDate, 'id' | 'creat
     date: '2026-03-19',
     type: 'feriado',
     description: 'Dia de São José (Feriado Estadual no Ceará)',
+    isRecurringAnnual: true,
     enabled: true,
     color: 'red'
   },
@@ -76,6 +82,7 @@ export const DEFAULT_FERIADOS_MARACANAU: Omit<CalendarSpecialDate, 'id' | 'creat
     date: '2026-03-25',
     type: 'feriado',
     description: 'Abolição da Escravidão no Ceará (Feriado Estadual - Lei nº 14.891/2011)',
+    isRecurringAnnual: true,
     enabled: true,
     color: 'red'
   },
@@ -84,6 +91,7 @@ export const DEFAULT_FERIADOS_MARACANAU: Omit<CalendarSpecialDate, 'id' | 'creat
     date: '2026-04-03',
     type: 'feriado',
     description: 'Paixão de Cristo (Feriado Nacional)',
+    isRecurringAnnual: false,
     enabled: true,
     color: 'red'
   },
@@ -92,6 +100,7 @@ export const DEFAULT_FERIADOS_MARACANAU: Omit<CalendarSpecialDate, 'id' | 'creat
     date: '2026-04-21',
     type: 'feriado',
     description: 'Dia de Tiradentes (Feriado Nacional)',
+    isRecurringAnnual: true,
     enabled: true,
     color: 'red'
   },
@@ -100,6 +109,7 @@ export const DEFAULT_FERIADOS_MARACANAU: Omit<CalendarSpecialDate, 'id' | 'creat
     date: '2026-05-01',
     type: 'feriado',
     description: 'Dia Mundial do Trabalho (Feriado Nacional)',
+    isRecurringAnnual: true,
     enabled: true,
     color: 'red'
   },
@@ -108,6 +118,7 @@ export const DEFAULT_FERIADOS_MARACANAU: Omit<CalendarSpecialDate, 'id' | 'creat
     date: '2026-06-04',
     type: 'ponto_facultativo',
     description: 'Corpus Christi (Ponto Facultativo / Feriado Municipal)',
+    isRecurringAnnual: false,
     enabled: true,
     color: 'red'
   },
@@ -116,6 +127,7 @@ export const DEFAULT_FERIADOS_MARACANAU: Omit<CalendarSpecialDate, 'id' | 'creat
     date: '2026-09-07',
     type: 'feriado',
     description: 'Independência do Brasil (Feriado Nacional)',
+    isRecurringAnnual: true,
     enabled: true,
     color: 'red'
   },
@@ -124,6 +136,7 @@ export const DEFAULT_FERIADOS_MARACANAU: Omit<CalendarSpecialDate, 'id' | 'creat
     date: '2026-10-12',
     type: 'feriado',
     description: 'Padroeira do Brasil (Feriado Nacional)',
+    isRecurringAnnual: true,
     enabled: true,
     color: 'red'
   },
@@ -132,6 +145,7 @@ export const DEFAULT_FERIADOS_MARACANAU: Omit<CalendarSpecialDate, 'id' | 'creat
     date: '2026-11-02',
     type: 'feriado',
     description: 'Dia de Finados (Feriado Nacional)',
+    isRecurringAnnual: true,
     enabled: true,
     color: 'red'
   },
@@ -140,6 +154,7 @@ export const DEFAULT_FERIADOS_MARACANAU: Omit<CalendarSpecialDate, 'id' | 'creat
     date: '2026-11-15',
     type: 'feriado',
     description: 'Proclamação da República (Feriado Nacional)',
+    isRecurringAnnual: true,
     enabled: true,
     color: 'red'
   },
@@ -148,6 +163,7 @@ export const DEFAULT_FERIADOS_MARACANAU: Omit<CalendarSpecialDate, 'id' | 'creat
     date: '2026-11-20',
     type: 'feriado',
     description: 'Dia Nacional de Zumbi e da Consciência Negra (Feriado Nacional)',
+    isRecurringAnnual: true,
     enabled: true,
     color: 'red'
   },
@@ -156,6 +172,7 @@ export const DEFAULT_FERIADOS_MARACANAU: Omit<CalendarSpecialDate, 'id' | 'creat
     date: '2026-12-25',
     type: 'feriado',
     description: 'Natal (Feriado Nacional)',
+    isRecurringAnnual: true,
     enabled: true,
     color: 'red'
   }
@@ -267,6 +284,9 @@ export const specialDateService = {
                 type: d.type || 'feriado',
                 description: d.description || '',
                 isRecurringWeekend: Boolean(d.isRecurringWeekend),
+                isRecurringAnnual: typeof d.isRecurringAnnual === 'boolean' 
+                  ? d.isRecurringAnnual 
+                  : (typeof d.isRecurring === 'boolean' ? d.isRecurring : true),
                 enabled: d.enabled !== false,
                 color: d.color || 'red',
                 createdAt: d.createdAt || Date.now(),
@@ -402,6 +422,7 @@ export const specialDateService = {
       id,
       title: (specialDate.title || 'Feriado').trim(),
       type: specialDate.type || 'feriado',
+      isRecurringAnnual: typeof specialDate.isRecurringAnnual === 'boolean' ? specialDate.isRecurringAnnual : true,
       enabled: specialDate.enabled !== false,
       color: specialDate.color || 'red',
       createdAt: now,
@@ -496,26 +517,35 @@ export const specialDateService = {
   },
 
   /**
-   * Retorna todas as demarcações especiais (feriados ou cards de fim de semana) aplicáveis a uma determinada data (YYYY-MM-DD)
+   * Retorna todos os feriados e datas especiais aplicáveis a uma determinada data (YYYY-MM-DD).
+   * Fins de semana são destacados visualmente pela tonalidade das células do calendário.
    */
   getSpecialDatesForDate(dateStr: string, dayOfWeek: number, allSpecialDates: CalendarSpecialDate[]): CalendarSpecialDate[] {
     const list = allSpecialDates && allSpecialDates.length > 0 ? allSpecialDates : getLocalCache();
     const matched: CalendarSpecialDate[] = [];
+    const targetMonthDay = dateStr.length >= 10 ? dateStr.slice(5) : ''; // "MM-DD"
 
-    // 1. Feriados e datas específicas na data dateStr
-    const specificDates = list.filter(item => item.enabled !== false && item.date === dateStr);
-    matched.push(...specificDates);
+    // Feriados e datas específicas (incluindo feriados com recorrência anual para anos subsequentes)
+    for (const item of list) {
+      if (item.enabled === false) continue;
+      if (item.type === 'fim_de_semana' || item.isRecurringWeekend || item.id === 'weekend_sunday' || item.id === 'weekend_saturday') continue;
 
-    // 2. Fins de semana recorrentes (Domingo = 0, Sábado = 6)
-    if (dayOfWeek === 0) {
-      const sundayCard = list.find(item => item.enabled !== false && (item.id === 'weekend_sunday' || item.dayOfWeek === 0));
-      if (sundayCard && !matched.some(x => x.id === sundayCard.id)) {
-        matched.push(sundayCard);
+      // 1.1 Coincidência exata de data (YYYY-MM-DD)
+      if (item.date === dateStr) {
+        if (!matched.some(x => x.id === item.id)) {
+          matched.push(item);
+        }
+        continue;
       }
-    } else if (dayOfWeek === 6) {
-      const saturdayCard = list.find(item => item.enabled !== false && (item.id === 'weekend_saturday' || item.dayOfWeek === 6));
-      if (saturdayCard && !matched.some(x => x.id === saturdayCard.id)) {
-        matched.push(saturdayCard);
+
+      // 1.2 Coincidência por recorrência anual (mesmo mês e dia em anos diferentes)
+      if (item.isRecurringAnnual !== false && item.date && targetMonthDay) {
+        const itemMonthDay = item.date.slice(5);
+        if (itemMonthDay === targetMonthDay) {
+          if (!matched.some(x => x.id === item.id)) {
+            matched.push(item);
+          }
+        }
       }
     }
 

@@ -205,3 +205,41 @@ export function formatAddressCompleto(oitiva: {
   return parts.join(', ');
 }
 
+/**
+ * Calcula a tentativa de intimação atual da oitiva (1ª, 2ª, 3ª...)
+ * Baseado no histórico de remarcações ou status da oitiva.
+ */
+export function calculateAttemptNumber(oitiva?: {
+  status?: HearingStatus | string;
+  history?: Array<{ action: string }>;
+} | null): number {
+  if (!oitiva) return 1;
+  const reschedules = oitiva.history?.filter(
+    h => h.action === 'remarcada' || h.action === 'data_alterada'
+  ).length || 0;
+
+  if (reschedules > 0) {
+    return 1 + reschedules;
+  }
+  if (oitiva.status === 'Remarcada') {
+    return 2;
+  }
+  return 1;
+}
+
+/**
+ * Formata o número da intimação no padrão NN/AAAA (ex: 01/2026)
+ */
+export function formatIntimationNumberDisplay(raw?: string | null): string {
+  const currentYear = new Date().getFullYear();
+  if (!raw || !raw.trim()) {
+    return `01/${currentYear}`;
+  }
+  const clean = raw.trim();
+  if (/^\d{1,2}\/\d{4}$/.test(clean)) {
+    const [num, yr] = clean.split('/');
+    return `${num.padStart(2, '0')}/${yr}`;
+  }
+  return clean;
+}
+

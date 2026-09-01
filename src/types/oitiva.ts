@@ -26,6 +26,19 @@ export type ProcedureType =
 
 export type HearingModality = 'Presencial' | 'Videoconferência' | 'Híbrida';
 
+export interface OitivaHistoryItem {
+  id: string;
+  timestamp: number;
+  action: 'criada' | 'remarcada' | 'data_alterada' | 'status_alterado' | 'intimacao_enviada' | 'restaurada';
+  previousDate?: string;
+  newDate?: string;
+  previousTime?: string;
+  newTime?: string;
+  reason?: string;
+  note?: string;
+  performedBy?: string;
+}
+
 export interface Oitiva {
   id: string;
   // Campo OBRIGATÓRIO
@@ -51,6 +64,8 @@ export interface Oitiva {
   status: HearingStatus;
   notes?: string;
   intimationSent?: boolean; // Intimação expedida/entregue
+  intimationNumber?: string; // Número/ano da intimação, ex: "01/2026"
+  history?: OitivaHistoryItem[]; // Histórico completo de remarcações, intimações e alterações
   googleCalendarEventId?: string;
   googleDriveDocId?: string;
   googleDriveDocUrl?: string;
@@ -101,6 +116,7 @@ export interface CalendarSpecialDate {
   type: SpecialDateType;
   description?: string;
   isRecurringWeekend?: boolean; // Se aplica automaticamente a todos os domingos ou sábados
+  isRecurringAnnual?: boolean; // Se repete todo ano na mesma data (dia/mês)
   enabled?: boolean;
   color?: string; // Default 'red'
   createdAt?: number;

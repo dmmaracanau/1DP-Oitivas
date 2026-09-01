@@ -22,6 +22,7 @@ import { driveService } from './services/driveService';
 import { specialDateService } from './services/specialDateService';
 import { backupService } from './services/backupService';
 import { Oitiva, HearingStatus, UserProfile, CalendarSpecialDate } from './types/oitiva';
+import { formatDateBR } from './utils/formatters';
 import { CheckCircle2, Shield, AlertCircle, Info } from 'lucide-react';
 
 export default function App() {
@@ -29,7 +30,7 @@ export default function App() {
   const [oitivas, setOitivas] = useState<Oitiva[]>([]);
   const [specialDates, setSpecialDates] = useState<CalendarSpecialDate[]>([]);
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
-  const [currentView, setCurrentView] = useState<'month' | 'week' | 'day' | 'list'>('month');
+  const [currentView, setCurrentView] = useState<'month' | 'week' | 'day' | 'list'>('week');
   const [statusFilter, setStatusFilter] = useState<HearingStatus | 'TODOS'>('TODOS');
   const [searchQuery, setSearchQuery] = useState<string>('');
   
@@ -232,25 +233,96 @@ export default function App() {
   };
 
   const handleStatusChange = async (id: string, newStatus: HearingStatus) => {
+    // 1. Atualização otimista imediata na memória para feedback instantâneo (0ms de atraso percebido)
+    setOitivas(prev => prev.map(o => o.id === id ? { ...o, status: newStatus, updatedAt: Date.now() } : o));
+    if (selectedOitiva && selectedOitiva.id === id) {
+      setSelectedOitiva(prev => prev ? { ...prev, status: newStatus, updatedAt: Date.now() } : null);
+    }
+    showToast(`Status atualizado para "${newStatus}".`);
+
     try {
       await oitivaService.update(id, { status: newStatus }, user?.uid);
-      showToast(`Status atualizado para "${newStatus}".`);
-      if (selectedOitiva && selectedOitiva.id === id) {
-        setSelectedOitiva(prev => prev ? { ...prev, status: newStatus } : null);
-      }
     } catch (err: any) {
-      showToast('Erro ao alterar status.', 'error');
+      showToast('Erro ao persistir status na nuvem.', 'error');
+    }
+  };
+
+  const handleMoveOitivaDate = async (oitivaId: string, newDate: string) => {
+    const oitiva = oitivas.find(o => o.id === oitivaId);
+    if (!oitiva) return;
+    if (oitiva.date === newDate) return;
+
+    // Atualização otimista imediata
+    setOitivas(prev => prev.map(o => o.id === oitivaId ? { ...o, date: newDate, updatedAt: Date.now() } : o));
+    if (selectedOitiva && selectedOitiva.id === oitivaId) {
+      setSelectedOitiva(prev => prev ? { ...prev, date: newDate, updatedAt: Date.now() } : null);
+    }
+    showToast(`Oitiva transferida para ${formatDateBR(newDate)}!`);
+
+    try {
+      await oitivaService.updateDate(oitivaId, newDate, user?.uid);
+    } catch (err: any) {
+      showToast(err.message || 'Erro ao mover data da oitiva.', 'error');
+    }
+  };
+
+  const handleRescheduleOitiva = async (oitivaId: string, newDate: string, newTime: string, reason?: string) => {
+    const oitiva = oitivas.find(o => o.id === oitivaId);
+    if (!oitiva) return;
+
+    // Atualização otimista imediata
+    setOitivas(prev => prev.map(o => o.id === oitivaId ? { ...o, date: newDate, time: newTime, status: 'Remarcada', updatedAt: Date.now() } : o));
+    if (selectedOitiva && selectedOitiva.id === oitivaId) {
+      setSelectedOitiva(prev => prev ? { ...prev, date: newDate, time: newTime, status: 'Remarcada', updatedAt: Date.now() } : null);
+    }
+    showToast(`Oitiva de "${oitiva.personName}" remarcada para ${formatDateBR(newDate)} às ${newTime}h!`);
+
+    try {
+      await oitivaService.reschedule(oitivaId, newDate, newTime, reason, user?.uid);
+    } catch (err: any) {
+      showToast(err.message || 'Erro ao remarcar oitiva.', 'error');
     }
   };
 
   const handleUpdateOitivaDirect = async (id: string, updates: Partial<Oitiva>) => {
+    // Atualização otimista imediata
+    setOitivas(prev => prev.map(o => o.id === id ? { ...o, ...updates, updatedAt: Date.now() } : o));
+    if (selectedOitiva && selectedOitiva.id === id) {
+      setSelectedOitiva(prev => prev ? { ...prev, ...updates, updatedAt: Date.now() } : null);
+    }
+
     try {
       await oitivaService.update(id, updates, user?.uid);
-      if (selectedOitiva && selectedOitiva.id === id) {
-        setSelectedOitiva(prev => prev ? { ...prev, ...updates } : null);
-      }
     } catch (err: any) {
       console.error('Erro ao atualizar oitiva:', err);
+    }
+  };
+
+  const handleToggleIntimationSent = async (id: string, nextVal: boolean) => {
+    // Atualização otimista instantânea
+    setOitivas(prev => prev.map(o => o.id === id ? { ...o, intimationSent: nextVal, updatedAt: Date.now() } : o));
+    if (selectedOitiva && selectedOitiva.id === id) {
+      setSelectedOitiva(prev => prev ? { ...prev, intimationSent: nextVal, updatedAt: Date.now() } : null);
+    }
+    showToast(nextVal ? 'Intimação marcada como ENVIADA!' : 'Intimação marcada como PENDENTE.');
+
+    try {
+      await oitivaService.update(id, { intimationSent: nextVal }, user?.uid);
+    } catch (e) {
+      showToast('Erro ao atualizar status da intimação.', 'error');
+    }
+  };
+
+  const handleClearPersonHistory = async (personName: string, cpf?: string) => {
+    try {
+      await oitivaService.clearPersonHistory(personName, cpf, user?.uid);
+      showToast(`Histórico de "${personName}" limpo com sucesso!`);
+      // Forçar atualização do modal se estiver aberto
+      if (selectedOitiva) {
+        setSelectedOitiva(prev => prev ? { ...prev, history: [] } : null);
+      }
+    } catch (err: any) {
+      showToast('Erro ao limpar histórico da pessoa.', 'error');
     }
   };
 
@@ -347,6 +419,7 @@ export default function App() {
         onOpenProfileModal={() => setIsProfileModalOpen(true)}
         onOpenDelegadosModal={() => setIsDelegadosModalOpen(true)}
         onOpenHolidaysModal={() => handleOpenHolidaysModal()}
+        onExportBackup={handleExportBackup}
         isAdmin={isAdmin}
         hasWorkspaceToken={hasWorkspaceToken}
         syncStatus={syncStatus}
@@ -356,9 +429,10 @@ export default function App() {
 
       {/* Main Container */}
       <main className="flex-1 w-full">
-        {/* Quick summary stats & filter bar */}
+        {/* Quick summary stats & filter bar (Separado por Mês de Visualização) */}
         <StatsBar
           oitivas={oitivas}
+          currentDate={currentDate}
           selectedStatusFilter={statusFilter}
           onStatusFilterChange={setStatusFilter}
         />
@@ -372,7 +446,9 @@ export default function App() {
             onSelectOitiva={handleSelectOitiva}
             onAddOitivaForDate={handleAddOitivaForDate}
             onQuickStatusChange={handleStatusChange}
+            onToggleIntimationSent={handleToggleIntimationSent}
             onOpenWhatsApp={handleOpenWhatsApp}
+            onMoveOitivaDate={handleMoveOitivaDate}
             statusFilter={statusFilter}
             specialDates={specialDates}
             onOpenHolidaysModal={handleOpenHolidaysModal}
@@ -388,7 +464,9 @@ export default function App() {
             onSelectOitiva={handleSelectOitiva}
             onAddOitivaForDate={handleAddOitivaForDate}
             onQuickStatusChange={handleStatusChange}
+            onToggleIntimationSent={handleToggleIntimationSent}
             onOpenWhatsApp={handleOpenWhatsApp}
+            onMoveOitivaDate={handleMoveOitivaDate}
             statusFilter={statusFilter}
             specialDates={specialDates}
             onOpenHolidaysModal={handleOpenHolidaysModal}
@@ -404,6 +482,7 @@ export default function App() {
             onSelectOitiva={handleSelectOitiva}
             onAddOitivaForDate={handleAddOitivaForDate}
             onQuickStatusChange={handleStatusChange}
+            onToggleIntimationSent={handleToggleIntimationSent}
             onOpenWhatsApp={handleOpenWhatsApp}
             statusFilter={statusFilter}
             specialDates={specialDates}
@@ -445,6 +524,8 @@ export default function App() {
 
       <OitivaDetailModal
         oitiva={selectedOitiva}
+        allOitivas={oitivas}
+        user={user}
         isOpen={isDetailModalOpen}
         onClose={() => {
           setIsDetailModalOpen(false);
@@ -453,14 +534,9 @@ export default function App() {
         onEdit={handleEditOitiva}
         onDelete={handleDeleteOitiva}
         onStatusChange={handleStatusChange}
-        onToggleIntimationSent={async (id, nextVal) => {
-          try {
-            await handleUpdateOitivaDirect(id, { intimationSent: nextVal });
-            showToast(nextVal ? 'Intimação marcada como enviada/emitida!' : 'Intimação marcada como pendente de envio.');
-          } catch (e) {
-            showToast('Erro ao atualizar status da intimação.', 'error');
-          }
-        }}
+        onReschedule={handleRescheduleOitiva}
+        onClearPersonHistory={handleClearPersonHistory}
+        onToggleIntimationSent={handleToggleIntimationSent}
         onOpenPrint={() => setIsPrintModalOpen(true)}
         onOpenPrintIntimacao={() => {
           if (selectedOitiva) {
@@ -602,7 +678,7 @@ export default function App() {
 
       {/* Footer */}
       <footer className="border-t border-purple-900/30 bg-[#0a0812] py-4 text-center text-xs text-zinc-500 no-print">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+        <div className="w-full max-w-[98.5%] 2xl:max-w-[1920px] mx-auto px-2 sm:px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <p className="flex items-center gap-1.5">
             <Shield className="w-3.5 h-3.5 text-purple-400" />
             <span>Sistema de Agenda de Oitivas • Delegacia Metropolitana de Maracanaú</span>

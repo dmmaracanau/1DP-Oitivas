@@ -156,6 +156,8 @@ export const oitivaService = {
               status: d.status || 'Agendada',
               notes: d.notes || '',
               intimationSent: Boolean(d.intimationSent),
+              intimationNumber: d.intimationNumber || '',
+              history: Array.isArray(d.history) ? d.history : [],
               googleCalendarEventId: d.googleCalendarEventId || '',
               googleDriveDocId: d.googleDriveDocId || '',
               googleDriveDocUrl: d.googleDriveDocUrl || '',
@@ -343,6 +345,232 @@ export const oitivaService = {
       }
     } catch (rtdbErr) {
       console.warn("Erro ao atualizar oitiva no RTDB:", rtdbErr);
+    }
+  },
+
+  /**
+   * Remarca uma oitiva para uma nova data/hora e registra histórico completo
+   */
+  async reschedule(
+    id: string,
+    newDate: string,
+    newTime: string,
+    reason?: string,
+    currentUid?: string
+  ): Promise<void> {
+    const targetUid = resolveActiveUid(currentUid);
+    const current = getLocalCache(targetUid);
+    const item = current.find(x => x.id === id);
+
+    const prevDate = item?.date || '';
+    const prevTime = item?.time || '';
+
+    const historyEntry = {
+      id: `hist_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      timestamp: Date.now(),
+      action: 'remarcada' as const,
+      previousDate: prevDate,
+      newDate: newDate,
+      previousTime: prevTime,
+      newTime: newTime,
+      reason: reason || 'Remarcação solicitada',
+      performedBy: 'Servidor Policial'
+    };
+
+    const existingHistory = Array.isArray(item?.history) ? item.history : [];
+    const newHistory = [...existingHistory, historyEntry];
+
+    await this.update(
+      id,
+      {
+        date: newDate,
+        time: newTime,
+        status: 'Remarcada',
+        history: newHistory
+      },
+      targetUid
+    );
+  },
+
+  /**
+   * Atualiza a data da oitiva (via Drag & Drop no calendário) e salva no histórico
+   */
+  async updateDate(
+    id: string,
+    newDate: string,
+    currentUid?: string,
+    newTime?: string
+  ): Promise<void> {
+    const targetUid = resolveActiveUid(currentUid);
+    const current = getLocalCache(targetUid);
+    const item = current.find(x => x.id === id);
+
+    if (!item || item.date === newDate) {
+      return;
+    }
+
+    const prevDate = item.date || '';
+    const prevTime = item.time || '';
+    const updatedTime = newTime || prevTime;
+
+    const historyEntry = {
+      id: `hist_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      timestamp: Date.now(),
+      action: 'data_alterada' as const,
+      previousDate: prevDate,
+      newDate: newDate,
+      previousTime: prevTime,
+      newTime: updatedTime,
+      reason: 'Movida no calendário (Drag and Drop)',
+      performedBy: 'Servidor Policial'
+    };
+
+    const existingHistory = Array.isArray(item.history) ? item.history : [];
+    const newHistory = [...existingHistory, historyEntry];
+
+    await this.update(
+      id,
+      {
+        date: newDate,
+        time: updatedTime,
+        history: newHistory
+      },
+      targetUid
+    );
+  },
+
+  /**
+   * Resgata todo o histórico de oitivas e intimações de uma mesma pessoa (por CPF ou Nome)
+   */
+  getPersonHistory(personName: string, cpf?: string, allOitivas?: Oitiva[]): {
+    matchedOitivas: Oitiva[];
+    timeline: Array<{
+      id: string;
+      oitivaId: string;
+      timestamp: number;
+      dateStr: string;
+      timeStr?: string;
+      action: string;
+      status: string;
+      details: string;
+      procedureNumber?: string;
+      isCurrent?: boolean;
+    }>;
+  } {
+    const cleanName = (personName || '').trim().toLowerCase();
+    const cleanCpf = (cpf || '').replace(/\D/g, '');
+
+    if (!cleanName && !cleanCpf) {
+      return { matchedOitivas: [], timeline: [] };
+    }
+
+    const list = allOitivas && allOitivas.length > 0 
+      ? allOitivas 
+      : getLocalCache(resolveActiveUid());
+
+    // Localiza todas as oitivas vinculadas à pessoa
+    const matched = list.filter(o => {
+      if (cleanCpf && o.cpf) {
+        const itemCpf = o.cpf.replace(/\D/g, '');
+        if (itemCpf && itemCpf === cleanCpf) return true;
+      }
+      if (cleanName && o.personName) {
+        return o.personName.trim().toLowerCase() === cleanName;
+      }
+      return false;
+    });
+
+    const timeline: Array<{
+      id: string;
+      oitivaId: string;
+      timestamp: number;
+      dateStr: string;
+      timeStr?: string;
+      action: string;
+      status: string;
+      details: string;
+      procedureNumber?: string;
+      isCurrent?: boolean;
+    }> = [];
+
+    matched.forEach(o => {
+      // 1. Evento de criação
+      timeline.push({
+        id: `created_${o.id}`,
+        oitivaId: o.id,
+        timestamp: o.createdAt || 0,
+        dateStr: o.date,
+        timeStr: o.time,
+        action: 'Agendamento Inicial',
+        status: o.status,
+        details: `Oitiva agendada para ${o.date} às ${o.time || '10:00'} (${o.modality || 'Presencial'})`,
+        procedureNumber: o.procedureNumber,
+        isCurrent: true
+      });
+
+      // 2. Eventos gravados no histórico
+      if (Array.isArray(o.history)) {
+        o.history.forEach(h => {
+          let actionLabel = 'Alteração';
+          if (h.action === 'remarcada') actionLabel = 'Oitiva Remarcada';
+          else if (h.action === 'data_alterada') actionLabel = 'Data Reagendada';
+          else if (h.action === 'intimacao_enviada') actionLabel = 'Intimação Notificada';
+
+          timeline.push({
+            id: h.id,
+            oitivaId: o.id,
+            timestamp: h.timestamp,
+            dateStr: h.newDate || h.previousDate || o.date,
+            timeStr: h.newTime || h.previousTime || o.time,
+            action: actionLabel,
+            status: o.status,
+            details: h.reason 
+              ? `${h.reason} (De ${h.previousDate || 'data anterior'} para ${h.newDate || o.date})`
+              : `Alterada de ${h.previousDate || 'data anterior'} para ${h.newDate || o.date}`,
+            procedureNumber: o.procedureNumber,
+            isCurrent: false
+          });
+        });
+      }
+    });
+
+    // Ordena do mais recente para o mais antigo
+    timeline.sort((a, b) => b.timestamp - a.timestamp);
+
+    return {
+      matchedOitivas: matched,
+      timeline
+    };
+  },
+
+  /**
+   * Limpa o histórico de eventos/remarcações de uma pessoa em suas oitivas
+   */
+  async clearPersonHistory(personName: string, cpf?: string, currentUid?: string): Promise<void> {
+    const targetUid = resolveActiveUid(currentUid);
+    const list = getLocalCache(targetUid);
+    const cleanName = (personName || '').trim().toLowerCase();
+    const cleanCpf = (cpf || '').replace(/\D/g, '');
+
+    const matched = list.filter(o => {
+      if (cleanCpf && o.cpf) {
+        const itemCpf = o.cpf.replace(/\D/g, '');
+        if (itemCpf && itemCpf === cleanCpf) return true;
+      }
+      if (cleanName && o.personName) {
+        return o.personName.trim().toLowerCase() === cleanName;
+      }
+      return false;
+    });
+
+    for (const item of matched) {
+      await this.update(
+        item.id,
+        {
+          history: []
+        },
+        targetUid
+      );
     }
   },
 

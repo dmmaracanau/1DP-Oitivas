@@ -14,9 +14,9 @@ import {
 import { getDatabase, Database } from 'firebase/database';
 import firebaseConfigJson from '../firebase-applet-config.json';
 
-// Configura nível de log do Firestore para evitar alertas verbosos de reconexão de streaming
+// Configura nível de log do Firestore para modo silencioso, evitando alertas de reconexão
 try {
-  setLogLevel('error');
+  setLogLevel('silent');
 } catch {
   // Ignora se não suportado
 }
@@ -68,30 +68,30 @@ try {
 }
 export const rtdb = rtdbInstance;
 
-// Inicializa Firestore com o databaseId correto do projeto e detecção inteligente de transporte
+// Inicializa Firestore com o databaseId correto do projeto e transporte resiliente via Long Polling
 let firestoreDb: Firestore;
 
 try {
-  // Tentativa 1: Cache persistente com detecção automática inteligente de transporte / long-polling
+  // Tentativa 1: Cache persistente com Long Polling forçado (evita falhas de streaming em sandboxes/proxies)
   firestoreDb = initializeFirestore(
     app, 
     {
       localCache: persistentLocalCache({
         tabManager: persistentMultipleTabManager()
       }),
-      experimentalAutoDetectLongPolling: true,
+      experimentalForceLongPolling: true,
       ignoreUndefinedProperties: true
     }, 
     firestoreDatabaseId
   );
 } catch (err1) {
   try {
-    // Tentativa 2: Cache em memória com auto-detect de polling
+    // Tentativa 2: Cache em memória com Long Polling forçado
     firestoreDb = initializeFirestore(
       app,
       {
         localCache: memoryLocalCache(),
-        experimentalAutoDetectLongPolling: true,
+        experimentalForceLongPolling: true,
         ignoreUndefinedProperties: true
       },
       firestoreDatabaseId

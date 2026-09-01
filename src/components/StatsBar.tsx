@@ -1,221 +1,204 @@
 import React from 'react';
-import { Calendar, CheckCircle2, AlertCircle, Clock, Users, UserX, Filter } from 'lucide-react';
+import { Calendar, CheckCircle2, Clock, Users, UserX, Sparkles } from 'lucide-react';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { Oitiva, HearingStatus } from '../types/oitiva';
 
 interface StatsBarProps {
   oitivas: Oitiva[];
+  currentDate?: Date;
   selectedStatusFilter: HearingStatus | 'TODOS';
   onStatusFilterChange: (status: HearingStatus | 'TODOS') => void;
 }
 
 export const StatsBar: React.FC<StatsBarProps> = ({
   oitivas,
+  currentDate = new Date(),
   selectedStatusFilter,
   onStatusFilterChange
 }) => {
   const todayStr = new Date().toISOString().split('T')[0];
 
-  const total = oitivas.length;
-  const todayCount = oitivas.filter(o => o.date === todayStr).length;
-  const scheduledCount = oitivas.filter(o => o.status === 'Agendada').length;
-  const completedCount = oitivas.filter(o => o.status === 'Realizada').length;
-  const absentCount = oitivas.filter(o => o.status === 'Não Compareceu').length;
+  // Identificação do ano e mês atuais selecionados na visualização
+  const viewYear = currentDate.getFullYear();
+  const viewMonth = currentDate.getMonth(); // 0-indexed
 
-  const filters: { 
-    label: string; 
-    value: HearingStatus | 'TODOS'; 
-    count: number; 
-    activeBg: string;
-    activeBorder: string;
-    badgeBg: string;
-  }[] = [
-    { 
-      label: 'Todas as Oitivas', 
-      value: 'TODOS', 
-      count: total, 
-      activeBg: 'bg-blue-600/90 text-white',
-      activeBorder: 'border-blue-400 shadow-blue-950/70',
-      badgeBg: 'bg-blue-950 text-blue-200'
-    },
-    { 
-      label: 'Agendadas', 
-      value: 'Agendada', 
-      count: scheduledCount, 
-      activeBg: 'bg-purple-600/90 text-white',
-      activeBorder: 'border-purple-400 shadow-purple-950/70',
-      badgeBg: 'bg-purple-950 text-purple-200'
-    },
-    { 
-      label: 'Realizadas', 
-      value: 'Realizada', 
-      count: completedCount, 
-      activeBg: 'bg-emerald-600/90 text-white',
-      activeBorder: 'border-emerald-400 shadow-emerald-950/70',
-      badgeBg: 'bg-emerald-950 text-emerald-200'
-    },
-    { 
-      label: 'Não Compareceu', 
-      value: 'Não Compareceu', 
-      count: absentCount, 
-      activeBg: 'bg-rose-600/90 text-white',
-      activeBorder: 'border-rose-400 shadow-rose-950/70',
-      badgeBg: 'bg-rose-950 text-rose-200'
-    }
-  ];
+  // Nome do mês formatado em português (ex: "Setembro de 2026")
+  const monthNameFormatted = format(currentDate, "MMMM 'de' yyyy", { locale: ptBR });
+  const monthShort = format(currentDate, "MMM/yy", { locale: ptBR });
+
+  // FILTRO POR MÊS DA VISUALIZAÇÃO:
+  // Isola apenas os dados de oitiva pertencentes ao mês e ano da visualização atual
+  const monthOitivas = oitivas.filter((o) => {
+    if (!o.date) return false;
+    const parts = o.date.split('-');
+    if (parts.length < 2) return false;
+    const oYear = parseInt(parts[0], 10);
+    const oMonth = parseInt(parts[1], 10) - 1; // 0-indexed
+    return oYear === viewYear && oMonth === viewMonth;
+  });
+
+  // Métricas calculadas para o mês específico em exibição
+  const monthTotal = monthOitivas.length;
+  const monthTodayCount = monthOitivas.filter(o => o.date === todayStr).length;
+  const monthScheduledCount = monthOitivas.filter(o => o.status === 'Agendada').length;
+  const monthCompletedCount = monthOitivas.filter(o => o.status === 'Realizada').length;
+  const monthAbsentCount = monthOitivas.filter(o => o.status === 'Não Compareceu').length;
 
   return (
-    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-1 sm:py-1.5 no-print space-y-1.5">
-      {/* Top summary metric cards - Ultra Compactos para economizar espaço de tela */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5 sm:gap-2">
+    <div className="w-full max-w-[98.5%] 2xl:max-w-[1920px] mx-auto px-1 sm:px-2.5 lg:px-4 py-1.5 no-print">
+      {/* Botões Coloridos Oficiais (Único Sistema de Filtros por Mês) */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5 sm:gap-2.5">
         
-        {/* Metric 1: Total Cadastrado (Azul / Ciano) */}
+        {/* Botão 1: Total do Mês (Azul) */}
         <button
+          id="filter-btn-todas-mes"
           type="button"
           onClick={() => onStatusFilterChange('TODOS')}
-          className={`px-2.5 py-1.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-2 shadow-sm ${
+          className={`px-3 py-2 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center justify-between gap-2 shadow-sm ${
             selectedStatusFilter === 'TODOS'
-              ? 'bg-[#102046] border-blue-400 ring-1 ring-blue-400/60 shadow-blue-950/80'
-              : 'bg-[#0c162b] border-blue-700/50 hover:border-blue-400 hover:bg-[#122247]'
+              ? 'bg-[#0f244c] border-blue-400 ring-2 ring-blue-400/70 shadow-lg shadow-blue-950/80 scale-[1.02]'
+              : 'bg-[#0b172e] border-blue-800/60 hover:border-blue-400 hover:bg-[#112347]'
           }`}
+          title={`Filtrar todas as oitivas de ${monthNameFormatted}`}
         >
           <div className="flex items-center gap-2 min-w-0">
-            <div className="w-6 h-6 rounded-lg bg-blue-950 border border-blue-400/80 flex items-center justify-center text-blue-200 shrink-0">
-              <Users className="w-3.5 h-3.5" />
+            <div className="w-7 h-7 rounded-xl bg-blue-950 border border-blue-400/80 flex items-center justify-center text-blue-200 shrink-0 shadow-sm">
+              <Users className="w-4 h-4" />
             </div>
-            <span className="text-[10px] font-black text-blue-200 uppercase tracking-wider truncate">
-              Cadastrados
-            </span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1">
+                <span className="text-[10px] font-black text-blue-300 uppercase tracking-wider block truncate">
+                  No Mês
+                </span>
+                <span className="text-[8px] font-bold text-blue-400/80 capitalize hidden sm:inline truncate">
+                  ({monthShort})
+                </span>
+              </div>
+              <span className="text-[9px] text-zinc-400 block font-medium">Todas as Oitivas</span>
+            </div>
           </div>
-          <span className="text-sm sm:text-base font-black text-white tracking-tight leading-none shrink-0">
-            {total}
+          <span className="text-base sm:text-lg font-black text-white tracking-tight leading-none shrink-0">
+            {monthTotal}
           </span>
         </button>
 
-        {/* Metric 2: Oitivas de Hoje (Âmbar / Dourado) */}
-        <div className={`px-2.5 py-1.5 rounded-xl border transition-all flex items-center justify-between gap-2 shadow-sm ${
-          todayCount > 0 
-            ? 'bg-[#312007] border-amber-400 ring-1 ring-amber-400/50 shadow-amber-950/60' 
-            : 'bg-[#1c1205] border-amber-700/50'
-        }`}>
+        {/* Botão 2: Oitivas de Hoje no Mês (Âmbar) */}
+        <div
+          className={`px-3 py-2 rounded-2xl border-2 transition-all flex items-center justify-between gap-2 shadow-sm ${
+            monthTodayCount > 0 
+              ? 'bg-[#312007] border-amber-400 ring-1 ring-amber-400/60 shadow-lg shadow-amber-950/70' 
+              : 'bg-[#181105] border-amber-800/50'
+          }`}
+          title="Oitivas agendadas para o dia de hoje"
+        >
           <div className="flex items-center gap-2 min-w-0">
-            <div className="w-6 h-6 rounded-lg bg-amber-950 border border-amber-400/80 flex items-center justify-center text-amber-200 shrink-0">
-              <Clock className="w-3.5 h-3.5" />
+            <div className="w-7 h-7 rounded-xl bg-amber-950 border border-amber-400/80 flex items-center justify-center text-amber-200 shrink-0 shadow-sm">
+              <Clock className="w-4 h-4" />
             </div>
-            <span className="text-[10px] font-black text-amber-200 uppercase tracking-wider truncate">
-              Hoje
-            </span>
+            <div className="min-w-0">
+              <span className="text-[10px] font-black text-amber-300 uppercase tracking-wider block truncate">
+                Pauta Hoje
+              </span>
+              <span className="text-[9px] text-zinc-400 block font-medium">Dia Atual</span>
+            </div>
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <span className="text-sm sm:text-base font-black text-white tracking-tight leading-none">
-              {todayCount}
+            <span className="text-base sm:text-lg font-black text-white tracking-tight leading-none">
+              {monthTodayCount}
             </span>
-            {todayCount > 0 && (
-              <span className="text-[9px] font-black text-amber-950 bg-amber-300 px-1 py-0.2 rounded">
+            {monthTodayCount > 0 && (
+              <span className="text-[8px] font-black text-amber-950 bg-amber-300 px-1 py-0.5 rounded-full uppercase">
                 Hoje
               </span>
             )}
           </div>
         </div>
 
-        {/* Metric 3: Agendadas (Roxo / Púrpura) */}
+        {/* Botão 3: Agendadas no Mês (Roxo) */}
         <button
+          id="filter-btn-agendadas-mes"
           type="button"
-          onClick={() => onStatusFilterChange('Agendada')}
-          className={`px-2.5 py-1.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-2 shadow-sm ${
+          onClick={() => onStatusFilterChange(selectedStatusFilter === 'Agendada' ? 'TODOS' : 'Agendada')}
+          className={`px-3 py-2 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center justify-between gap-2 shadow-sm ${
             selectedStatusFilter === 'Agendada'
-              ? 'bg-[#281548] border-purple-400 ring-1 ring-purple-400/60 shadow-purple-950/80'
-              : 'bg-[#1a0e30] border-purple-700/50 hover:border-purple-400 hover:bg-[#251344]'
+              ? 'bg-[#2f1556] border-purple-400 ring-2 ring-purple-400/70 shadow-lg shadow-purple-950/80 scale-[1.02]'
+              : 'bg-[#190d30] border-purple-800/60 hover:border-purple-400 hover:bg-[#251244]'
           }`}
+          title={`Filtrar oitivas Agendadas em ${monthNameFormatted}`}
         >
           <div className="flex items-center gap-2 min-w-0">
-            <div className="w-6 h-6 rounded-lg bg-purple-950 border border-purple-400/80 flex items-center justify-center text-purple-200 shrink-0">
-              <Calendar className="w-3.5 h-3.5" />
+            <div className="w-7 h-7 rounded-xl bg-purple-950 border border-purple-400/80 flex items-center justify-center text-purple-200 shrink-0 shadow-sm">
+              <Calendar className="w-4 h-4" />
             </div>
-            <span className="text-[10px] font-black text-purple-200 uppercase tracking-wider truncate">
-              Agendadas
-            </span>
-          </div>
-          <span className="text-sm sm:text-base font-black text-white tracking-tight leading-none shrink-0">
-            {scheduledCount}
-          </span>
-        </button>
-
-        {/* Metric 4: Realizadas (Verde Esmeralda) */}
-        <button
-          type="button"
-          onClick={() => onStatusFilterChange('Realizada')}
-          className={`px-2.5 py-1.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-2 shadow-sm ${
-            selectedStatusFilter === 'Realizada'
-              ? 'bg-[#0c3122] border-emerald-400 ring-1 ring-emerald-400/60 shadow-emerald-950/80'
-              : 'bg-[#082017] border-emerald-700/50 hover:border-emerald-400 hover:bg-[#0c3022]'
-          }`}
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-6 h-6 rounded-lg bg-emerald-950 border border-emerald-400/80 flex items-center justify-center text-emerald-200 shrink-0">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-            </div>
-            <span className="text-[10px] font-black text-emerald-200 uppercase tracking-wider truncate">
-              Realizadas
-            </span>
-          </div>
-          <span className="text-sm sm:text-base font-black text-white tracking-tight leading-none shrink-0">
-            {completedCount}
-          </span>
-        </button>
-
-        {/* Metric 5: Não Compareceu / Faltas (Rosa / Vermelho) */}
-        <button
-          type="button"
-          onClick={() => onStatusFilterChange('Não Compareceu')}
-          className={`px-2.5 py-1.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-2 col-span-2 sm:col-span-1 shadow-sm ${
-            selectedStatusFilter === 'Não Compareceu'
-              ? 'bg-[#3b121f] border-rose-400 ring-1 ring-rose-400/60 shadow-rose-950/80'
-              : 'bg-[#240b14] border-rose-700/50 hover:border-rose-400 hover:bg-[#340f1c]'
-          }`}
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-6 h-6 rounded-lg bg-rose-950 border border-rose-400/80 flex items-center justify-center text-rose-200 shrink-0">
-              <UserX className="w-3.5 h-3.5" />
-            </div>
-            <span className="text-[10px] font-black text-rose-200 uppercase tracking-wider truncate">
-              Faltas
-            </span>
-          </div>
-          <span className="text-sm sm:text-base font-black text-white tracking-tight leading-none shrink-0">
-            {absentCount}
-          </span>
-        </button>
-
-      </div>
-
-      {/* Filter Chips Compactos */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 text-xs">
-        <div className="flex items-center gap-1 text-[11px] text-purple-200 font-bold shrink-0 pr-1">
-          <Filter className="w-3 h-3 text-purple-300" />
-          <span>Filtro:</span>
-        </div>
-        
-        {filters.map((f) => {
-          const isActive = selectedStatusFilter === f.value;
-          return (
-            <button
-              key={f.value}
-              onClick={() => onStatusFilterChange(f.value)}
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all whitespace-nowrap flex items-center gap-1.5 border cursor-pointer shadow-sm ${
-                isActive
-                  ? `${f.activeBg} ${f.activeBorder} shadow-sm`
-                  : 'bg-[#151026] border-purple-800/50 text-zinc-300 hover:text-white hover:border-purple-400 hover:bg-[#1d1633]'
-              }`}
-            >
-              <span>{f.label}</span>
-              <span className={`text-[9px] font-bold px-1 py-0.2 rounded ${
-                isActive ? f.badgeBg : 'bg-[#251c3d] text-purple-200 border border-purple-500/30'
-              }`}>
-                {f.count}
+            <div className="min-w-0">
+              <span className="text-[10px] font-black text-purple-300 uppercase tracking-wider block truncate">
+                Agendadas
               </span>
-            </button>
-          );
-        })}
+              <span className="text-[9px] text-zinc-400 block font-medium">Pendentes no Mês</span>
+            </div>
+          </div>
+          <span className="text-base sm:text-lg font-black text-white tracking-tight leading-none shrink-0">
+            {monthScheduledCount}
+          </span>
+        </button>
+
+        {/* Botão 4: Realizadas no Mês (Verde Esmeralda) */}
+        <button
+          id="filter-btn-realizadas-mes"
+          type="button"
+          onClick={() => onStatusFilterChange(selectedStatusFilter === 'Realizada' ? 'TODOS' : 'Realizada')}
+          className={`px-3 py-2 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center justify-between gap-2 shadow-sm ${
+            selectedStatusFilter === 'Realizada'
+              ? 'bg-[#0e3a28] border-emerald-400 ring-2 ring-emerald-400/70 shadow-lg shadow-emerald-950/80 scale-[1.02]'
+              : 'bg-[#071f16] border-emerald-800/60 hover:border-emerald-400 hover:bg-[#0c2f21]'
+          }`}
+          title={`Filtrar oitivas Realizadas em ${monthNameFormatted}`}
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-7 h-7 rounded-xl bg-emerald-950 border border-emerald-400/80 flex items-center justify-center text-emerald-200 shrink-0 shadow-sm">
+              <CheckCircle2 className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <span className="text-[10px] font-black text-emerald-300 uppercase tracking-wider block truncate">
+                Realizadas
+              </span>
+              <span className="text-[9px] text-zinc-400 block font-medium">Concluídas no Mês</span>
+            </div>
+          </div>
+          <span className="text-base sm:text-lg font-black text-white tracking-tight leading-none shrink-0">
+            {monthCompletedCount}
+          </span>
+        </button>
+
+        {/* Botão 5: Não Compareceu / Faltas no Mês (Rosa / Carmim) */}
+        <button
+          id="filter-btn-faltas-mes"
+          type="button"
+          onClick={() => onStatusFilterChange(selectedStatusFilter === 'Não Compareceu' ? 'TODOS' : 'Não Compareceu')}
+          className={`px-3 py-2 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center justify-between gap-2 col-span-2 sm:col-span-1 shadow-sm ${
+            selectedStatusFilter === 'Não Compareceu'
+              ? 'bg-[#461223] border-rose-400 ring-2 ring-rose-400/70 shadow-lg shadow-rose-950/80 scale-[1.02]'
+              : 'bg-[#240a13] border-rose-800/60 hover:border-rose-400 hover:bg-[#340f1c]'
+          }`}
+          title={`Filtrar faltas e não comparecimentos em ${monthNameFormatted}`}
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-7 h-7 rounded-xl bg-rose-950 border border-rose-400/80 flex items-center justify-center text-rose-200 shrink-0 shadow-sm">
+              <UserX className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <span className="text-[10px] font-black text-rose-300 uppercase tracking-wider block truncate">
+                Faltas
+              </span>
+              <span className="text-[9px] text-zinc-400 block font-medium">Não Compareceu</span>
+            </div>
+          </div>
+          <span className="text-base sm:text-lg font-black text-white tracking-tight leading-none shrink-0">
+            {monthAbsentCount}
+          </span>
+        </button>
+
       </div>
     </div>
   );
