@@ -42,13 +42,9 @@ export const PrintPautaModal: React.FC<PrintPautaModalProps> = ({
   return (
     <div 
       className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) {
-          onClose();
-        }
-      }}
+      // Note: Backdrop click close removed per user specification
     >
-      <div className="bg-[#120f1e] border-2 border-purple-600/60 rounded-3xl w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh] overflow-hidden shadow-2xl shadow-purple-950/80 my-auto flex flex-col">
+      <div className="bg-[#120f1e] border-2 border-purple-600/60 rounded-3xl w-[95vw] max-w-[95vw] h-[95vh] max-h-[95vh] overflow-hidden shadow-2xl shadow-purple-950/80 my-auto flex flex-col">
         
         {/* Modal Controls (Hidden in print) */}
         <div className="p-4 border-b-2 border-purple-900/50 bg-[#161226] flex items-center justify-between no-print shrink-0">

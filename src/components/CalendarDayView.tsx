@@ -236,9 +236,12 @@ export const CalendarDayView: React.FC<CalendarDayViewProps> = ({
                       onClick={() => onSelectOitiva(oitiva)}
                       className="flex items-start gap-4 flex-1 cursor-pointer"
                     >
-                      <div className="px-3.5 py-2.5 rounded-xl bg-black/60 border-2 border-white/30 text-white font-mono font-black text-sm sm:text-base flex items-center gap-1.5 shadow-sm shrink-0">
-                        <Clock className="w-4 h-4 text-purple-300" />
-                        {oitiva.time || '--:--'}
+                      <div 
+                        className="px-4 py-2.5 rounded-2xl bg-black/85 border-2 border-amber-400/80 text-amber-300 font-mono font-black text-base sm:text-lg flex items-center gap-2 shadow-md shrink-0 tracking-wide ring-2 ring-black/40"
+                        title={`Horário marcado: ${oitiva.time || 'Não definido'}`}
+                      >
+                        <Clock className="w-4.5 h-4.5 text-amber-400 shrink-0" />
+                        <span>{oitiva.time || '--:--'}</span>
                       </div>
 
                       <div className="space-y-1.5 min-w-0 flex-1">

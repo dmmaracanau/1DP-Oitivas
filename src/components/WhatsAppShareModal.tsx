@@ -278,13 +278,9 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
     <>
       <div 
         className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm no-print overflow-y-auto"
-        onClick={(e) => {
-          if (e.target === e.currentTarget) {
-            onClose();
-          }
-        }}
+        // Note: Backdrop click close removed per explicit user requirement - closes only via X or button
       >
-        <div className="bg-[#120f1e] border-2 border-emerald-500/60 rounded-3xl w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh] overflow-hidden shadow-2xl shadow-emerald-950/80 flex flex-col my-auto">
+        <div className="bg-[#120f1e] border-2 border-emerald-500/60 rounded-3xl w-[95vw] max-w-[95vw] h-[95vh] max-h-[95vh] overflow-hidden shadow-2xl shadow-emerald-950/80 flex flex-col my-auto">
           
           {/* Header Compacto */}
           <div className="p-4 sm:p-5 border-b-2 border-purple-900/50 bg-[#161226] flex items-center justify-between shrink-0">

@@ -370,10 +370,13 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
                           } ${cardClasses}`}
                           title="Clique para detalhes ou arraste para outro dia"
                         >
-                          {/* Linha Superior: Horário + Modalidade + Status Badge */}
-                          <div className="flex items-center justify-between gap-1 text-[10px] leading-none mb-1">
-                            <span className="font-black text-white flex items-center gap-1 font-mono shrink-0">
-                              <Clock className="w-2.5 h-2.5 text-purple-200" />
+                          {/* Linha Superior: Horário com Grande Destaque Visual + Modalidade + Status Badge */}
+                          <div className="flex items-center justify-between gap-1 mb-1">
+                            <span 
+                              className="inline-flex items-center gap-1 font-mono font-black text-[11px] sm:text-xs px-2 py-0.5 rounded-lg bg-black/85 text-amber-300 border border-amber-400/80 shadow-md shrink-0 tracking-tight"
+                              title={`Horário marcado: ${oitiva.time || 'Não definido'}`}
+                            >
+                              <Clock className="w-3 h-3 text-amber-400 shrink-0" />
                               {oitiva.time || '--:--'}
                             </span>
                             <div className="flex items-center gap-1 min-w-0">

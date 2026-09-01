@@ -189,13 +189,9 @@ export const DelegadoSelectorModal: React.FC<DelegadoSelectorModalProps> = ({
     <>
       <div 
         className="fixed inset-0 z-[70] flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm no-print overflow-y-auto"
-        onClick={(e) => {
-          if (e.target === e.currentTarget) {
-            onClose();
-          }
-        }}
+        // Note: Backdrop click close removed per user specification
       >
-        <div className="bg-[#120f1e] border-2 border-purple-600/70 rounded-3xl w-[92vw] max-w-5xl h-[90vh] max-h-[90vh] overflow-hidden shadow-2xl shadow-purple-950/90 flex flex-col my-auto">
+        <div className="bg-[#120f1e] border-2 border-purple-600/70 rounded-3xl w-[95vw] max-w-[95vw] h-[95vh] max-h-[95vh] overflow-hidden shadow-2xl shadow-purple-950/90 flex flex-col my-auto">
           
           {/* Header */}
           <div className="p-4 sm:p-5 border-b-2 border-purple-900/50 bg-[#161226] flex items-center justify-between shrink-0">

@@ -25,6 +25,7 @@ import {
   TermoNaoComparecimentoPdfData, 
   downloadTermoNaoComparecimentoPdf 
 } from '../utils/pdfGenerator';
+import { OfficialCeHeader } from './OfficialCeHeader';
 
 interface TermoNaoComparecimentoModalProps {
   isOpen: boolean;
@@ -307,9 +308,9 @@ ${data.oip1Cargo}                ${data.oip2Cargo}`;
   return (
     <div 
       className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-sm overflow-y-auto no-print"
-      // Note: No backdrop click close per explicit user requirement
+      // Note: No backdrop click close per explicit user requirement - closes only via X or action buttons
     >
-      <div className="bg-[#120f1e] border-2 border-purple-600/70 rounded-2xl sm:rounded-3xl w-full max-w-4xl max-h-[92vh] flex flex-col shadow-2xl shadow-purple-950/90 my-auto overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      <div className="bg-[#120f1e] border-2 border-purple-600/70 rounded-3xl w-[95vw] max-w-[95vw] h-[95vh] max-h-[95vh] flex flex-col shadow-2xl shadow-purple-950/90 my-auto overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         
         {/* Header */}
         <div className="flex items-center justify-between p-4 sm:p-5 border-b-2 border-purple-900/60 bg-[#161226] shrink-0">
@@ -343,230 +344,375 @@ ${data.oip1Cargo}                ${data.oip2Cargo}`;
           </button>
         </div>
 
-        {/* Form Body (Scrollable) */}
-        <div className="p-4 sm:p-6 overflow-y-auto space-y-5 flex-1 text-xs">
+        {/* Content Body: Responsive 2-column workspace for 95vw */}
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1 text-xs grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
           
-          {/* Card Resumo do Intimado */}
-          <div className="bg-[#171326] p-3.5 rounded-2xl border border-purple-900/40 grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="sm:col-span-2">
-              <span className="text-[10px] font-bold text-zinc-400 block uppercase">Intimando(a) / Declarante:</span>
-              <span className="text-sm font-black text-white">{oitiva.personName}</span>
-              <span className="text-[11px] text-purple-300 block mt-0.5">
-                Condição: {oitiva.role || 'Oitiva'} • CPF: {oitiva.cpf || 'Não informado'}
-              </span>
-            </div>
-            <div>
-              <span className="text-[10px] font-bold text-zinc-400 block uppercase">Pauta / Agendamento:</span>
-              <div className="flex items-center gap-1.5 text-zinc-200 font-semibold mt-0.5">
-                <CalendarIcon className="w-3.5 h-3.5 text-purple-400" />
-                <span>{formatDateBR(oitiva.date)}</span>
-                {oitiva.time && (
-                  <span className="text-purple-300 font-mono">às {oitiva.time}h</span>
-                )}
-              </div>
-              <span className="text-[10px] text-zinc-400 block mt-0.5">
-                Proc: {oitiva.procedureType || 'Proc.'} nº {oitiva.procedureNumber || 'S/N'}
-              </span>
-            </div>
-          </div>
-
-          {/* Seção 1: Motivo do Não Comparecimento */}
-          <div className="bg-[#181329] p-4 rounded-2xl border-2 border-purple-800/50 space-y-3">
-            <div className="flex items-center gap-2 pb-1 border-b border-purple-900/30">
-              <AlertTriangle className="w-4 h-4 text-rose-400" />
-              <h3 className="text-xs font-bold text-white uppercase tracking-wider">
-                1. Motivo & Circunstâncias da Ausência
-              </h3>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[10px] font-bold text-purple-300 uppercase mb-1">
-                  Selecione o Motivo Principal:
-                </label>
-                <select
-                  value={selectedMotivoCategoria}
-                  onChange={(e) => handleSelectMotivo(e.target.value)}
-                  className="w-full bg-[#100c1e] border-2 border-purple-600/70 rounded-xl px-3 py-2 text-xs font-semibold text-white focus:outline-none focus:ring-2 focus:ring-purple-400"
-                >
-                  {MOTIVOS_PREDEFINIDOS.map((m) => (
-                    <option key={m.value} value={m.value}>
-                      {m.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold text-purple-300 uppercase mb-1">
-                  Data de Lavratura do Termo:
-                </label>
-                <input
-                  type="date"
-                  value={termoDate}
-                  onChange={(e) => setTermoDate(e.target.value)}
-                  className="w-full bg-[#100c1e] border-2 border-purple-600/70 rounded-xl px-3 py-2 text-xs font-semibold text-white focus:outline-none focus:ring-2 focus:ring-purple-400"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-bold text-zinc-300 uppercase mb-1">
-                Texto / Certidão Circunstanciada (Editável):
-              </label>
-              <textarea
-                rows={3}
-                value={motivoDetalhado}
-                onChange={(e) => setMotivoDetalhado(e.target.value)}
-                placeholder="Descreva detalhes específicos do não comparecimento, certidão do oficial que tentou a entrega, etc..."
-                className="w-full bg-[#100c1e] border border-purple-700/60 rounded-xl p-3 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-purple-400 leading-relaxed"
-              />
-            </div>
-          </div>
-
-          {/* Seção 2: Assinaturas Oficiais (1 DPC e 2 OIPs) */}
-          <div className="bg-[#181329] p-4 rounded-2xl border-2 border-purple-800/50 space-y-3.5">
-            <div className="flex items-center gap-2 pb-1 border-b border-purple-900/30">
-              <ShieldCheck className="w-4 h-4 text-amber-400" />
-              <h3 className="text-xs font-bold text-white uppercase tracking-wider">
-                2. Autoridades e Policiais Responsáveis pelas Assinaturas (1 DPC + 2 OIP)
-              </h3>
-            </div>
-
-            {/* DPC */}
-            <div className="bg-[#130f22] p-3 rounded-xl border border-amber-500/40 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black text-amber-300 uppercase flex items-center gap-1.5">
-                  <Building2 className="w-3.5 h-3.5" />
-                  Autoridade Policial Presidente (DPC):
+          {/* Left Column: Form & Configuration (Col-Span 7) */}
+          <div className="lg:col-span-7 space-y-4">
+            
+            {/* Card Resumo do Intimado */}
+            <div className="bg-[#171326] p-4 rounded-2xl border border-purple-900/40 grid grid-cols-1 sm:grid-cols-3 gap-3 shadow-inner">
+              <div className="sm:col-span-2">
+                <span className="text-[10px] font-bold text-zinc-400 block uppercase">Intimando(a) / Declarante:</span>
+                <span className="text-sm font-black text-white">{oitiva.personName}</span>
+                <span className="text-[11px] text-purple-300 block mt-0.5">
+                  Condição: {oitiva.role || 'Oitiva'} • CPF: {oitiva.cpf || 'Não informado'}
                 </span>
-                {dpcOptions.length > 0 && (
+              </div>
+              <div>
+                <span className="text-[10px] font-bold text-zinc-400 block uppercase">Pauta / Agendamento:</span>
+                <div className="flex items-center gap-1.5 text-zinc-200 font-semibold mt-0.5">
+                  <CalendarIcon className="w-3.5 h-3.5 text-purple-400" />
+                  <span>{formatDateBR(oitiva.date)}</span>
+                  {oitiva.time && (
+                    <span className="text-purple-300 font-mono">às {oitiva.time}h</span>
+                  )}
+                </div>
+                <span className="text-[10px] text-zinc-400 block mt-0.5">
+                  Proc: {oitiva.procedureType || 'Proc.'} nº {oitiva.procedureNumber || 'S/N'}
+                </span>
+              </div>
+            </div>
+
+            {/* Seção 1: Motivo do Não Comparecimento */}
+            <div className="bg-[#181329] p-4 rounded-2xl border-2 border-purple-800/50 space-y-3">
+              <div className="flex items-center gap-2 pb-1 border-b border-purple-900/30">
+                <AlertTriangle className="w-4 h-4 text-rose-400" />
+                <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                  1. Motivo & Circunstâncias da Ausência
+                </h3>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-purple-300 uppercase mb-1">
+                    Selecione o Motivo Principal:
+                  </label>
                   <select
-                    onChange={(e) => handleDpcSelectChange(e.target.value)}
-                    value={dpcName}
-                    className="bg-[#1c1432] text-amber-200 border border-amber-500/40 rounded-lg px-2 py-0.5 text-[10px] font-semibold"
+                    value={selectedMotivoCategoria}
+                    onChange={(e) => handleSelectMotivo(e.target.value)}
+                    className="w-full bg-[#100c1e] border-2 border-purple-600/70 rounded-xl px-3 py-2 text-xs font-semibold text-white focus:outline-none focus:ring-2 focus:ring-purple-400"
                   >
-                    <option value="">-- Selecionar do Catálogo --</option>
-                    {dpcOptions.map((d) => (
-                      <option key={d.id} value={d.nome}>{d.nome} ({d.matricula || 'DPC'})</option>
+                    {MOTIVOS_PREDEFINIDOS.map((m) => (
+                      <option key={m.value} value={m.value}>
+                        {m.label}
+                      </option>
                     ))}
                   </select>
-                )}
-              </div>
+                </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <div className="sm:col-span-2">
+                <div>
+                  <label className="block text-[10px] font-bold text-purple-300 uppercase mb-1">
+                    Data de Lavratura do Termo:
+                  </label>
                   <input
-                    type="text"
-                    value={dpcName}
-                    onChange={(e) => setDpcName(e.target.value)}
-                    placeholder="Nome do(a) Delegado(a)"
-                    className="w-full bg-[#0d0918] border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-white font-bold"
+                    type="date"
+                    value={termoDate}
+                    onChange={(e) => setTermoDate(e.target.value)}
+                    className="w-full bg-[#100c1e] border-2 border-purple-600/70 rounded-xl px-3 py-2 text-xs font-semibold text-white focus:outline-none focus:ring-2 focus:ring-purple-400"
                   />
                 </div>
-                <div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-zinc-300 uppercase mb-1">
+                  Texto / Certidão Circunstanciada (Editável):
+                </label>
+                <textarea
+                  rows={4}
+                  value={motivoDetalhado}
+                  onChange={(e) => setMotivoDetalhado(e.target.value)}
+                  placeholder="Descreva detalhes específicos do não comparecimento, certidão do oficial que tentou a entrega, etc..."
+                  className="w-full bg-[#100c1e] border border-purple-700/60 rounded-xl p-3 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-purple-400 leading-relaxed"
+                />
+              </div>
+            </div>
+
+            {/* Seção 2: Assinaturas Oficiais (1 DPC e 2 OIPs) */}
+            <div className="bg-[#181329] p-4 rounded-2xl border-2 border-purple-800/50 space-y-3.5">
+              <div className="flex items-center gap-2 pb-1 border-b border-purple-900/30">
+                <ShieldCheck className="w-4 h-4 text-amber-400" />
+                <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                  2. Autoridades e Policiais Responsáveis (1 DPC + 2 OIP)
+                </h3>
+              </div>
+
+              {/* DPC */}
+              <div className="bg-[#130f22] p-3.5 rounded-xl border border-amber-500/40 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black text-amber-300 uppercase flex items-center gap-1.5">
+                    <Building2 className="w-3.5 h-3.5" />
+                    Autoridade Policial Presidente (DPC):
+                  </span>
+                  {dpcOptions.length > 0 && (
+                    <select
+                      onChange={(e) => handleDpcSelectChange(e.target.value)}
+                      value={dpcName}
+                      className="bg-[#1c1432] text-amber-200 border border-amber-500/40 rounded-lg px-2 py-0.5 text-[10px] font-semibold"
+                    >
+                      <option value="">-- Selecionar do Catálogo --</option>
+                      {dpcOptions.map((d) => (
+                        <option key={d.id} value={d.nome}>{d.nome} ({d.matricula || 'DPC'})</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div className="sm:col-span-2">
+                    <input
+                      type="text"
+                      value={dpcName}
+                      onChange={(e) => setDpcName(e.target.value)}
+                      placeholder="Nome do(a) Delegado(a)"
+                      className="w-full bg-[#0d0918] border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-white font-bold"
+                    />
+                  </div>
+                  <div>
+                    <input
+                      type="text"
+                      value={dpcMatricula}
+                      onChange={(e) => setDpcMatricula(e.target.value)}
+                      placeholder="Matrícula (ex: 301.942-1-0)"
+                      className="w-full bg-[#0d0918] border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 2 OIPs */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* OIP 1 */}
+                <div className="bg-[#130f22] p-3 rounded-xl border border-purple-500/40 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black text-purple-300 uppercase">
+                      1º Oficial Investigador (OIP):
+                    </span>
+                    {oipOptions.length > 0 && (
+                      <select
+                        onChange={(e) => handleOip1SelectChange(e.target.value)}
+                        value={oip1Name}
+                        className="bg-[#1c1432] text-purple-200 border border-purple-500/40 rounded-lg px-2 py-0.5 text-[10px] font-semibold max-w-[150px] truncate"
+                      >
+                        <option value="">-- Catálogo --</option>
+                        {oipOptions.map((o) => (
+                          <option key={o.id} value={o.nome}>{o.nome}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+
                   <input
                     type="text"
-                    value={dpcMatricula}
-                    onChange={(e) => setDpcMatricula(e.target.value)}
-                    placeholder="Matrícula (ex: 301.942-1-0)"
-                    className="w-full bg-[#0d0918] border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200"
+                    value={oip1Name}
+                    onChange={(e) => setOip1Name(e.target.value)}
+                    placeholder="Nome do 1º Policial / OIP"
+                    className="w-full bg-[#0d0918] border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-white font-semibold"
                   />
+
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <input
+                      type="text"
+                      value={oip1Matricula}
+                      onChange={(e) => setOip1Matricula(e.target.value)}
+                      placeholder="Matrícula"
+                      className="bg-[#0d0918] border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-300"
+                    />
+                    <input
+                      type="text"
+                      value={oip1Cargo}
+                      onChange={(e) => setOip1Cargo(e.target.value)}
+                      placeholder="Cargo"
+                      className="bg-[#0d0918] border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-300"
+                    />
+                  </div>
+                </div>
+
+                {/* OIP 2 */}
+                <div className="bg-[#130f22] p-3 rounded-xl border border-purple-500/40 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black text-purple-300 uppercase">
+                      2º Oficial Investigador (OIP):
+                    </span>
+                    {oipOptions.length > 0 && (
+                      <select
+                        onChange={(e) => handleOip2SelectChange(e.target.value)}
+                        value={oip2Name}
+                        className="bg-[#1c1432] text-purple-200 border border-purple-500/40 rounded-lg px-2 py-0.5 text-[10px] font-semibold max-w-[150px] truncate"
+                      >
+                        <option value="">-- Catálogo --</option>
+                        {oipOptions.map((o) => (
+                          <option key={o.id} value={o.nome}>{o.nome}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+
+                  <input
+                    type="text"
+                    value={oip2Name}
+                    onChange={(e) => setOip2Name(e.target.value)}
+                    placeholder="Nome do 2º Policial / OIP"
+                    className="w-full bg-[#0d0918] border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-white font-semibold"
+                  />
+
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <input
+                      type="text"
+                      value={oip2Matricula}
+                      onChange={(e) => setOip2Matricula(e.target.value)}
+                      placeholder="Matrícula"
+                      className="bg-[#0d0918] border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-300"
+                    />
+                    <input
+                      type="text"
+                      value={oip2Cargo}
+                      onChange={(e) => setOip2Cargo(e.target.value)}
+                      placeholder="Cargo"
+                      className="bg-[#0d0918] border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-300"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* 2 OIPs */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* OIP 1 */}
-              <div className="bg-[#130f22] p-3 rounded-xl border border-purple-500/40 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-black text-purple-300 uppercase">
-                    1º Oficial Investigador (OIP):
-                  </span>
-                  {oipOptions.length > 0 && (
-                    <select
-                      onChange={(e) => handleOip1SelectChange(e.target.value)}
-                      value={oip1Name}
-                      className="bg-[#1c1432] text-purple-200 border border-purple-500/40 rounded-lg px-2 py-0.5 text-[10px] font-semibold max-w-[150px] truncate"
-                    >
-                      <option value="">-- Catálogo --</option>
-                      {oipOptions.map((o) => (
-                        <option key={o.id} value={o.nome}>{o.nome}</option>
-                      ))}
-                    </select>
-                  )}
+          </div>
+
+          {/* Right Column: Live Document Preview Sheet (Col-Span 5) */}
+          <div className="lg:col-span-5 flex flex-col gap-3 sticky top-0">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-zinc-300 uppercase flex items-center gap-1.5">
+                <FileText className="w-3.5 h-3.5 text-purple-400" />
+                Pré-visualização do Documento Oficial:
+              </span>
+              <span className="text-[10px] text-emerald-400 bg-emerald-950/60 border border-emerald-500/40 px-2 py-0.5 rounded-full font-mono">
+                Padrão A4 Oficial
+              </span>
+            </div>
+
+            {/* Paper Preview Card - Idêntico ao Ofício/PDF Gerado */}
+            <div 
+              className="bg-white text-black p-6 sm:p-7 rounded-2xl border-2 border-purple-400/40 shadow-2xl shadow-black/60 max-h-[62vh] overflow-y-auto"
+              style={{ fontFamily: '"Arial", "Helvetica", sans-serif', color: '#000000', lineHeight: '1.45' }}
+            >
+              {/* 1. Official Header */}
+              <OfficialCeHeader scale={80} className="mb-2" />
+
+              {/* 2. Title & Procedure */}
+              <div className="text-center pt-1 pb-1">
+                <h3 className="text-[15px] font-black tracking-wide uppercase text-black font-sans">
+                  TERMO DE NÃO COMPARECIMENTO
+                </h3>
+                <h4 className="text-[11px] font-black tracking-wide uppercase text-black font-sans mt-0.5">
+                  {oitiva.procedureRef || (oitiva.procedureType ? `PROCEDIMENTO: ${oitiva.procedureType.toUpperCase()} Nº ${oitiva.procedureNumber || 'S/N'}` : (oitiva.procedureNumber ? `PROCEDIMENTO: PROC. Nº ${oitiva.procedureNumber}` : 'PROCEDIMENTO POLICIAL'))}
+                </h4>
+              </div>
+
+              {/* 3. Opening Paragraph */}
+              <p className="text-[10.5px] text-justify leading-relaxed text-black mt-2">
+                Aos <strong className="font-bold">{formatDateExtenso(termoDate)}</strong>, nesta cidade de Maracanaú, Estado do Ceará, no Cartório da <strong className="font-bold">1ª DELEGACIA METROPOLITANA DE MARACANAÚ</strong>, sob a presidência do(a) Delegado(a) de Polícia Civil <strong className="font-bold">{(dpcName.trim() || 'FERNANDO MORETTO NACHTIGALL').toUpperCase()}</strong>{dpcMatricula.trim() ? ` (${dpcMatricula.trim()})` : ''}, com a presença dos Oficiais de Investigação Policial (OIP) adiante qualificados e assinados, foi formalmente <u className="font-black"><strong>CERTIFICADA A AUSÊNCIA E NÃO COMPARECIMENTO</strong></u> da seguinte pessoa intimada:
+              </p>
+
+              {/* 4. Box de Qualificação do Intimado */}
+              <div className="bg-[#f8f8f8] border border-zinc-300 rounded-md p-2.5 text-[9.5px] text-black leading-relaxed space-y-0.5 my-2">
+                <div>
+                  <span className="font-bold">INTIMANDO(A): </span>
+                  <span className="font-bold uppercase">{oitiva.personName || 'NÃO INFORMADO'}</span>
                 </div>
-
-                <input
-                  type="text"
-                  value={oip1Name}
-                  onChange={(e) => setOip1Name(e.target.value)}
-                  placeholder="Nome do 1º Policial / OIP"
-                  className="w-full bg-[#0d0918] border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-white font-semibold"
-                />
-
-                <div className="grid grid-cols-2 gap-1.5">
-                  <input
-                    type="text"
-                    value={oip1Matricula}
-                    onChange={(e) => setOip1Matricula(e.target.value)}
-                    placeholder="Matrícula"
-                    className="bg-[#0d0918] border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-300"
-                  />
-                  <input
-                    type="text"
-                    value={oip1Cargo}
-                    onChange={(e) => setOip1Cargo(e.target.value)}
-                    placeholder="Cargo"
-                    className="bg-[#0d0918] border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-300"
-                  />
+                <div>
+                  <span>Condição: {oitiva.role || 'OITIVA / DECLARANTE'}</span>
+                  <span> • </span>
+                  <span>
+                    {[
+                      oitiva.cpf ? `CPF: ${oitiva.cpf}` : null,
+                      oitiva.rg ? `RG: ${oitiva.rg}` : null,
+                      oitiva.phone ? `Tel: ${oitiva.phone}` : null
+                    ].filter(Boolean).join('  |  ') || 'Documento não informado'}
+                  </span>
+                </div>
+                <div>
+                  <span>Endereço: {formatAddressCompleto(oitiva) || 'Endereço não informado'}</span>
+                </div>
+                <div>
+                  <span className="font-bold">Data e Horário Designados: </span>
+                  <span>{formatDateExtenso(oitiva.date)} às {oitiva.time ? `${oitiva.time}h` : 'horário aprazado'}</span>
                 </div>
               </div>
 
-              {/* OIP 2 */}
-              <div className="bg-[#130f22] p-3 rounded-xl border border-purple-500/40 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-black text-purple-300 uppercase">
-                    2º Oficial Investigador (OIP):
-                  </span>
-                  {oipOptions.length > 0 && (
-                    <select
-                      onChange={(e) => handleOip2SelectChange(e.target.value)}
-                      value={oip2Name}
-                      className="bg-[#1c1432] text-purple-200 border border-purple-500/40 rounded-lg px-2 py-0.5 text-[10px] font-semibold max-w-[150px] truncate"
-                    >
-                      <option value="">-- Catálogo --</option>
-                      {oipOptions.map((o) => (
-                        <option key={o.id} value={o.nome}>{o.nome}</option>
-                      ))}
-                    </select>
-                  )}
+              {/* 5. Motivo e Circunstâncias */}
+              <div className="mt-2 space-y-0.5">
+                <p className="text-[9.5px] font-bold text-black uppercase">
+                  MOTIVO / CIRCUNSTÂNCIAS DO NÃO COMPARECIMENTO:
+                </p>
+                <p className="text-[10px] text-justify leading-relaxed text-black">
+                  <span className="font-bold">Motivo: </span>
+                  <u className="font-bold">{selectedMotivoCategoria}. </u>
+                  <span>{motivoDetalhado.trim() || 'A pessoa intimada deixou de comparecer no dia e horário aprazados perante esta unidade policial, sem apresentar qualquer justificativa plausível até o presente momento.'}</span>
+                </p>
+              </div>
+
+              {/* 6. Fechamento Legal */}
+              <p className="text-[10px] text-justify leading-relaxed text-black mt-2">
+                Do que, para constar e produzir os regulares efeitos legais e jurídicos nos autos do procedimento em epígrafe, determinou a Autoridade Policial a lavratura do presente <strong className="font-bold">TERMO DE NÃO COMPARECIMENTO</strong>, o qual lido e achado conforme, vai devidamente assinado pela Autoridade Policial e pelos Oficiais de Investigação Policial presentes.
+              </p>
+
+              {/* 7. Local e Data */}
+              <p className="text-center text-[10px] text-black mt-2.5">
+                Maracanaú/CE, {formatDateExtenso(termoDate)}.
+              </p>
+
+              {/* 8. Signatures Section */}
+              <div className="pt-4 space-y-4 text-center">
+                {/* DPC Signature */}
+                <div className="w-56 mx-auto">
+                  <div className="w-full border-b border-black mb-1"></div>
+                  <p className="text-[9.5px] font-bold text-black uppercase">
+                    {(dpcName.trim() || 'FERNANDO MORETTO NACHTIGALL').toUpperCase()}
+                  </p>
+                  <p className="text-[8px] text-zinc-700">
+                    {dpcCargo.trim() || 'Delegado de Polícia Civil'}{dpcMatricula.trim() ? ` - Mat. ${dpcMatricula.trim()}` : ''}
+                  </p>
                 </div>
 
-                <input
-                  type="text"
-                  value={oip2Name}
-                  onChange={(e) => setOip2Name(e.target.value)}
-                  placeholder="Nome do 2º Policial / OIP"
-                  className="w-full bg-[#0d0918] border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-white font-semibold"
-                />
+                {/* 2 OIP Signatures */}
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <div className="w-36 border-b border-black mx-auto mb-1"></div>
+                    <p className="text-[9px] font-bold text-black uppercase">
+                      {(oip1Name.trim() || 'OFICIAL INVESTIGADOR 1').toUpperCase()}
+                    </p>
+                    <p className="text-[7.5px] text-zinc-700">
+                      {oip1Cargo.trim() || 'Oficial de Investigação Policial'}{oip1Matricula.trim() ? ` - Mat. ${oip1Matricula.trim()}` : ''}
+                    </p>
+                  </div>
+                  <div>
+                    <div className="w-36 border-b border-black mx-auto mb-1"></div>
+                    <p className="text-[9px] font-bold text-black uppercase">
+                      {(oip2Name.trim() || 'OFICIAL INVESTIGADOR 2').toUpperCase()}
+                    </p>
+                    <p className="text-[7.5px] text-zinc-700">
+                      {oip2Cargo.trim() || 'Oficial de Investigação Policial'}{oip2Matricula.trim() ? ` - Mat. ${oip2Matricula.trim()}` : ''}
+                    </p>
+                  </div>
+                </div>
+              </div>
 
-                <div className="grid grid-cols-2 gap-1.5">
-                  <input
-                    type="text"
-                    value={oip2Matricula}
-                    onChange={(e) => setOip2Matricula(e.target.value)}
-                    placeholder="Matrícula"
-                    className="bg-[#0d0918] border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-300"
-                  />
-                  <input
-                    type="text"
-                    value={oip2Cargo}
-                    onChange={(e) => setOip2Cargo(e.target.value)}
-                    placeholder="Cargo"
-                    className="bg-[#0d0918] border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-300"
-                  />
+              {/* 9. Official Footer */}
+              <div className="pt-3 mt-4 border-t border-zinc-300 text-center space-y-0.5">
+                <p className="text-[8px] font-bold text-zinc-800">
+                  1ª Delegacia de Maracanaú – Polícia Civil do Estado do Ceará
+                </p>
+                <p className="text-[7.5px] text-zinc-600">
+                  Av. VI, 410, Jereissati I, Maracanaú/CE, CEP: 61.900-670, Fone: (85) 3101-7344
+                </p>
+                <p className="text-[7.5px] text-zinc-600">
+                  Email: 1dpmaracanau@pc.ce.gov.br  |  Site: www.policiacivil.ce.gov.br
+                </p>
+                {/* Ceará Tri-color Bar */}
+                <div className="flex h-1 w-full mt-1.5 rounded-full overflow-hidden">
+                  <div className="w-[35%] bg-[#008643]"></div>
+                  <div className="w-[30%] bg-[#f9b233]"></div>
+                  <div className="w-[35%] bg-[#008643]"></div>
                 </div>
               </div>
             </div>
@@ -581,7 +727,7 @@ ${data.oip1Cargo}                ${data.oip2Cargo}`;
             <button
               type="button"
               onClick={handleCopyText}
-              className="flex items-center gap-1.5 px-3 py-2 bg-[#120d20] hover:bg-purple-950 text-zinc-300 hover:text-white border border-purple-800/50 rounded-xl transition-all cursor-pointer shadow-sm"
+              className="flex items-center gap-1.5 px-3.5 py-2.5 bg-[#120d20] hover:bg-purple-950 text-zinc-300 hover:text-white border border-purple-800/50 rounded-xl transition-all cursor-pointer shadow-sm"
               title="Copiar texto da certidão para colar no sistema de inquéritos"
             >
               {copiedSuccess ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
@@ -591,13 +737,13 @@ ${data.oip1Cargo}                ${data.oip2Cargo}`;
             <button
               type="button"
               onClick={onClose}
-              className="px-3.5 py-2 bg-[#191428] hover:bg-purple-950 text-zinc-300 hover:text-white rounded-xl border border-zinc-700 transition-colors cursor-pointer"
+              className="px-4 py-2.5 bg-[#191428] hover:bg-purple-950 text-zinc-300 hover:text-white rounded-xl border border-zinc-700 transition-colors cursor-pointer"
             >
-              Cancelar
+              Fechar Janela
             </button>
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
             <button
               id="btn-download-termo-pdf-only"
               type="button"
@@ -614,7 +760,7 @@ ${data.oip1Cargo}                ${data.oip2Cargo}`;
               type="button"
               disabled={isGenerating || isMarkingAbsent}
               onClick={handleMarkAbsentAndDownload}
-              className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-rose-600 via-rose-500 to-rose-600 hover:from-rose-500 hover:to-rose-400 text-white font-black rounded-xl border-2 border-rose-300 shadow-lg shadow-rose-950/80 transition-all cursor-pointer hover:scale-[1.02] disabled:opacity-50"
+              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-rose-600 via-rose-500 to-rose-600 hover:from-rose-500 hover:to-rose-400 text-white font-black rounded-xl border-2 border-rose-300 shadow-lg shadow-rose-950/80 transition-all cursor-pointer hover:scale-[1.02] disabled:opacity-50"
               title="Atualiza o status da oitiva no banco para 'Não Compareceu' e faz o download do termo em PDF"
             >
               <FileCheck className="w-4 h-4" />

@@ -161,8 +161,8 @@ export const OitivaListView: React.FC<OitivaListViewProps> = ({
                         <CalendarIcon className="w-4 h-4 text-purple-300" />
                         <span>{formatDateBR(oitiva.date)}</span>
                       </div>
-                      <div className="flex items-center gap-1 text-xs text-purple-200 font-mono font-bold mt-0.5">
-                        <Clock className="w-3.5 h-3.5 text-purple-300" />
+                      <div className="inline-flex items-center gap-1 font-mono font-black text-xs px-2 py-0.5 rounded-lg bg-black/85 text-amber-300 border border-amber-400/80 shadow-sm mt-1">
+                        <Clock className="w-3 h-3 text-amber-400 shrink-0" />
                         <span>{oitiva.time || '--:--'}</span>
                       </div>
                     </td>

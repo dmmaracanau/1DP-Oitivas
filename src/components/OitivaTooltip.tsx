@@ -318,11 +318,12 @@ export const OitivaTooltip: React.FC<OitivaTooltipProps> = ({
 
             {/* Top Bar: Data, Horário & Condição */}
             <div className="flex items-center justify-between gap-2 pb-2 mb-2 border-b border-purple-700/50">
-              <div className="flex items-center gap-1.5 font-mono text-xs font-black text-purple-200">
-                <Clock className="w-3.5 h-3.5 text-purple-400" />
-                <span>{oitiva.time || '--:--'}</span>
-                <span className="text-purple-400/60">•</span>
-                <span>{formatDateBR(oitiva.date)}</span>
+              <div className="flex items-center gap-1.5">
+                <span className="inline-flex items-center gap-1 font-mono font-black text-xs px-2 py-0.5 rounded-lg bg-black/85 text-amber-300 border border-amber-400/80 shadow-sm">
+                  <Clock className="w-3 h-3 text-amber-400 shrink-0" />
+                  <span>{oitiva.time || '--:--'}</span>
+                </span>
+                <span className="text-purple-200 font-bold text-xs">{formatDateBR(oitiva.date)}</span>
               </div>
 
               <div className="flex items-center gap-1">
