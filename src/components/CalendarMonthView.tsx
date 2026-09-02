@@ -48,6 +48,13 @@ interface CalendarMonthViewProps {
   isAdmin?: boolean;
 }
 
+const cycleHearingStatus = (current: HearingStatus): HearingStatus => {
+  const cycle: HearingStatus[] = ['Agendada', 'Realizada', 'Remarcada', 'Não Compareceu', 'Cancelada'];
+  const idx = cycle.indexOf(current);
+  if (idx === -1) return 'Agendada';
+  return cycle[(idx + 1) % cycle.length];
+};
+
 export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
   oitivas,
   currentDate,
@@ -354,13 +361,9 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
                     return (
                       <div
                         key={oitiva.id}
-                        onClick={() => {
-                          hapticSelection();
-                          onSelectOitiva(oitiva);
-                        }}
-                        className={`p-3 rounded-2xl border-2 ${cardBg} shadow-md flex flex-col gap-2 transition-all active:scale-[0.99] cursor-pointer`}
+                        className={`p-3 rounded-2xl border-2 ${cardBg} shadow-md flex flex-col gap-2 transition-all`}
                       >
-                        {/* Top line: Time + Modality + Status Badge */}
+                        {/* Top line: Time + Modality + Interactive Status Badge (Cycling) */}
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-1.5">
                             <span className="inline-flex items-center gap-1 font-mono font-black text-xs px-2.5 py-1 rounded-lg bg-black/80 text-amber-300 border border-amber-400/80 shadow-sm">
@@ -375,15 +378,36 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
                             )}
                           </div>
 
-                          <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg uppercase tracking-wider border ${statusPill}`}>
-                            {status}
-                          </span>
+                          {/* Interactive Status Button: Tap to cycle status */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              hapticStatusChange();
+                              if (onQuickStatusChange) {
+                                const next = cycleHearingStatus(status);
+                                onQuickStatusChange(oitiva.id, next);
+                              }
+                            }}
+                            className={`text-[10px] font-black px-2.5 py-1 rounded-xl uppercase tracking-wider border-2 shadow-sm transition-all active:scale-90 flex items-center gap-1.5 cursor-pointer select-none ${statusPill}`}
+                            title="Toque para alternar o status da oitiva"
+                          >
+                            <span>{status}</span>
+                            <span className="text-[9px] opacity-75 font-mono">↻</span>
+                          </button>
                         </div>
 
-                        {/* Middle Line: Person Name + Role Badge */}
-                        <div className="flex items-start justify-between gap-2 pt-0.5">
+                        {/* Middle Line: Person Name (Clickable to open modal) + Role Badge */}
+                        <div 
+                          onClick={() => {
+                            hapticSelection();
+                            onSelectOitiva(oitiva);
+                          }}
+                          className="flex items-start justify-between gap-2 pt-0.5 cursor-pointer group active:opacity-80 transition-opacity"
+                          title="Toque no nome para abrir os detalhes da oitiva"
+                        >
                           <div className="min-w-0 flex-1">
-                            <h4 className="text-sm font-black text-white leading-tight">
+                            <h4 className="text-sm font-black text-white leading-tight group-hover:text-purple-200 transition-colors">
                               {oitiva.personName || 'Depoente Não Informado'}
                             </h4>
                             <p className="text-[11px] text-purple-300/80 font-mono mt-0.5 truncate">
@@ -429,7 +453,7 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
                                   hapticSelection();
                                   onOpenWhatsApp(oitiva);
                                 }}
-                                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white text-[11px] font-bold shadow-sm transition-all active:scale-95"
+                                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white text-[11px] font-bold shadow-sm transition-all active:scale-95 cursor-pointer"
                                 title="Enviar WhatsApp"
                               >
                                 <MessageCircle className="w-3.5 h-3.5" />
@@ -445,7 +469,7 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
                                 hapticSelection();
                                 onSelectOitiva(oitiva);
                               }}
-                              className="px-2.5 py-1 rounded-lg bg-[#2b1f4c] hover:bg-purple-700 text-white text-[11px] font-bold border border-purple-500/60 transition-all active:scale-95"
+                              className="px-2.5 py-1 rounded-lg bg-[#2b1f4c] hover:bg-purple-700 text-white text-[11px] font-bold border border-purple-500/60 transition-all active:scale-95 cursor-pointer"
                             >
                               Ver Detalhes
                             </button>

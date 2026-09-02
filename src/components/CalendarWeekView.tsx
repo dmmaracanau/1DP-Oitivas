@@ -9,14 +9,21 @@ import {
   isToday 
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Clock, Plus, Video, Calendar as CalendarIcon, Sparkles } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Plus, Video, Calendar as CalendarIcon, Sparkles, FileText, MessageCircle } from 'lucide-react';
 import { Oitiva, HearingStatus, CalendarSpecialDate } from '../types/oitiva';
 import { getFirstName } from '../utils/formatters';
 import { specialDateService } from '../services/specialDateService';
 import { OitivaTooltip } from './OitivaTooltip';
 import { HolidayTooltip } from './HolidayTooltip';
 import { useSwipeGesture } from '../utils/useSwipeGesture';
-import { hapticSelection, hapticSwipe } from '../utils/haptics';
+import { hapticSelection, hapticSwipe, hapticStatusChange, hapticToggle } from '../utils/haptics';
+
+const cycleHearingStatus = (current: HearingStatus): HearingStatus => {
+  const cycle: HearingStatus[] = ['Agendada', 'Realizada', 'Remarcada', 'Não Compareceu', 'Cancelada'];
+  const idx = cycle.indexOf(current);
+  if (idx === -1) return 'Agendada';
+  return cycle[(idx + 1) % cycle.length];
+};
 
 interface CalendarWeekViewProps {
   oitivas: Oitiva[];
@@ -274,85 +281,221 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
                       // Definir estilo de cor de fundo e borda destacada conforme o status
                       let cardClasses = 'bg-[#1e1338] border-2 border-purple-400 text-white hover:border-purple-200 hover:bg-[#281a4b]';
                       let statusBadgeClasses = 'bg-purple-950 text-purple-200 border-2 border-purple-400/80';
+                      let mobileCardBg = 'bg-[#19112e] border-purple-500/70';
+                      let mobileStatusPill = 'bg-purple-950 text-purple-200 border-purple-400';
 
                       if (status === 'Realizada') {
                         cardClasses = 'bg-[#062417] border-2 border-emerald-400 text-white hover:border-emerald-200 hover:bg-[#0c3624]';
                         statusBadgeClasses = 'bg-emerald-950 text-emerald-200 border-2 border-emerald-400/80';
+                        mobileCardBg = 'bg-[#082216] border-emerald-500/70';
+                        mobileStatusPill = 'bg-emerald-950 text-emerald-200 border-emerald-400';
                       } else if (status === 'Não Compareceu') {
                         cardClasses = 'bg-[#2f1007] border-2 border-orange-400 text-white hover:border-orange-200 hover:bg-[#43170a]';
                         statusBadgeClasses = 'bg-orange-950 text-orange-200 border-2 border-orange-400/80';
+                        mobileCardBg = 'bg-[#291008] border-orange-500/70';
+                        mobileStatusPill = 'bg-orange-950 text-orange-200 border-orange-400';
                       } else if (status === 'Cancelada') {
                         cardClasses = 'bg-[#290812] border-2 border-rose-400 text-white line-through opacity-90 hover:border-rose-200 hover:bg-[#3d0c1b]';
                         statusBadgeClasses = 'bg-rose-950 text-rose-200 border-2 border-rose-400/80 no-underline';
+                        mobileCardBg = 'bg-[#250811] border-rose-500/70';
+                        mobileStatusPill = 'bg-rose-950 text-rose-200 border-rose-400';
                       } else if (status === 'Remarcada') {
                         cardClasses = 'bg-[#291b05] border-2 border-amber-400 text-white hover:border-amber-200 hover:bg-[#3d2908]';
                         statusBadgeClasses = 'bg-amber-950 text-amber-200 border-2 border-amber-400/80';
+                        mobileCardBg = 'bg-[#261906] border-amber-500/70';
+                        mobileStatusPill = 'bg-amber-950 text-amber-200 border-amber-400';
                       }
 
                       const isBeingDragged = draggedOitivaId === oitiva.id;
 
                       return (
-                        <OitivaTooltip
-                          key={oitiva.id}
-                          oitiva={oitiva}
-                          onSelectOitiva={onSelectOitiva}
-                          onQuickStatusChange={onQuickStatusChange}
-                          onToggleIntimationSent={onToggleIntimationSent}
-                          onOpenWhatsApp={onOpenWhatsApp}
-                        >
+                        <React.Fragment key={oitiva.id}>
+                          {/* ========================================================================= */}
+                          {/* 1. VISUALIZAÇÃO MOBILE (md:hidden) - Áreas de clique específicas           */}
+                          {/* ========================================================================= */}
                           <div
-                            draggable={true}
-                            onDragStart={(e) => {
-                              e.dataTransfer.setData('text/plain', oitiva.id);
-                              e.dataTransfer.effectAllowed = 'move';
-                              setDraggedOitivaId(oitiva.id);
-                            }}
-                            onDragEnd={() => {
-                              setDraggedOitivaId(null);
-                              setDragOverDay(null);
-                            }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              hapticSelection();
-                              onSelectOitiva(oitiva);
-                            }}
-                            className={`p-1.5 sm:p-2 rounded-xl text-left border-2 cursor-grab active:cursor-grabbing transition-all hover:scale-[1.02] shadow-md select-none ${
-                              isBeingDragged ? 'opacity-40 ring-2 ring-purple-300 scale-95' : ''
-                            } ${cardClasses}`}
-                            title="Clique para detalhes ou arraste para outro dia"
+                            className={`md:hidden p-3 rounded-2xl border-2 ${mobileCardBg} shadow-md flex flex-col gap-2 transition-all`}
                           >
-                            {/* Linha Superior: Horário com Grande Destaque Visual + Modalidade + Status Badge */}
-                            <div className="flex items-center justify-between gap-1 mb-1">
-                              <span 
-                                className="inline-flex items-center gap-1 font-mono font-black text-[11px] sm:text-xs px-2 py-0.5 rounded-lg bg-black/85 text-amber-300 border border-amber-400/80 shadow-md shrink-0 tracking-tight"
-                                title={`Horário marcado: ${oitiva.time || 'Não definido'}`}
-                              >
-                                <Clock className="w-3 h-3 text-amber-400 shrink-0" />
-                                {oitiva.time || '--:--'}
-                              </span>
-                              <div className="flex items-center gap-1 min-w-0">
-                                {oitiva.modality === 'Videoconferência' && (
-                                  <Video className="w-3 h-3 text-cyan-300 shrink-0" title="Videoconferência" />
-                                )}
-                                <span className={`text-[8px] sm:text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider shrink-0 ${statusBadgeClasses}`}>
-                                  {status.toLowerCase()}
+                            {/* Top line: Time + Modality + Interactive Status Badge (Cycling) */}
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-1.5">
+                                <span className="inline-flex items-center gap-1 font-mono font-black text-xs px-2.5 py-1 rounded-lg bg-black/80 text-amber-300 border border-amber-400/80 shadow-sm">
+                                  <Clock className="w-3.5 h-3.5 text-amber-400" />
+                                  {oitiva.time || '--:--'}
                                 </span>
+                                {oitiva.modality === 'Videoconferência' && (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-lg bg-cyan-950 text-cyan-300 border border-cyan-500/50">
+                                    <Video className="w-3 h-3" />
+                                    Online
+                                  </span>
+                                )}
                               </div>
+
+                              {/* Interactive Status Button: Tap to cycle status */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  hapticStatusChange();
+                                  if (onQuickStatusChange) {
+                                    const next = cycleHearingStatus(status);
+                                    onQuickStatusChange(oitiva.id, next);
+                                  }
+                                }}
+                                className={`text-[10px] font-black px-2.5 py-1 rounded-xl uppercase tracking-wider border-2 shadow-sm transition-all active:scale-90 flex items-center gap-1.5 cursor-pointer select-none ${mobileStatusPill}`}
+                                title="Toque para alternar o status da oitiva"
+                              >
+                                <span>{status}</span>
+                                <span className="text-[9px] opacity-75 font-mono">↻</span>
+                              </button>
                             </div>
 
-                            {/* Linha Principal: Primeiro Nome (Sem truncar, quebrando linhas se necessário) e Tag de Papel */}
-                            <div className="flex items-center justify-between gap-1 pt-0.5 min-w-0">
-                              <p className="text-xs font-black text-white tracking-tight leading-tight break-words min-w-0 flex-1">
-                                {firstName}
-                              </p>
+                            {/* Middle Line: Person Name (Clickable to open modal) + Role Badge */}
+                            <div 
+                              onClick={() => {
+                                hapticSelection();
+                                onSelectOitiva(oitiva);
+                              }}
+                              className="flex items-start justify-between gap-2 pt-0.5 cursor-pointer group active:opacity-80 transition-opacity"
+                              title="Toque no nome para abrir os detalhes da oitiva"
+                            >
+                              <div className="min-w-0 flex-1">
+                                <h4 className="text-sm font-black text-white leading-tight group-hover:text-purple-200 transition-colors">
+                                  {oitiva.personName || 'Depoente Não Informado'}
+                                </h4>
+                                <p className="text-[11px] text-purple-300/80 font-mono mt-0.5 truncate">
+                                  {oitiva.procedureNumber ? `Proc: ${oitiva.procedureNumber}` : 'Sem número de procedimento'}
+                                </p>
+                              </div>
                               {oitiva.role && (
-                                <span className="text-[8px] font-bold px-1 py-0.2 rounded bg-black/60 text-white/90 border border-white/30 shrink-0 max-w-[65px] truncate" title={oitiva.role}>
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-950 text-purple-200 border border-purple-500/50 shrink-0">
                                   {oitiva.role}
                                 </span>
                               )}
                             </div>
+
+                            {/* Bottom Line: Quick Action Buttons */}
+                            <div className="flex items-center justify-between pt-2 border-t border-white/10 mt-0.5 gap-2">
+                              {/* Intimation Sent Toggle */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  hapticToggle();
+                                  if (onToggleIntimationSent) {
+                                    onToggleIntimationSent(oitiva.id, !oitiva.intimationSent);
+                                  }
+                                }}
+                                className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg border transition-all active:scale-95 ${
+                                  oitiva.intimationSent
+                                    ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/60'
+                                    : 'bg-zinc-900 text-zinc-400 border-zinc-700'
+                                }`}
+                              >
+                                <FileText className="w-3 h-3" />
+                                <span>{oitiva.intimationSent ? 'Intimação Enviada' : 'Intimar'}</span>
+                              </button>
+
+                              <div className="flex items-center gap-1.5">
+                                {/* WhatsApp Button */}
+                                {onOpenWhatsApp && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      hapticSelection();
+                                      onOpenWhatsApp(oitiva);
+                                    }}
+                                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white text-[11px] font-bold shadow-sm transition-all active:scale-95 cursor-pointer"
+                                    title="Enviar WhatsApp"
+                                  >
+                                    <MessageCircle className="w-3.5 h-3.5" />
+                                    <span>WhatsApp</span>
+                                  </button>
+                                )}
+
+                                {/* Details button */}
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    hapticSelection();
+                                    onSelectOitiva(oitiva);
+                                  }}
+                                  className="px-2.5 py-1 rounded-lg bg-[#2b1f4c] hover:bg-purple-700 text-white text-[11px] font-bold border border-purple-500/60 transition-all active:scale-95 cursor-pointer"
+                                >
+                                  Ver Detalhes
+                                </button>
+                              </div>
+                            </div>
                           </div>
-                        </OitivaTooltip>
+
+                          {/* ========================================================================= */}
+                          {/* 2. VISUALIZAÇÃO DESKTOP (hidden md:block) - Mantida 100% Intacta          */}
+                          {/* ========================================================================= */}
+                          <div className="hidden md:block">
+                            <OitivaTooltip
+                              oitiva={oitiva}
+                              onSelectOitiva={onSelectOitiva}
+                              onQuickStatusChange={onQuickStatusChange}
+                              onToggleIntimationSent={onToggleIntimationSent}
+                              onOpenWhatsApp={onOpenWhatsApp}
+                            >
+                              <div
+                                draggable={true}
+                                onDragStart={(e) => {
+                                  e.dataTransfer.setData('text/plain', oitiva.id);
+                                  e.dataTransfer.effectAllowed = 'move';
+                                  setDraggedOitivaId(oitiva.id);
+                                }}
+                                onDragEnd={() => {
+                                  setDraggedOitivaId(null);
+                                  setDragOverDay(null);
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  hapticSelection();
+                                  onSelectOitiva(oitiva);
+                                }}
+                                className={`p-1.5 sm:p-2 rounded-xl text-left border-2 cursor-grab active:cursor-grabbing transition-all hover:scale-[1.02] shadow-md select-none ${
+                                  isBeingDragged ? 'opacity-40 ring-2 ring-purple-300 scale-95' : ''
+                                } ${cardClasses}`}
+                                title="Clique para detalhes ou arraste para outro dia"
+                              >
+                                {/* Linha Superior: Horário com Grande Destaque Visual + Modalidade + Status Badge */}
+                                <div className="flex items-center justify-between gap-1 mb-1">
+                                  <span 
+                                    className="inline-flex items-center gap-1 font-mono font-black text-[11px] sm:text-xs px-2 py-0.5 rounded-lg bg-black/85 text-amber-300 border border-amber-400/80 shadow-md shrink-0 tracking-tight"
+                                    title={`Horário marcado: ${oitiva.time || 'Não definido'}`}
+                                  >
+                                    <Clock className="w-3 h-3 text-amber-400 shrink-0" />
+                                    {oitiva.time || '--:--'}
+                                  </span>
+                                  <div className="flex items-center gap-1 min-w-0">
+                                    {oitiva.modality === 'Videoconferência' && (
+                                      <Video className="w-3 h-3 text-cyan-300 shrink-0" title="Videoconferência" />
+                                    )}
+                                    <span className={`text-[8px] sm:text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider shrink-0 ${statusBadgeClasses}`}>
+                                      {status.toLowerCase()}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Linha Principal: Primeiro Nome (Sem truncar, quebrando linhas se necessário) e Tag de Papel */}
+                                <div className="flex items-center justify-between gap-1 pt-0.5 min-w-0">
+                                  <p className="text-xs font-black text-white tracking-tight leading-tight break-words min-w-0 flex-1">
+                                    {firstName}
+                                  </p>
+                                  {oitiva.role && (
+                                    <span className="text-[8px] font-bold px-1 py-0.2 rounded bg-black/60 text-white/90 border border-white/30 shrink-0 max-w-[65px] truncate" title={oitiva.role}>
+                                      {oitiva.role}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </OitivaTooltip>
+                          </div>
+                        </React.Fragment>
                       );
                     })}
 
