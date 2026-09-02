@@ -10,7 +10,34 @@
   body {
     background-color: #0b0914;
     color: #e4e4e7;
+    -webkit-tap-highlight-color: transparent;
   }
+}
+
+/* Hide scrollbars on mobile / touchscreens while maintaining full scroll and touch drag functionality */
+@media (max-width: 768px), (pointer: coarse) {
+  * {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+  
+  *::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+}
+
+/* Utility to explicitly hide scrollbars anywhere */
+.no-scrollbar {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 /* Ensure native date and time picker icons are luminous and visible on dark background */
@@ -107,4 +134,17 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
     width: 100% !important;
     max-width: 100% !important;
   }
+}
+
+/* Safe area insets for iOS and modern Android touchscreens / PWA */
+.pb-safe {
+  padding-bottom: calc(0.65rem + env(safe-area-inset-bottom, 0px));
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.mb-safe {
+  margin-bottom: env(safe-area-inset-bottom, 0px);
 }

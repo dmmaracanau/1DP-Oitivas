@@ -34,6 +34,7 @@ import {
 import { oitivaService } from '../services/oitivaService';
 import { ConfirmModal } from './ConfirmModal';
 import { TermoNaoComparecimentoModal } from './TermoNaoComparecimentoModal';
+import { hapticStatusChange, hapticToggle, hapticSelection } from '../utils/haptics';
 
 interface OitivaDetailModalProps {
   isOpen: boolean;
@@ -570,8 +571,11 @@ export const OitivaDetailModal: React.FC<OitivaDetailModalProps> = ({
                       return (
                         <button
                           key={st}
-                          onClick={() => onStatusChange(oitiva.id, st)}
-                          className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all cursor-pointer flex items-center gap-1 ${
+                          onClick={() => {
+                            hapticStatusChange();
+                            onStatusChange(oitiva.id, st);
+                          }}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all cursor-pointer flex items-center gap-1 active:scale-95 ${
                             isActive
                               ? `${getStatusBadgeClasses(st)} shadow-sm`
                               : 'bg-[#100d1c] border-purple-900/30 text-zinc-400 hover:text-zinc-200'
@@ -663,8 +667,13 @@ export const OitivaDetailModal: React.FC<OitivaDetailModalProps> = ({
                   <button
                     id="btn-toggle-intimacao-status"
                     type="button"
-                    onClick={() => onToggleIntimationSent && onToggleIntimationSent(oitiva.id, !oitiva.intimationSent)}
-                    className={`p-3 rounded-2xl border-2 flex items-center justify-between transition-all duration-200 cursor-pointer text-left group shadow-md ${
+                    onClick={() => {
+                      hapticToggle();
+                      if (onToggleIntimationSent) {
+                        onToggleIntimationSent(oitiva.id, !oitiva.intimationSent);
+                      }
+                    }}
+                    className={`p-3 rounded-2xl border-2 flex items-center justify-between transition-all duration-200 cursor-pointer text-left group shadow-md active:scale-98 ${
                       oitiva.intimationSent
                         ? 'bg-gradient-to-r from-emerald-950/90 to-teal-950/80 hover:from-emerald-900/90 hover:to-teal-900/80 border-emerald-400/80 hover:border-emerald-300 shadow-emerald-950/60 ring-1 ring-emerald-500/40'
                         : 'bg-amber-950/50 hover:bg-amber-900/60 border-amber-500/60 hover:border-amber-400 shadow-amber-950/40'

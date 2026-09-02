@@ -28,17 +28,12 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
 
   return (
     <div 
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-150 no-print"
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !isLoading) {
-          onClose();
-        }
-      }}
+      className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-150 no-print"
     >
       <div 
         role="dialog"
         aria-modal="true"
-        className="bg-[#151025] border-2 border-rose-500/60 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl shadow-rose-950/80 p-6 flex flex-col gap-4 text-left animate-in zoom-in-95 duration-150"
+        className="bg-[#151025] border-2 border-rose-500/60 rounded-3xl w-[95vw] max-w-md overflow-hidden shadow-2xl shadow-rose-950/80 p-5 sm:p-6 flex flex-col gap-4 text-left animate-in zoom-in-95 duration-150"
       >
         {/* Header with Icon */}
         <div className="flex items-start gap-3.5">

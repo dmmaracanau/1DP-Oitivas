@@ -155,14 +155,10 @@ export const UnifyDuplicatesModal: React.FC<UnifyDuplicatesModalProps> = ({
 
   return (
     <div 
-      className="fixed inset-0 z-60 flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md overflow-y-auto no-print"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) {
-          onClose();
-        }
-      }}
+      className="fixed inset-0 z-60 flex items-center justify-center p-2 sm:p-5 bg-black/85 backdrop-blur-md overflow-y-auto no-print"
+      // Note: Backdrop click close removed per user specification
     >
-      <div className="bg-[#120d22] border-2 border-amber-500/60 rounded-3xl w-full max-w-4xl max-h-[92vh] overflow-hidden shadow-2xl shadow-amber-950/40 flex flex-col my-auto">
+      <div className="bg-[#120d22] border-2 border-amber-500/60 rounded-3xl w-[95vw] max-w-4xl h-[95vh] max-h-[95vh] overflow-hidden shadow-2xl shadow-amber-950/40 flex flex-col my-auto">
         
         {/* Header */}
         <div className="p-5 border-b border-amber-500/30 bg-[#1a1230] flex items-center justify-between shrink-0">

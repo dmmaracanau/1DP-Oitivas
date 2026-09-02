@@ -15,6 +15,8 @@ import { getFirstName } from '../utils/formatters';
 import { specialDateService } from '../services/specialDateService';
 import { OitivaTooltip } from './OitivaTooltip';
 import { HolidayTooltip } from './HolidayTooltip';
+import { useSwipeGesture } from '../utils/useSwipeGesture';
+import { hapticSelection, hapticSwipe } from '../utils/haptics';
 
 interface CalendarWeekViewProps {
   oitivas: Oitiva[];
@@ -54,8 +56,21 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
   const end = endOfWeek(currentDate, { weekStartsOn: 0 });
   const days = eachDayOfInterval({ start, end });
 
-  const prevWeek = () => onDateChange(subWeeks(currentDate, 1));
-  const nextWeek = () => onDateChange(addWeeks(currentDate, 1));
+  const prevWeek = () => {
+    hapticSwipe();
+    onDateChange(subWeeks(currentDate, 1));
+  };
+  const nextWeek = () => {
+    hapticSwipe();
+    onDateChange(addWeeks(currentDate, 1));
+  };
+
+  const mobileSwipeHandlers = useSwipeGesture({
+    onSwipeLeft: nextWeek,
+    onSwipeRight: prevWeek,
+    minDistance: 45,
+    maxVerticalOffset: 75,
+  });
 
   const filteredOitivas = oitivas.filter(o => {
     if (statusFilter === 'TODOS') return true;
@@ -63,7 +78,10 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
   });
 
   return (
-    <div className="w-full max-w-[98.5%] 2xl:max-w-[1920px] mx-auto px-1 sm:px-2.5 lg:px-4 pb-10">
+    <div 
+      className="w-full max-w-[98.5%] 2xl:max-w-[1920px] mx-auto px-1 sm:px-2.5 lg:px-4 pb-10 touch-pan-y select-none"
+      {...mobileSwipeHandlers}
+    >
       <div className="bg-[#0e0a1b] border-2 border-purple-600/70 rounded-3xl overflow-hidden shadow-2xl shadow-purple-950/80 transition-all">
         
         {/* Header */}
@@ -85,7 +103,7 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
               <button
                 type="button"
                 onClick={() => onOpenHolidaysModal && onOpenHolidaysModal()}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#2b0c16] hover:bg-[#3d1220] text-red-300 hover:text-white text-xs font-black border-2 border-red-500/70 hover:border-red-400 transition-all cursor-pointer shadow-sm"
+                className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#2b0c16] hover:bg-[#3d1220] text-red-300 hover:text-white text-xs font-black border-2 border-red-500/70 hover:border-red-400 transition-all cursor-pointer shadow-sm"
                 title="Gerenciar Feriados e Fins de Semana"
               >
                 <Sparkles className="w-3.5 h-3.5 text-red-400" />
@@ -295,6 +313,7 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
                             }}
                             onClick={(e) => {
                               e.stopPropagation();
+                              hapticSelection();
                               onSelectOitiva(oitiva);
                             }}
                             className={`p-1.5 sm:p-2 rounded-xl text-left border-2 cursor-grab active:cursor-grabbing transition-all hover:scale-[1.02] shadow-md select-none ${

@@ -46,9 +46,102 @@ export const StatsBar: React.FC<StatsBarProps> = ({
   const monthAbsentCount = monthOitivas.filter(o => o.status === 'Não Compareceu').length;
 
   return (
-    <div className="w-full max-w-[98.5%] 2xl:max-w-[1920px] mx-auto px-1 sm:px-2.5 lg:px-4 py-1.5 no-print">
-      {/* Botões Coloridos Oficiais (Único Sistema de Filtros por Mês) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5 sm:gap-2.5">
+    <div className="w-full max-w-[98.5%] 2xl:max-w-[1920px] mx-auto px-1 sm:px-2.5 lg:px-4 py-1 sm:py-1.5 no-print">
+      
+      {/* --------------------------------------------------------------------- */}
+      {/* MOBILE COMPACT FILTER CHIPS STRIP (sm:hidden) - Zero Bloat (~36px)    */}
+      {/* --------------------------------------------------------------------- */}
+      <div className="flex sm:hidden items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 px-0.5">
+        
+        {/* Chip 1: Todas no Mês */}
+        <button
+          type="button"
+          onClick={() => onStatusFilterChange('TODOS')}
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border-2 text-left transition-all shrink-0 ${
+            selectedStatusFilter === 'TODOS'
+              ? 'bg-[#0f244c] border-blue-400 text-white ring-1 ring-blue-300 font-bold'
+              : 'bg-[#0b172e] border-blue-800/60 text-blue-200'
+          }`}
+        >
+          <Users className="w-3.5 h-3.5 text-blue-400" />
+          <span className="text-[11px] font-bold">No Mês</span>
+          <span className="text-[10px] font-black bg-blue-950 text-blue-300 px-1.5 py-0.2 rounded-md border border-blue-500/50">
+            {monthTotal}
+          </span>
+        </button>
+
+        {/* Chip 2: Pauta Hoje */}
+        <div
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border-2 transition-all shrink-0 ${
+            monthTodayCount > 0
+              ? 'bg-[#312007] border-amber-400 text-amber-100 ring-1 ring-amber-400/60'
+              : 'bg-[#181105] border-amber-800/50 text-amber-300'
+          }`}
+        >
+          <Clock className="w-3.5 h-3.5 text-amber-400" />
+          <span className="text-[11px] font-bold">Hoje</span>
+          <span className="text-[10px] font-black bg-amber-950 text-amber-300 px-1.5 py-0.2 rounded-md border border-amber-500/50">
+            {monthTodayCount}
+          </span>
+        </div>
+
+        {/* Chip 3: Agendadas */}
+        <button
+          type="button"
+          onClick={() => onStatusFilterChange(selectedStatusFilter === 'Agendada' ? 'TODOS' : 'Agendada')}
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border-2 text-left transition-all shrink-0 ${
+            selectedStatusFilter === 'Agendada'
+              ? 'bg-[#2f1556] border-purple-400 text-white ring-1 ring-purple-300 font-bold'
+              : 'bg-[#190d30] border-purple-800/60 text-purple-200'
+          }`}
+        >
+          <Calendar className="w-3.5 h-3.5 text-purple-400" />
+          <span className="text-[11px] font-bold">Agendadas</span>
+          <span className="text-[10px] font-black bg-purple-950 text-purple-300 px-1.5 py-0.2 rounded-md border border-purple-500/50">
+            {monthScheduledCount}
+          </span>
+        </button>
+
+        {/* Chip 4: Realizadas */}
+        <button
+          type="button"
+          onClick={() => onStatusFilterChange(selectedStatusFilter === 'Realizada' ? 'TODOS' : 'Realizada')}
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border-2 text-left transition-all shrink-0 ${
+            selectedStatusFilter === 'Realizada'
+              ? 'bg-[#0e3a28] border-emerald-400 text-white ring-1 ring-emerald-300 font-bold'
+              : 'bg-[#071f16] border-emerald-800/60 text-emerald-200'
+          }`}
+        >
+          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+          <span className="text-[11px] font-bold">Realizadas</span>
+          <span className="text-[10px] font-black bg-emerald-950 text-emerald-300 px-1.5 py-0.2 rounded-md border border-emerald-500/50">
+            {monthCompletedCount}
+          </span>
+        </button>
+
+        {/* Chip 5: Faltas */}
+        <button
+          type="button"
+          onClick={() => onStatusFilterChange(selectedStatusFilter === 'Não Compareceu' ? 'TODOS' : 'Não Compareceu')}
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border-2 text-left transition-all shrink-0 ${
+            selectedStatusFilter === 'Não Compareceu'
+              ? 'bg-[#461223] border-rose-400 text-white ring-1 ring-rose-300 font-bold'
+              : 'bg-[#240a13] border-rose-800/60 text-rose-200'
+          }`}
+        >
+          <UserX className="w-3.5 h-3.5 text-rose-400" />
+          <span className="text-[11px] font-bold">Faltas</span>
+          <span className="text-[10px] font-black bg-rose-950 text-rose-300 px-1.5 py-0.2 rounded-md border border-rose-500/50">
+            {monthAbsentCount}
+          </span>
+        </button>
+
+      </div>
+
+      {/* --------------------------------------------------------------------- */}
+      {/* DESKTOP METRICS GRID (hidden sm:grid) - 100% PRESERVED                  */}
+      {/* --------------------------------------------------------------------- */}
+      <div className="hidden sm:grid sm:grid-cols-3 lg:grid-cols-5 gap-1.5 sm:gap-2.5">
         
         {/* Botão 1: Total do Mês (Azul) */}
         <button
@@ -176,7 +269,7 @@ export const StatsBar: React.FC<StatsBarProps> = ({
           id="filter-btn-faltas-mes"
           type="button"
           onClick={() => onStatusFilterChange(selectedStatusFilter === 'Não Compareceu' ? 'TODOS' : 'Não Compareceu')}
-          className={`px-3 py-2 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center justify-between gap-2 col-span-2 sm:col-span-1 shadow-sm ${
+          className={`px-3 py-2 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center justify-between gap-2 shadow-sm ${
             selectedStatusFilter === 'Não Compareceu'
               ? 'bg-[#461223] border-rose-400 ring-2 ring-rose-400/70 shadow-lg shadow-rose-950/80 scale-[1.02]'
               : 'bg-[#240a13] border-rose-800/60 hover:border-rose-400 hover:bg-[#340f1c]'

@@ -253,6 +253,52 @@ export const specialDateService = {
   isUserAdmin,
 
   /**
+   * Busca todas as datas especiais diretamente do Firestore com fallback ao cache local
+   */
+  async getAll(): Promise<CalendarSpecialDate[]> {
+    try {
+      const colRef = collection(db, 'special_dates');
+      const snapshot = await executeFirestoreWithRetry(
+        () => getDocs(colRef),
+        { operationName: 'getAllSpecialDates' }
+      );
+      if (!snapshot.empty) {
+        const items: CalendarSpecialDate[] = [];
+        snapshot.forEach((docSnap) => {
+          const d = docSnap.data();
+          items.push({
+            id: docSnap.id,
+            title: d.title || 'Feriado',
+            date: d.date || undefined,
+            dayOfWeek: typeof d.dayOfWeek === 'number' ? d.dayOfWeek : undefined,
+            type: d.type || 'feriado',
+            description: d.description || '',
+            isRecurringWeekend: Boolean(d.isRecurringWeekend),
+            isRecurringAnnual: typeof d.isRecurringAnnual === 'boolean' 
+              ? d.isRecurringAnnual 
+              : (typeof d.isRecurring === 'boolean' ? d.isRecurring : true),
+            enabled: d.enabled !== false,
+            color: d.color || 'red',
+            createdAt: d.createdAt || Date.now(),
+            updatedAt: d.updatedAt || Date.now(),
+            createdBy: d.createdBy || ''
+          });
+        });
+        const hasSunday = items.some(x => x.dayOfWeek === 0 || x.id === 'weekend_sunday');
+        const hasSaturday = items.some(x => x.dayOfWeek === 6 || x.id === 'weekend_saturday');
+        const completeList = [...items];
+        if (!hasSunday) completeList.unshift(DEFAULT_WEEKEND_CARDS[0]);
+        if (!hasSaturday) completeList.unshift(DEFAULT_WEEKEND_CARDS[1]);
+        setLocalCache(completeList);
+        return completeList;
+      }
+    } catch (err) {
+      console.warn("Aviso ao buscar feriados no Firestore:", err);
+    }
+    return getLocalCache();
+  },
+
+  /**
    * Assinatura em tempo real global de feriados e fins de semana sincronizada no Firebase Firestore e RTDB
    */
   subscribe(

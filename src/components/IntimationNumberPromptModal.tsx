@@ -56,11 +56,9 @@ export const IntimationNumberPromptModal: React.FC<IntimationNumberPromptModalPr
   return (
     <div 
       className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+      // Note: Backdrop click close removed per user specification
     >
-      <div className="bg-[#151124] border-2 border-purple-800/80 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl shadow-purple-950/90 text-white animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-[#151124] border-2 border-purple-800/80 rounded-3xl w-[95vw] max-w-md overflow-hidden shadow-2xl shadow-purple-950/90 text-white animate-in fade-in zoom-in-95 duration-200">
         
         {/* Modal Header */}
         <div className="p-4 sm:p-5 border-b-2 border-purple-900/50 bg-[#1a142c] flex items-center justify-between">

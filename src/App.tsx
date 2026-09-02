@@ -5,6 +5,7 @@ import { CalendarMonthView } from './components/CalendarMonthView';
 import { CalendarWeekView } from './components/CalendarWeekView';
 import { CalendarDayView } from './components/CalendarDayView';
 import { OitivaListView } from './components/OitivaListView';
+import { PullToRefresh } from './components/PullToRefresh';
 import { OitivaModal } from './components/OitivaModal';
 import { OitivaDetailModal } from './components/OitivaDetailModal';
 import { PrintPautaModal } from './components/PrintPautaModal';
@@ -30,13 +31,8 @@ export default function App() {
   const [oitivas, setOitivas] = useState<Oitiva[]>([]);
   const [specialDates, setSpecialDates] = useState<CalendarSpecialDate[]>([]);
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
-  // Default view: 'month' on desktop (>= 768px), 'week' on mobile (< 768px)
-  const [currentView, setCurrentView] = useState<'month' | 'week' | 'day' | 'list'>(() => {
-    if (typeof window !== 'undefined') {
-      return window.innerWidth >= 768 ? 'month' : 'week';
-    }
-    return 'month';
-  });
+  // Default view: 'month' on all devices (mobile and desktop)
+  const [currentView, setCurrentView] = useState<'month' | 'week' | 'day' | 'list'>('month');
   const [userSelectedView, setUserSelectedView] = useState<boolean>(false);
   const [statusFilter, setStatusFilter] = useState<HearingStatus | 'TODOS'>('TODOS');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -175,20 +171,6 @@ export default function App() {
     setUserSelectedView(true);
     setCurrentView(view);
   };
-
-  // DLP: Responsive default view adaptation (Desktop: month, Mobile: week)
-  useEffect(() => {
-    const handleResize = () => {
-      // If user has not manually clicked/selected a specific view mode, adapt intelligently to screen size
-      if (!userSelectedView) {
-        const isDesktop = window.innerWidth >= 768;
-        setCurrentView(isDesktop ? 'month' : 'week');
-      }
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [userSelectedView]);
 
   // Handlers
   const handleAddOitivaForDate = (dateStr: string) => {
@@ -416,6 +398,27 @@ export default function App() {
     }
   };
 
+  // Pull-To-Refresh: Recarrega a lista de oitivas e dados especiais do Firestore sob demanda
+  const handlePullToRefresh = async () => {
+    try {
+      setSyncStatus('syncing');
+      const activeUid = user?.uid || 'guest_user';
+      const [freshOitivas, freshSpecial] = await Promise.all([
+        oitivaService.getAll(activeUid),
+        specialDateService.getAll()
+      ]);
+      setOitivas(freshOitivas);
+      if (freshSpecial && freshSpecial.length > 0) {
+        setSpecialDates(freshSpecial);
+      }
+      setSyncStatus('connected');
+      showToast('Oitivas sincronizadas com o Firestore!', 'success');
+    } catch (err) {
+      console.error('Erro no pull-to-refresh:', err);
+      setSyncStatus('connected');
+    }
+  };
+
   // Filter oitivas by search query if any
   const displayedOitivas = oitivas.filter(item => {
     if (!searchQuery.trim()) return true;
@@ -439,6 +442,8 @@ export default function App() {
         onViewChange={handleViewChange}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
+        statusFilter={statusFilter}
+        onStatusFilterChange={setStatusFilter}
         onOpenNewModal={handleOpenNewModal}
         onOpenPrintModal={() => setIsPrintModalOpen(true)}
         onOpenWorkspaceModal={() => handleOpenWorkspace('calendar')}
@@ -454,86 +459,88 @@ export default function App() {
         onLogout={handleLogout}
       />
 
-      {/* Main Container */}
-      <main className="flex-1 w-full">
-        {/* Quick summary stats & filter bar (Separado por Mês de Visualização) */}
-        <StatsBar
-          oitivas={oitivas}
-          currentDate={currentDate}
-          selectedStatusFilter={statusFilter}
-          onStatusFilterChange={setStatusFilter}
-        />
-
-        {/* Dynamic Views */}
-        {currentView === 'month' && (
-          <CalendarMonthView
-            oitivas={displayedOitivas}
-            currentDate={currentDate}
-            onDateChange={setCurrentDate}
-            onSelectOitiva={handleSelectOitiva}
-            onAddOitivaForDate={handleAddOitivaForDate}
-            onQuickStatusChange={handleStatusChange}
-            onToggleIntimationSent={handleToggleIntimationSent}
-            onOpenWhatsApp={handleOpenWhatsApp}
-            onMoveOitivaDate={handleMoveOitivaDate}
-            statusFilter={statusFilter}
-            specialDates={specialDates}
-            onOpenHolidaysModal={handleOpenHolidaysModal}
-            isAdmin={isAdmin}
-          />
-        )}
-
-        {currentView === 'week' && (
-          <CalendarWeekView
-            oitivas={displayedOitivas}
-            currentDate={currentDate}
-            onDateChange={setCurrentDate}
-            onSelectOitiva={handleSelectOitiva}
-            onAddOitivaForDate={handleAddOitivaForDate}
-            onQuickStatusChange={handleStatusChange}
-            onToggleIntimationSent={handleToggleIntimationSent}
-            onOpenWhatsApp={handleOpenWhatsApp}
-            onMoveOitivaDate={handleMoveOitivaDate}
-            statusFilter={statusFilter}
-            specialDates={specialDates}
-            onOpenHolidaysModal={handleOpenHolidaysModal}
-            isAdmin={isAdmin}
-          />
-        )}
-
-        {currentView === 'day' && (
-          <CalendarDayView
-            oitivas={displayedOitivas}
-            currentDate={currentDate}
-            onDateChange={setCurrentDate}
-            onSelectOitiva={handleSelectOitiva}
-            onAddOitivaForDate={handleAddOitivaForDate}
-            onQuickStatusChange={handleStatusChange}
-            onToggleIntimationSent={handleToggleIntimationSent}
-            onOpenWhatsApp={handleOpenWhatsApp}
-            statusFilter={statusFilter}
-            specialDates={specialDates}
-            onOpenHolidaysModal={handleOpenHolidaysModal}
-            isAdmin={isAdmin}
-          />
-        )}
-
-        {currentView === 'list' && (
-          <OitivaListView
+      {/* Main Container with Pull-To-Refresh Gesture */}
+      <main className="flex-1 w-full pb-24 sm:pb-8">
+        <PullToRefresh onRefresh={handlePullToRefresh}>
+          {/* Quick summary stats & filter bar (Separado por Mês de Visualização) */}
+          <StatsBar
             oitivas={oitivas}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            onSelectOitiva={handleSelectOitiva}
-            onEditOitiva={handleEditOitiva}
-            onDeleteOitiva={handleDeleteOitiva}
-            onPrintIntimacao={handleOpenPrintIntimacao}
-            onOpenWhatsApp={handleOpenWhatsApp}
-            statusFilter={statusFilter}
+            currentDate={currentDate}
+            selectedStatusFilter={statusFilter}
             onStatusFilterChange={setStatusFilter}
-            onAddOitiva={handleOpenNewModal}
-            onExportBackup={handleExportBackup}
           />
-        )}
+
+          {/* Dynamic Views */}
+          {currentView === 'month' && (
+            <CalendarMonthView
+              oitivas={displayedOitivas}
+              currentDate={currentDate}
+              onDateChange={setCurrentDate}
+              onSelectOitiva={handleSelectOitiva}
+              onAddOitivaForDate={handleAddOitivaForDate}
+              onQuickStatusChange={handleStatusChange}
+              onToggleIntimationSent={handleToggleIntimationSent}
+              onOpenWhatsApp={handleOpenWhatsApp}
+              onMoveOitivaDate={handleMoveOitivaDate}
+              statusFilter={statusFilter}
+              specialDates={specialDates}
+              onOpenHolidaysModal={handleOpenHolidaysModal}
+              isAdmin={isAdmin}
+            />
+          )}
+
+          {currentView === 'week' && (
+            <CalendarWeekView
+              oitivas={displayedOitivas}
+              currentDate={currentDate}
+              onDateChange={setCurrentDate}
+              onSelectOitiva={handleSelectOitiva}
+              onAddOitivaForDate={handleAddOitivaForDate}
+              onQuickStatusChange={handleStatusChange}
+              onToggleIntimationSent={handleToggleIntimationSent}
+              onOpenWhatsApp={handleOpenWhatsApp}
+              onMoveOitivaDate={handleMoveOitivaDate}
+              statusFilter={statusFilter}
+              specialDates={specialDates}
+              onOpenHolidaysModal={handleOpenHolidaysModal}
+              isAdmin={isAdmin}
+            />
+          )}
+
+          {currentView === 'day' && (
+            <CalendarDayView
+              oitivas={displayedOitivas}
+              currentDate={currentDate}
+              onDateChange={setCurrentDate}
+              onSelectOitiva={handleSelectOitiva}
+              onAddOitivaForDate={handleAddOitivaForDate}
+              onQuickStatusChange={handleStatusChange}
+              onToggleIntimationSent={handleToggleIntimationSent}
+              onOpenWhatsApp={handleOpenWhatsApp}
+              statusFilter={statusFilter}
+              specialDates={specialDates}
+              onOpenHolidaysModal={handleOpenHolidaysModal}
+              isAdmin={isAdmin}
+            />
+          )}
+
+          {currentView === 'list' && (
+            <OitivaListView
+              oitivas={oitivas}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              onSelectOitiva={handleSelectOitiva}
+              onEditOitiva={handleEditOitiva}
+              onDeleteOitiva={handleDeleteOitiva}
+              onPrintIntimacao={handleOpenPrintIntimacao}
+              onOpenWhatsApp={handleOpenWhatsApp}
+              statusFilter={statusFilter}
+              onStatusFilterChange={setStatusFilter}
+              onAddOitiva={handleOpenNewModal}
+              onExportBackup={handleExportBackup}
+            />
+          )}
+        </PullToRefresh>
       </main>
 
       {/* Modals */}

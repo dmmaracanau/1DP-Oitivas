@@ -20,6 +20,8 @@ import { getRoleBadgeClasses, formatDateBR } from '../utils/formatters';
 import { specialDateService } from '../services/specialDateService';
 import { OitivaTooltip } from './OitivaTooltip';
 import { HolidayTooltip } from './HolidayTooltip';
+import { useSwipeGesture } from '../utils/useSwipeGesture';
+import { hapticSelection, hapticSwipe, hapticToggle } from '../utils/haptics';
 
 interface CalendarDayViewProps {
   oitivas: Oitiva[];
@@ -51,8 +53,21 @@ export const CalendarDayView: React.FC<CalendarDayViewProps> = ({
   isAdmin = false
 }) => {
   const dayStr = format(currentDate, 'yyyy-MM-dd');
-  const prevDay = () => onDateChange(subDays(currentDate, 1));
-  const nextDay = () => onDateChange(addDays(currentDate, 1));
+  const prevDay = () => {
+    hapticSwipe();
+    onDateChange(subDays(currentDate, 1));
+  };
+  const nextDay = () => {
+    hapticSwipe();
+    onDateChange(addDays(currentDate, 1));
+  };
+
+  const mobileSwipeHandlers = useSwipeGesture({
+    onSwipeLeft: nextDay,
+    onSwipeRight: prevDay,
+    minDistance: 45,
+    maxVerticalOffset: 75,
+  });
 
   const isWeekendDay = currentDate.getDay() === 0 || currentDate.getDay() === 6;
   const daySpecialDates = specialDateService
@@ -65,7 +80,10 @@ export const CalendarDayView: React.FC<CalendarDayViewProps> = ({
     .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
 
   return (
-    <div className="w-full max-w-5xl 2xl:max-w-6xl mx-auto px-1 sm:px-2.5 lg:px-4 pb-10">
+    <div 
+      className="w-full max-w-5xl 2xl:max-w-6xl mx-auto px-1 sm:px-2.5 lg:px-4 pb-10 touch-pan-y select-none"
+      {...mobileSwipeHandlers}
+    >
       <div className={`border-2 rounded-3xl overflow-hidden shadow-2xl transition-all ${
         isWeekendDay 
           ? 'bg-[#18080f] border-red-800/80 shadow-red-950/80' 

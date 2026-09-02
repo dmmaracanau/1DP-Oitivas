@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   format, 
   addMonths, 
@@ -9,7 +9,8 @@ import {
   endOfWeek, 
   eachDayOfInterval, 
   isSameMonth, 
-  isToday 
+  isToday,
+  parseISO
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { 
@@ -19,14 +20,17 @@ import {
   Clock, 
   Video, 
   FileText, 
-  Calendar as CalendarIcon
+  Calendar as CalendarIcon,
+  Sparkles,
+  MessageCircle
 } from 'lucide-react';
 import { Oitiva, HearingStatus, CalendarSpecialDate } from '../types/oitiva';
 import { getFirstName } from '../utils/formatters';
 import { specialDateService } from '../services/specialDateService';
-import { Sparkles } from 'lucide-react';
 import { OitivaTooltip } from './OitivaTooltip';
 import { HolidayTooltip } from './HolidayTooltip';
+import { useSwipeGesture } from '../utils/useSwipeGesture';
+import { hapticSelection, hapticStatusChange, hapticToggle, hapticSwipe } from '../utils/haptics';
 
 interface CalendarMonthViewProps {
   oitivas: Oitiva[];
@@ -63,10 +67,53 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
   const [draggedOitivaId, setDraggedOitivaId] = useState<string | null>(null);
   const [dragOverDay, setDragOverDay] = useState<string | null>(null);
 
+  // Estado para o dia selecionado na visão mobile (Touch Matrix + Painel do Dia)
+  const [selectedMobileDate, setSelectedMobileDate] = useState<string>(() => {
+    const today = new Date();
+    if (isSameMonth(today, currentDate)) {
+      return format(today, 'yyyy-MM-dd');
+    }
+    return format(startOfMonth(currentDate), 'yyyy-MM-dd');
+  });
+
+  // Atualiza a seleção mobile caso o mês exibido seja trocado
+  useEffect(() => {
+    try {
+      const currentSelected = parseISO(selectedMobileDate);
+      if (!isSameMonth(currentSelected, currentDate)) {
+        const today = new Date();
+        if (isSameMonth(today, currentDate)) {
+          setSelectedMobileDate(format(today, 'yyyy-MM-dd'));
+        } else {
+          setSelectedMobileDate(format(startOfMonth(currentDate), 'yyyy-MM-dd'));
+        }
+      }
+    } catch {
+      setSelectedMobileDate(format(startOfMonth(currentDate), 'yyyy-MM-dd'));
+    }
+  }, [currentDate]);
+
   // Month navigation
-  const prevMonth = () => onDateChange(subMonths(currentDate, 1));
-  const nextMonth = () => onDateChange(addMonths(currentDate, 1));
-  const goToToday = () => onDateChange(new Date());
+  const prevMonth = () => {
+    hapticSwipe();
+    onDateChange(subMonths(currentDate, 1));
+  };
+  const nextMonth = () => {
+    hapticSwipe();
+    onDateChange(addMonths(currentDate, 1));
+  };
+  const goToToday = () => {
+    hapticSelection();
+    onDateChange(new Date());
+  };
+
+  // Mobile horizontal swipe gestures to switch previous and next months
+  const mobileSwipeHandlers = useSwipeGesture({
+    onSwipeLeft: nextMonth,
+    onSwipeRight: prevMonth,
+    minDistance: 45,
+    maxVerticalOffset: 75,
+  });
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(monthStart);
@@ -89,7 +136,350 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
 
   return (
     <div className="w-full max-w-[98.5%] 2xl:max-w-[1920px] mx-auto px-1 sm:px-2.5 lg:px-4 pb-10">
-      <div className="bg-[#0e0a1b] border-2 border-purple-600/70 rounded-3xl overflow-hidden shadow-2xl shadow-purple-950/80 transition-all">
+      
+      {/* ========================================================================= */}
+      {/* 📱 MOBILE VIEW (sm:hidden) - Modern Touch Matrix + Selected Day Agenda Panel */}
+      {/* ========================================================================= */}
+      <div 
+        className="sm:hidden flex flex-col gap-3 touch-pan-y select-none"
+        {...mobileSwipeHandlers}
+      >
+        
+        {/* Mobile Header / Navigation */}
+        <div className="bg-[#151026] border-2 border-purple-700/70 rounded-2xl p-3 shadow-lg shadow-purple-950/70">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <h2 className="text-base font-black text-white tracking-tight capitalize">
+                {format(currentDate, 'MMMM yyyy', { locale: ptBR })}
+              </h2>
+              <span className="text-[10px] text-purple-300 font-medium">Deslize para trocar de mês • Toque para ver a pauta</span>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={prevMonth}
+                className="p-1.5 rounded-xl bg-[#1d1633] active:bg-[#2a204a] text-zinc-200 border border-purple-700/60 transition-all"
+                title="Mês anterior"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              <button
+                type="button"
+                onClick={goToToday}
+                className="px-2.5 py-1 rounded-xl bg-purple-900 active:bg-purple-800 text-white text-[11px] font-black border border-purple-400/80 transition-all"
+              >
+                Hoje
+              </button>
+
+              <button
+                type="button"
+                onClick={nextMonth}
+                className="p-1.5 rounded-xl bg-[#1d1633] active:bg-[#2a204a] text-zinc-200 border border-purple-700/60 transition-all"
+                title="Próximo mês"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Compact Month Matrix */}
+        <div className="bg-[#0e0a1b] border-2 border-purple-700/70 rounded-2xl p-2 shadow-xl shadow-purple-950/70">
+          {/* Weekdays row */}
+          <div className="grid grid-cols-7 mb-1 text-center">
+            {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((dw, i) => (
+              <div 
+                key={i} 
+                className={`text-[11px] font-black uppercase py-1 ${i === 0 || i === 6 ? 'text-red-400' : 'text-zinc-300'}`}
+              >
+                {dw}
+              </div>
+            ))}
+          </div>
+
+          {/* Days Grid */}
+          <div className="grid grid-cols-7 gap-1">
+            {days.map((day) => {
+              const dayStr = format(day, 'yyyy-MM-dd');
+              const isCurrentMonth = isSameMonth(day, currentDate);
+              const isCurrentDay = isToday(day);
+              const isSelected = selectedMobileDate === dayStr;
+              const dayOitivas = getOitivasForDay(day);
+              const daySpecialDates = specialDateService
+                .getSpecialDatesForDate(dayStr, day.getDay(), specialDates)
+                .filter(sp => sp.type !== 'fim_de_semana' && !sp.isRecurringWeekend);
+              const isWeekendDay = day.getDay() === 0 || day.getDay() === 6;
+
+              return (
+                <button
+                  key={dayStr}
+                  type="button"
+                  onClick={() => {
+                    hapticSelection();
+                    setSelectedMobileDate(dayStr);
+                  }}
+                  className={`flex flex-col items-center justify-between py-1 px-0.5 rounded-xl transition-all relative min-h-[46px] ${
+                    isSelected
+                      ? 'bg-purple-600 border-2 border-white text-white font-black shadow-lg shadow-purple-900 scale-[1.03] z-10'
+                      : isCurrentDay
+                      ? 'bg-[#2a174a] border-2 border-amber-400/90 text-amber-200 font-bold'
+                      : !isCurrentMonth
+                      ? isWeekendDay ? 'bg-[#15040a]/40 text-red-900/50' : 'bg-[#0a0614]/40 text-zinc-700'
+                      : isWeekendDay
+                      ? 'bg-[#220710] border border-red-900/50 text-red-300 hover:bg-[#2c0a15]'
+                      : 'bg-[#141026] border border-purple-800/40 text-zinc-100 hover:bg-[#1c1636]'
+                  }`}
+                >
+                  {/* Day Number */}
+                  <span className={`text-[12px] font-mono leading-none ${isSelected ? 'text-white font-black' : isCurrentDay ? 'text-amber-300 font-black' : isWeekendDay ? 'text-red-400 font-bold' : 'text-zinc-200 font-bold'}`}>
+                    {format(day, 'dd')}
+                  </span>
+
+                  {/* Dots / Indicators */}
+                  <div className="flex items-center justify-center gap-0.5 mt-1 min-h-[6px]">
+                    {daySpecialDates.length > 0 && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" title="Feriado" />
+                    )}
+                    {dayOitivas.length > 0 && (
+                      <span className={`text-[9px] font-black px-1 rounded-full leading-tight ${
+                        isSelected ? 'bg-white text-purple-900' : 'bg-purple-500 text-white'
+                      }`}>
+                        {dayOitivas.length}
+                      </span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Selected Day Agenda Panel (Pauta do Dia) */}
+        {(() => {
+          let selDateObj: Date;
+          try {
+            selDateObj = parseISO(selectedMobileDate);
+          } catch {
+            selDateObj = new Date();
+          }
+          const selOitivas = filteredOitivas.filter(o => o.date === selectedMobileDate).sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+          const selSpecialDates = specialDateService
+            .getSpecialDatesForDate(selectedMobileDate, selDateObj.getDay(), specialDates)
+            .filter(sp => sp.type !== 'fim_de_semana' && !sp.isRecurringWeekend);
+          const isSelToday = isToday(selDateObj);
+
+          return (
+            <div className="bg-[#0e0a1b] border-2 border-purple-600/70 rounded-2xl p-3.5 shadow-2xl shadow-purple-950/90 flex flex-col gap-3">
+              {/* Panel Header */}
+              <div className="flex items-center justify-between pb-2.5 border-b border-purple-800/60">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-black text-purple-300 uppercase tracking-wider">
+                      {isSelToday ? 'Hoje' : format(selDateObj, "EEEE", { locale: ptBR })}
+                    </span>
+                    <span className="text-xs text-zinc-400">•</span>
+                    <span className="text-xs font-black text-white">
+                      {format(selDateObj, "dd 'de' MMMM", { locale: ptBR })}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-zinc-400 font-medium">
+                    {selOitivas.length} oitiva(s) nesta data
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => onAddOitivaForDate(selectedMobileDate)}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-black shadow-md shadow-purple-950/80 active:scale-95 transition-all"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Agendar</span>
+                </button>
+              </div>
+
+              {/* Holiday Card if any */}
+              {selSpecialDates.map(sp => (
+                <div 
+                  key={sp.id}
+                  onClick={() => {
+                    if (isAdmin && onOpenHolidaysModal) {
+                      onOpenHolidaysModal(selectedMobileDate);
+                    }
+                  }}
+                  className={`p-2.5 rounded-xl bg-[#240810] border-2 border-red-500 text-white flex items-center justify-between gap-2 shadow-md ${
+                    isAdmin ? 'cursor-pointer active:scale-98' : ''
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-red-950 border border-red-500/80 flex items-center justify-center text-red-300 shrink-0">
+                      <Sparkles className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <span className="text-[9px] font-black text-red-300 uppercase tracking-wider block">
+                        {sp.type === 'ponto_facultativo' ? 'Ponto Facultativo' : 'Feriado Oficial'}
+                      </span>
+                      <p className="text-xs font-black text-red-100">{sp.title}</p>
+                    </div>
+                  </div>
+                  {isAdmin && (
+                    <span className="text-[10px] text-red-300 font-bold underline">Editar</span>
+                  )}
+                </div>
+              ))}
+
+              {/* List of Oitivas */}
+              {selOitivas.length > 0 ? (
+                <div className="space-y-2.5">
+                  {selOitivas.map((oitiva) => {
+                    const status = oitiva.status || 'Agendada';
+                    
+                    let cardBg = 'bg-[#19112e] border-purple-500/70';
+                    let statusPill = 'bg-purple-950 text-purple-200 border-purple-400';
+                    if (status === 'Realizada') {
+                      cardBg = 'bg-[#082216] border-emerald-500/70';
+                      statusPill = 'bg-emerald-950 text-emerald-200 border-emerald-400';
+                    } else if (status === 'Não Compareceu') {
+                      cardBg = 'bg-[#291008] border-orange-500/70';
+                      statusPill = 'bg-orange-950 text-orange-200 border-orange-400';
+                    } else if (status === 'Cancelada') {
+                      cardBg = 'bg-[#250811] border-rose-500/70';
+                      statusPill = 'bg-rose-950 text-rose-200 border-rose-400';
+                    } else if (status === 'Remarcada') {
+                      cardBg = 'bg-[#261906] border-amber-500/70';
+                      statusPill = 'bg-amber-950 text-amber-200 border-amber-400';
+                    }
+
+                    return (
+                      <div
+                        key={oitiva.id}
+                        onClick={() => {
+                          hapticSelection();
+                          onSelectOitiva(oitiva);
+                        }}
+                        className={`p-3 rounded-2xl border-2 ${cardBg} shadow-md flex flex-col gap-2 transition-all active:scale-[0.99] cursor-pointer`}
+                      >
+                        {/* Top line: Time + Modality + Status Badge */}
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5">
+                            <span className="inline-flex items-center gap-1 font-mono font-black text-xs px-2.5 py-1 rounded-lg bg-black/80 text-amber-300 border border-amber-400/80 shadow-sm">
+                              <Clock className="w-3.5 h-3.5 text-amber-400" />
+                              {oitiva.time || '--:--'}
+                            </span>
+                            {oitiva.modality === 'Videoconferência' && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-lg bg-cyan-950 text-cyan-300 border border-cyan-500/50">
+                                <Video className="w-3 h-3" />
+                                Online
+                              </span>
+                            )}
+                          </div>
+
+                          <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg uppercase tracking-wider border ${statusPill}`}>
+                            {status}
+                          </span>
+                        </div>
+
+                        {/* Middle Line: Person Name + Role Badge */}
+                        <div className="flex items-start justify-between gap-2 pt-0.5">
+                          <div className="min-w-0 flex-1">
+                            <h4 className="text-sm font-black text-white leading-tight">
+                              {oitiva.personName || 'Depoente Não Informado'}
+                            </h4>
+                            <p className="text-[11px] text-purple-300/80 font-mono mt-0.5 truncate">
+                              {oitiva.procedureNumber ? `Proc: ${oitiva.procedureNumber}` : 'Sem número de procedimento'}
+                            </p>
+                          </div>
+                          {oitiva.role && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-950 text-purple-200 border border-purple-500/50 shrink-0">
+                              {oitiva.role}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Bottom Line: Quick Action Buttons */}
+                        <div className="flex items-center justify-between pt-2 border-t border-white/10 mt-0.5 gap-2">
+                          {/* Intimation Sent Toggle */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              hapticToggle();
+                              if (onToggleIntimationSent) {
+                                onToggleIntimationSent(oitiva.id, !oitiva.intimationSent);
+                              }
+                            }}
+                            className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg border transition-all active:scale-95 ${
+                              oitiva.intimationSent
+                                ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/60'
+                                : 'bg-zinc-900 text-zinc-400 border-zinc-700'
+                            }`}
+                          >
+                            <FileText className="w-3 h-3" />
+                            <span>{oitiva.intimationSent ? 'Intimação Enviada' : 'Intimar'}</span>
+                          </button>
+
+                          <div className="flex items-center gap-1.5">
+                            {/* WhatsApp Button */}
+                            {onOpenWhatsApp && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  hapticSelection();
+                                  onOpenWhatsApp(oitiva);
+                                }}
+                                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white text-[11px] font-bold shadow-sm transition-all active:scale-95"
+                                title="Enviar WhatsApp"
+                              >
+                                <MessageCircle className="w-3.5 h-3.5" />
+                                <span>WhatsApp</span>
+                              </button>
+                            )}
+
+                            {/* Details button */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                hapticSelection();
+                                onSelectOitiva(oitiva);
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-[#2b1f4c] hover:bg-purple-700 text-white text-[11px] font-bold border border-purple-500/60 transition-all active:scale-95"
+                            >
+                              Ver Detalhes
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-6 px-4 rounded-xl bg-[#140e26] border border-dashed border-purple-800/60 flex flex-col items-center gap-2">
+                  <CalendarIcon className="w-8 h-8 text-purple-400/50" />
+                  <p className="text-xs text-zinc-300 font-semibold">
+                    Nenhuma oitiva agendada para {format(selDateObj, "dd 'de' MMMM", { locale: ptBR })}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => onAddOitivaForDate(selectedMobileDate)}
+                    className="mt-1 flex items-center gap-1 px-3 py-1.5 rounded-xl bg-purple-700 active:bg-purple-600 text-white text-xs font-black shadow-md"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Agendar Agora</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 🖥️ DESKTOP VIEW (hidden sm:block) - 100% PRESERVED 7-COLUMN FULL GRID     */}
+      {/* ========================================================================= */}
+      <div className="hidden sm:block bg-[#0e0a1b] border-2 border-purple-600/70 rounded-3xl overflow-hidden shadow-2xl shadow-purple-950/80 transition-all">
         
         {/* Calendar Header / Navigation Controls */}
         <div className="flex flex-col sm:flex-row items-center justify-between p-4 sm:p-5 border-b-2 border-purple-700/60 gap-3 bg-[#151026]">
@@ -452,6 +842,7 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
         </div>
 
       </div>
+
     </div>
   );
 };
