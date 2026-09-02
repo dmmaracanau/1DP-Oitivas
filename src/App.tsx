@@ -482,6 +482,8 @@ export default function App() {
               onToggleIntimationSent={handleToggleIntimationSent}
               onOpenWhatsApp={handleOpenWhatsApp}
               onMoveOitivaDate={handleMoveOitivaDate}
+              onDeleteOitiva={handleDeleteOitiva}
+              onRescheduleOitiva={handleRescheduleOitiva}
               statusFilter={statusFilter}
               specialDates={specialDates}
               onOpenHolidaysModal={handleOpenHolidaysModal}
@@ -500,6 +502,8 @@ export default function App() {
               onToggleIntimationSent={handleToggleIntimationSent}
               onOpenWhatsApp={handleOpenWhatsApp}
               onMoveOitivaDate={handleMoveOitivaDate}
+              onDeleteOitiva={handleDeleteOitiva}
+              onRescheduleOitiva={handleRescheduleOitiva}
               statusFilter={statusFilter}
               specialDates={specialDates}
               onOpenHolidaysModal={handleOpenHolidaysModal}
@@ -517,6 +521,8 @@ export default function App() {
               onQuickStatusChange={handleStatusChange}
               onToggleIntimationSent={handleToggleIntimationSent}
               onOpenWhatsApp={handleOpenWhatsApp}
+              onDeleteOitiva={handleDeleteOitiva}
+              onRescheduleOitiva={handleRescheduleOitiva}
               statusFilter={statusFilter}
               specialDates={specialDates}
               onOpenHolidaysModal={handleOpenHolidaysModal}

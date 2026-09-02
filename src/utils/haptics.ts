@@ -88,5 +88,6 @@ export const hapticStatusChange = () => triggerHaptic('statusChange');
 export const hapticSwipe = () => triggerHaptic('swipe');
 export const hapticToggle = () => triggerHaptic('toggle');
 export const hapticSuccess = () => triggerHaptic('success');
+export const hapticWarning = () => triggerHaptic('warning');
 export const hapticError = () => triggerHaptic('error');
 export const hapticHeavy = () => triggerHaptic('heavy');

@@ -22,7 +22,8 @@ import {
   Users,
   LayoutDashboard,
   CheckCircle2,
-  UserX
+  UserX,
+  ArrowLeftRight
 } from 'lucide-react';
 import { UserProfile, HearingStatus } from '../types/oitiva';
 import { hapticSelection, hapticToggle } from '../utils/haptics';
@@ -550,16 +551,38 @@ export const Navbar: React.FC<NavbarProps> = ({
           type="button"
           id="mobile-tab-calendar"
           onClick={handleToggleCalendarView}
-          className={`flex flex-col items-center justify-center py-1.5 px-4 rounded-xl transition-all min-w-[72px] min-h-[44px] ${
+          className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-2xl transition-all min-w-[82px] min-h-[46px] relative select-none cursor-pointer ${
             (currentView === 'month' || currentView === 'week') && !isMobileSearchOpen
-              ? 'bg-gradient-to-b from-purple-600 to-indigo-700 text-white shadow-md shadow-purple-950 ring-1 ring-purple-300 font-black scale-105'
-              : 'text-purple-300/80 hover:text-white font-medium'
+              ? 'bg-gradient-to-b from-purple-600 to-indigo-700 text-white shadow-lg shadow-purple-950 ring-2 ring-purple-300 font-black scale-105'
+              : 'text-purple-300/80 hover:text-white font-medium hover:bg-purple-950/40'
           }`}
-          title="Alternar entre visão Mensal e Semanal"
+          title={
+            currentView === 'month'
+              ? 'Visão Mensal ativa. Toque para alternar para visão Semanal (Mês ⇄ Semana)'
+              : currentView === 'week'
+              ? 'Visão Semanal ativa. Toque para alternar para visão Mensal (Semana ⇄ Mês)'
+              : 'Ir para o Calendário (Mês / Semana)'
+          }
         >
-          <CalendarIcon className="w-4 h-4" />
-          <span className="text-[10px] mt-0.5 leading-none">
-            {currentView === 'week' ? 'Semana' : 'Mês'}
+          {/* Calendar Icon + Dynamic Indicator Badge */}
+          <div className="relative flex items-center justify-center">
+            <CalendarIcon className="w-4 h-4" />
+            <span 
+              className="absolute -top-1.5 -right-3.5 bg-amber-400 text-black text-[8px] font-black px-1 py-0.5 rounded-full leading-none shadow-sm flex items-center gap-0.5"
+              title="Toque para alternar visualização"
+            >
+              <ArrowLeftRight className="w-2 h-2" />
+            </span>
+          </div>
+
+          {/* Active View Label */}
+          <span className="text-[10px] font-black leading-none mt-0.5">
+            {currentView === 'week' ? 'Semana' : currentView === 'month' ? 'Mês' : 'Calendário'}
+          </span>
+
+          {/* Dynamic Switch Hint */}
+          <span className="text-[8px] font-bold text-amber-300 leading-none mt-0.5 tracking-tight flex items-center gap-0.5">
+            <span>⇄ {currentView === 'week' ? 'Mês' : 'Semana'}</span>
           </span>
         </button>
 
@@ -687,7 +710,114 @@ export const Navbar: React.FC<NavbarProps> = ({
                 )}
               </div>
 
-              {/* SECTION 2: GESTÃO INSTITUCIONAL & CALENDÁRIO */}
+              {/* SECTION 2: MODOS DE VISUALIZAÇÃO DA AGENDA */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-[11px] font-black text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <CalendarIcon className="w-3.5 h-3.5 text-purple-400" />
+                    <span>Visualização da Agenda</span>
+                  </span>
+                  <span className="text-[9px] font-mono text-amber-300 bg-amber-950/80 px-2 py-0.5 rounded border border-amber-500/50">
+                    Mês ⇄ Semana
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Mês */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      hapticSelection();
+                      onViewChange('month');
+                      setIsMobileDrawerOpen(false);
+                    }}
+                    className={`flex items-center gap-2 p-2.5 rounded-xl border-2 transition-all text-left ${
+                      currentView === 'month'
+                        ? 'bg-purple-600 border-purple-300 text-white font-black shadow-md shadow-purple-950'
+                        : 'bg-[#15112e] border-purple-700/60 text-purple-200 hover:text-white'
+                    }`}
+                  >
+                    <CalendarIcon className="w-4 h-4" />
+                    <div>
+                      <div className="text-xs font-bold leading-tight">Visão Mensal</div>
+                      <div className="text-[9px] opacity-75">Grade de dias</div>
+                    </div>
+                  </button>
+
+                  {/* Semana */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      hapticSelection();
+                      onViewChange('week');
+                      setIsMobileDrawerOpen(false);
+                    }}
+                    className={`flex items-center gap-2 p-2.5 rounded-xl border-2 transition-all text-left ${
+                      currentView === 'week'
+                        ? 'bg-purple-600 border-purple-300 text-white font-black shadow-md shadow-purple-950'
+                        : 'bg-[#15112e] border-purple-700/60 text-purple-200 hover:text-white'
+                    }`}
+                  >
+                    <Columns className="w-4 h-4" />
+                    <div>
+                      <div className="text-xs font-bold leading-tight">Visão Semanal</div>
+                      <div className="text-[9px] opacity-75">Fluxo da semana</div>
+                    </div>
+                  </button>
+
+                  {/* Dashboard / Dia */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      hapticSelection();
+                      onViewChange('day');
+                      setIsMobileDrawerOpen(false);
+                    }}
+                    className={`flex items-center gap-2 p-2.5 rounded-xl border-2 transition-all text-left ${
+                      currentView === 'day'
+                        ? 'bg-purple-600 border-purple-300 text-white font-black shadow-md shadow-purple-950'
+                        : 'bg-[#15112e] border-purple-700/60 text-purple-200 hover:text-white'
+                    }`}
+                  >
+                    <LayoutDashboard className="w-4 h-4" />
+                    <div>
+                      <div className="text-xs font-bold leading-tight">Dashboard</div>
+                      <div className="text-[9px] opacity-75">Pauta do dia</div>
+                    </div>
+                  </button>
+
+                  {/* Lista */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      hapticSelection();
+                      onViewChange('list');
+                      setIsMobileDrawerOpen(false);
+                    }}
+                    className={`flex items-center gap-2 p-2.5 rounded-xl border-2 transition-all text-left ${
+                      currentView === 'list'
+                        ? 'bg-purple-600 border-purple-300 text-white font-black shadow-md shadow-purple-950'
+                        : 'bg-[#15112e] border-purple-700/60 text-purple-200 hover:text-white'
+                    }`}
+                  >
+                    <List className="w-4 h-4" />
+                    <div>
+                      <div className="text-xs font-bold leading-tight">Lista Geral</div>
+                      <div className="text-[9px] opacity-75">Todas as oitivas</div>
+                    </div>
+                  </button>
+                </div>
+
+                {/* Helper Tip */}
+                <div className="p-2 rounded-xl bg-purple-950/60 border border-purple-600/50 flex items-center gap-2 text-[10px] text-purple-200">
+                  <ArrowLeftRight className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                  <span>
+                    Toque no botão central da barra inferior para alternar diretamente entre <strong>Mês</strong> e <strong>Semana</strong>.
+                  </span>
+                </div>
+              </div>
+
+              {/* SECTION 3: GESTÃO INSTITUCIONAL & CALENDÁRIO */}
               <div className="space-y-2">
                 <span className="text-[11px] font-black text-purple-300 uppercase tracking-wider px-1 flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-red-400" />
