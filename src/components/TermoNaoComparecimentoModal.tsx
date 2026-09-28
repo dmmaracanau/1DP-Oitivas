@@ -6,6 +6,7 @@ import {
   Check, 
   AlertTriangle, 
   User, 
+  UserCheck,
   ShieldCheck, 
   Building2, 
   Copy, 
@@ -19,6 +20,7 @@ import {
 } from 'lucide-react';
 import { Oitiva, UserProfile } from '../types/oitiva';
 import { delegadoService, DelegadoInfo } from '../services/delegadoService';
+import { authService } from '../services/authService';
 import { 
   formatDateExtenso, 
   formatAddressCompleto, 
@@ -109,15 +111,10 @@ export const TermoNaoComparecimentoModal: React.FC<TermoNaoComparecimentoModalPr
   const [dpcMatricula, setDpcMatricula] = useState('');
   const [dpcCargo, setDpcCargo] = useState('Delegado de Polícia Civil');
 
-  // OIP 1
-  const [oip1Name, setOip1Name] = useState('');
-  const [oip1Matricula, setOip1Matricula] = useState('');
-  const [oip1Cargo, setOip1Cargo] = useState('Oficial de Investigação Policial (OIP)');
-
-  // OIP 2
-  const [oip2Name, setOip2Name] = useState('');
-  const [oip2Matricula, setOip2Matricula] = useState('');
-  const [oip2Cargo, setOip2Cargo] = useState('Oficial de Investigação Policial (OIP)');
+  // OIP (Único Oficial Investigador / Escrivão)
+  const [oipName, setOipName] = useState('');
+  const [oipMatricula, setOipMatricula] = useState('');
+  const [oipCargo, setOipCargo] = useState('Oficial de Investigação Policial (OIP)');
 
   // Estado de geração
   const [isGenerating, setIsGenerating] = useState(false);
@@ -164,30 +161,27 @@ export const TermoNaoComparecimentoModal: React.FC<TermoNaoComparecimentoModalPr
       setDpcCargo('Delegado de Polícia Civil');
     }
 
-    // OIP 1: Usuário logado ou Escrivão da oitiva
-    const loggedUserClerk = user?.displayName || oitiva.clerkName || (oipOfficers[0] ? oipOfficers[0].nome : 'Oficial de Investigação');
-    const foundOip1 = oipOfficers.find(o => o.nome.toLowerCase() === loggedUserClerk.toLowerCase());
-    
-    if (foundOip1) {
-      setOip1Name(foundOip1.nome);
-      setOip1Matricula(foundOip1.matricula || '');
-      setOip1Cargo(foundOip1.cargo || 'Oficial de Investigação Policial (OIP)');
-    } else {
-      setOip1Name(loggedUserClerk);
-      setOip1Matricula(user?.registrationNumber || '');
-      setOip1Cargo(user?.position || 'Oficial de Investigação Policial (OIP)');
-    }
+    // OIP: Usuário logado da conta, escrivão da oitiva ou oficial do catálogo
+    const activeUser = user || authService.getCurrentUser();
+    const accountUserName = activeUser?.displayName || activeUser?.username || '';
+    const accountUserMatricula = activeUser?.registrationNumber || '';
+    const accountUserCargo = activeUser?.cargo || (activeUser as any)?.position || 'Oficial de Investigação Policial (OIP)';
 
-    // OIP 2: Segunda testemunha policial
-    const candidateOip2 = oipOfficers.find(o => o.nome.toLowerCase() !== loggedUserClerk.toLowerCase()) || oipOfficers[1] || oipOfficers[0];
-    if (candidateOip2) {
-      setOip2Name(candidateOip2.nome);
-      setOip2Matricula(candidateOip2.matricula || '');
-      setOip2Cargo(candidateOip2.cargo || 'Oficial de Investigação Policial (OIP)');
+    const defaultOipName = accountUserName || oitiva.clerkName || (oipOfficers[0] ? oipOfficers[0].nome : 'Oficial de Investigação Policial');
+    const foundOip = oipOfficers.find(o => o.nome.toLowerCase() === defaultOipName.toLowerCase());
+
+    if (accountUserName && defaultOipName.toLowerCase() === accountUserName.toLowerCase()) {
+      setOipName(accountUserName);
+      setOipMatricula(accountUserMatricula || (foundOip ? foundOip.matricula : ''));
+      setOipCargo(accountUserCargo || (foundOip ? foundOip.cargo : 'Oficial de Investigação Policial (OIP)'));
+    } else if (foundOip) {
+      setOipName(foundOip.nome);
+      setOipMatricula(foundOip.matricula || '');
+      setOipCargo(foundOip.cargo || 'Oficial de Investigação Policial (OIP)');
     } else {
-      setOip2Name('Oficial de Investigação Policial');
-      setOip2Matricula('');
-      setOip2Cargo('Oficial de Investigação Policial (OIP)');
+      setOipName(defaultOipName);
+      setOipMatricula(accountUserMatricula || '');
+      setOipCargo(accountUserCargo || 'Oficial de Investigação Policial (OIP)');
     }
   }, [oitiva, user, isOpen]);
 
@@ -263,25 +257,39 @@ export const TermoNaoComparecimentoModal: React.FC<TermoNaoComparecimentoModalPr
     }
   };
 
-  const handleOip1SelectChange = (nome: string) => {
-    const found = delegadosList.find(d => d.nome === nome);
-    if (found) {
-      setOip1Name(found.nome);
-      setOip1Matricula(found.matricula);
-      setOip1Cargo(found.cargo || 'Oficial de Investigação Policial (OIP)');
-    } else {
-      setOip1Name(nome);
-    }
-  };
+  const activeUser = user || authService.getCurrentUser();
+  const currentAccountUserName = activeUser?.displayName || activeUser?.username || '';
+  const currentAccountUserMatricula = activeUser?.registrationNumber || '';
+  const currentAccountUserCargo = activeUser?.cargo || (activeUser as any)?.position || 'Oficial de Investigação Policial (OIP)';
 
-  const handleOip2SelectChange = (nome: string) => {
-    const found = delegadosList.find(d => d.nome === nome);
+  const currentUserOipOption: DelegadoInfo | null = currentAccountUserName.trim() ? {
+    id: 'current_user_account_oip',
+    category: 'oip',
+    nome: currentAccountUserName.trim(),
+    matricula: currentAccountUserMatricula.trim(),
+    cargo: currentAccountUserCargo.trim() || 'Oficial de Investigação Policial (OIP)',
+    delegacia: activeUser?.unitName || '1ª Delegacia Metropolitana de Maracanaú',
+    municipio: 'Maracanaú/CE',
+    portariaOuObs: 'Usuário da Conta (Você)'
+  } : null;
+
+  const handleOipSelectChange = (nome: string) => {
+    if (!nome) return;
+
+    if (currentUserOipOption && currentUserOipOption.nome.toLowerCase() === nome.toLowerCase()) {
+      setOipName(currentUserOipOption.nome);
+      setOipMatricula(currentUserOipOption.matricula);
+      setOipCargo(currentUserOipOption.cargo);
+      return;
+    }
+
+    const found = delegadosList.find(d => d.nome.toLowerCase() === nome.toLowerCase());
     if (found) {
-      setOip2Name(found.nome);
-      setOip2Matricula(found.matricula);
-      setOip2Cargo(found.cargo || 'Oficial de Investigação Policial (OIP)');
+      setOipName(found.nome);
+      setOipMatricula(found.matricula);
+      setOipCargo(found.cargo || 'Oficial de Investigação Policial (OIP)');
     } else {
-      setOip2Name(nome);
+      setOipName(nome);
     }
   };
 
@@ -314,12 +322,13 @@ export const TermoNaoComparecimentoModal: React.FC<TermoNaoComparecimentoModalPr
       dpcName: dpcName.trim() || 'Delegado de Polícia Civil',
       dpcMatricula: dpcMatricula.trim(),
       dpcCargo: dpcCargo.trim() || 'Delegado de Polícia Civil',
-      oip1Name: oip1Name.trim() || 'Oficial de Investigação 1',
-      oip1Matricula: oip1Matricula.trim(),
-      oip1Cargo: oip1Cargo.trim() || 'Oficial de Investigação Policial (OIP)',
-      oip2Name: oip2Name.trim() || 'Oficial de Investigação 2',
-      oip2Matricula: oip2Matricula.trim(),
-      oip2Cargo: oip2Cargo.trim() || 'Oficial de Investigação Policial (OIP)'
+      oipName: oipName.trim() || 'Oficial de Investigação Policial',
+      oipMatricula: oipMatricula.trim(),
+      oipCargo: oipCargo.trim() || 'Oficial de Investigação Policial (OIP)',
+      // Compatibilidade retroativa
+      oip1Name: oipName.trim() || 'Oficial de Investigação Policial',
+      oip1Matricula: oipMatricula.trim(),
+      oip1Cargo: oipCargo.trim() || 'Oficial de Investigação Policial (OIP)'
     };
   };
 
@@ -364,7 +373,7 @@ export const TermoNaoComparecimentoModal: React.FC<TermoNaoComparecimentoModalPr
 TERMO DE NÃO COMPARECIMENTO
 Procedimento: ${data.procedureRef}
 
-Aos ${data.termoDateFormatted}, nesta cidade de Maracanaú/CE, no Cartório da 1ª Delegacia Metropolitana de Maracanaú, sob a presidência do(a) Delegado(a) de Polícia Civil ${data.dpcName.toUpperCase()} (${data.dpcMatricula || 'DPC'}), com a presença dos Oficiais de Investigação Policial (OIP) adiante assinados, foi formalmente CERTIFICADA A AUSÊNCIA E NÃO COMPARECIMENTO da pessoa de ${data.personName.toUpperCase()}, CPF: ${data.cpf || 'Não informado'}, qualificada como ${data.role}.
+Aos ${data.termoDateFormatted}, nesta cidade de Maracanaú/CE, no Cartório da 1ª Delegacia Metropolitana de Maracanaú, sob a presidência do(a) Delegado(a) de Polícia Civil ${data.dpcName.toUpperCase()} (${data.dpcMatricula || 'DPC'}), com a presença do(a) Oficial de Investigação Policial (OIP) adiante assinado(a), foi formalmente CERTIFICADA A AUSÊNCIA E NÃO COMPARECIMENTO da pessoa de ${data.personName.toUpperCase()}, CPF: ${data.cpf || 'Não informado'}, qualificada como ${data.role}.
 
 ${scheduleAttempts.length > 1
   ? `DATAS DESIGNADAS (${scheduleAttempts.length} Notificações):\n` +
@@ -377,13 +386,10 @@ ${data.motivoDetalhado}
 
 Do que para constar, lavrou-se o presente Termo.
 
-_____________________________________________
-${data.dpcName.toUpperCase()}
-${data.dpcCargo} ${data.dpcMatricula ? `- Mat. ${data.dpcMatricula}` : ''}
-
 __________________________       __________________________
-${data.oip1Name.toUpperCase()}               ${data.oip2Name.toUpperCase()}
-${data.oip1Cargo}                ${data.oip2Cargo}`;
+${data.dpcName.toUpperCase()}               ${data.oipName.toUpperCase()}
+${data.dpcCargo}                ${data.oipCargo}
+${data.dpcMatricula ? `Mat. ${data.dpcMatricula}` : ''}                     ${data.oipMatricula ? `Mat. ${data.oipMatricula}` : ''}`;
 
     navigator.clipboard.writeText(textToCopy);
     setCopiedSuccess(true);
@@ -391,7 +397,7 @@ ${data.oip1Cargo}                ${data.oip2Cargo}`;
   };
 
   const dpcOptions = delegadosList.filter(d => d.category === 'dpc' || !d.category || !d.id.startsWith('oip_'));
-  const oipOptions = delegadosList.filter(d => d.category === 'oip' || d.id.startsWith('oip_') || d.category === 'dpc');
+  const baseOipOptions = delegadosList.filter(d => d.category === 'oip' || d.id.startsWith('oip_') || d.category === 'dpc');
 
   return (
     <div 
@@ -621,12 +627,12 @@ ${data.oip1Cargo}                ${data.oip2Cargo}`;
               </div>
             </div>
 
-            {/* Seção 2: Assinaturas Oficiais (1 DPC e 2 OIPs) */}
+            {/* Seção 2: Assinaturas Oficiais (1 DPC e 1 OIP) */}
             <div className="bg-[#181329] p-4 rounded-2xl border-2 border-purple-800/50 space-y-3.5">
               <div className="flex items-center gap-2 pb-1 border-b border-purple-900/30">
                 <ShieldCheck className="w-4 h-4 text-amber-400" />
                 <h3 className="text-xs font-bold text-white uppercase tracking-wider">
-                  2. Autoridades e Policiais Responsáveis (1 DPC + 2 OIP)
+                  2. Autoridades e Policiais Responsáveis (1 DPC + 1 OIP)
                 </h3>
               </div>
 
@@ -673,96 +679,77 @@ ${data.oip1Cargo}                ${data.oip2Cargo}`;
                 </div>
               </div>
 
-              {/* 2 OIPs */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* OIP 1 */}
-                <div className="bg-[#130f22] p-3 rounded-xl border border-purple-500/40 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black text-purple-300 uppercase">
-                      1º Oficial Investigador (OIP):
-                    </span>
-                    {oipOptions.length > 0 && (
-                      <select
-                        onChange={(e) => handleOip1SelectChange(e.target.value)}
-                        value={oip1Name}
-                        className="bg-[#1c1432] text-purple-200 border border-purple-500/40 rounded-lg px-2 py-0.5 text-[10px] font-semibold max-w-[150px] truncate"
+              {/* 1 OIP: Escolha de 1 OIP (do catálogo ou o próprio usuário da conta) */}
+              <div className="bg-[#130f22] p-3.5 rounded-xl border border-purple-500/40 space-y-2.5">
+                <div className="flex flex-wrap items-center justify-between gap-1.5">
+                  <span className="text-[10px] font-black text-purple-300 uppercase flex items-center gap-1.5">
+                    <UserCheck className="w-3.5 h-3.5 text-purple-400" />
+                    Oficial de Investigação Policial (OIP / Escrivão):
+                  </span>
+
+                  <div className="flex items-center gap-1.5">
+                    {currentUserOipOption && (
+                      <button
+                        type="button"
+                        onClick={() => handleOipSelectChange(currentUserOipOption.nome)}
+                        className="px-2 py-0.5 bg-purple-900/60 hover:bg-purple-800 text-purple-200 hover:text-white border border-purple-500/50 rounded-md text-[10px] font-bold transition-colors cursor-pointer flex items-center gap-1"
+                        title="Preencher com o usuário logado da conta"
                       >
-                        <option value="">-- Catálogo --</option>
-                        {oipOptions.map((o) => (
-                          <option key={o.id} value={o.nome}>{o.nome}</option>
-                        ))}
-                      </select>
+                        <User className="w-3 h-3 text-purple-300" />
+                        <span>Usar Meu Usuário</span>
+                      </button>
                     )}
-                  </div>
 
-                  <input
-                    type="text"
-                    value={oip1Name}
-                    onChange={(e) => setOip1Name(e.target.value)}
-                    placeholder="Nome do 1º Policial / OIP"
-                    className="w-full bg-[#0d0918] border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-white font-semibold"
-                  />
-
-                  <div className="grid grid-cols-2 gap-1.5">
-                    <input
-                      type="text"
-                      value={oip1Matricula}
-                      onChange={(e) => setOip1Matricula(e.target.value)}
-                      placeholder="Matrícula"
-                      className="bg-[#0d0918] border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-300"
-                    />
-                    <input
-                      type="text"
-                      value={oip1Cargo}
-                      onChange={(e) => setOip1Cargo(e.target.value)}
-                      placeholder="Cargo"
-                      className="bg-[#0d0918] border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-300"
-                    />
+                    <select
+                      onChange={(e) => handleOipSelectChange(e.target.value)}
+                      value={oipName}
+                      className="bg-[#1c1432] text-purple-200 border border-purple-500/40 rounded-lg px-2 py-0.5 text-[10px] font-semibold max-w-[210px] truncate"
+                    >
+                      <option value="">-- Catálogo de OIP --</option>
+                      {currentUserOipOption && (
+                        <optgroup label="Usuário da Conta (Você)">
+                          <option value={currentUserOipOption.nome}>
+                            👤 {currentUserOipOption.nome} {currentUserOipOption.matricula ? `(Mat. ${currentUserOipOption.matricula})` : ''}
+                          </option>
+                        </optgroup>
+                      )}
+                      <optgroup label="Catálogo de Oficiais">
+                        {baseOipOptions.map((o) => (
+                          <option key={o.id} value={o.nome}>
+                            {o.nome} {o.matricula ? `(Mat. ${o.matricula})` : ''}
+                          </option>
+                        ))}
+                      </optgroup>
+                    </select>
                   </div>
                 </div>
 
-                {/* OIP 2 */}
-                <div className="bg-[#130f22] p-3 rounded-xl border border-purple-500/40 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black text-purple-300 uppercase">
-                      2º Oficial Investigador (OIP):
-                    </span>
-                    {oipOptions.length > 0 && (
-                      <select
-                        onChange={(e) => handleOip2SelectChange(e.target.value)}
-                        value={oip2Name}
-                        className="bg-[#1c1432] text-purple-200 border border-purple-500/40 rounded-lg px-2 py-0.5 text-[10px] font-semibold max-w-[150px] truncate"
-                      >
-                        <option value="">-- Catálogo --</option>
-                        {oipOptions.map((o) => (
-                          <option key={o.id} value={o.nome}>{o.nome}</option>
-                        ))}
-                      </select>
-                    )}
-                  </div>
-
-                  <input
-                    type="text"
-                    value={oip2Name}
-                    onChange={(e) => setOip2Name(e.target.value)}
-                    placeholder="Nome do 2º Policial / OIP"
-                    className="w-full bg-[#0d0918] border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-white font-semibold"
-                  />
-
-                  <div className="grid grid-cols-2 gap-1.5">
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                  <div className="sm:col-span-6">
                     <input
                       type="text"
-                      value={oip2Matricula}
-                      onChange={(e) => setOip2Matricula(e.target.value)}
-                      placeholder="Matrícula"
-                      className="bg-[#0d0918] border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-300"
+                      value={oipName}
+                      onChange={(e) => setOipName(e.target.value)}
+                      placeholder="Nome do(a) Policial / OIP / Escrivão(ã)"
+                      className="w-full bg-[#0d0918] border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-white font-semibold"
                     />
+                  </div>
+                  <div className="sm:col-span-3">
                     <input
                       type="text"
-                      value={oip2Cargo}
-                      onChange={(e) => setOip2Cargo(e.target.value)}
+                      value={oipMatricula}
+                      onChange={(e) => setOipMatricula(e.target.value)}
+                      placeholder="Matrícula"
+                      className="w-full bg-[#0d0918] border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-300 font-mono"
+                    />
+                  </div>
+                  <div className="sm:col-span-3">
+                    <input
+                      type="text"
+                      value={oipCargo}
+                      onChange={(e) => setOipCargo(e.target.value)}
                       placeholder="Cargo"
-                      className="bg-[#0d0918] border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-300"
+                      className="w-full bg-[#0d0918] border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-300"
                     />
                   </div>
                 </div>
@@ -803,7 +790,7 @@ ${data.oip1Cargo}                ${data.oip2Cargo}`;
 
               {/* 3. Opening Paragraph */}
               <p className="text-[10.5px] text-justify leading-relaxed text-black mt-2">
-                Aos <strong className="font-bold">{formatDateExtenso(termoDate)}</strong>, nesta cidade de Maracanaú, Estado do Ceará, no Cartório da <strong className="font-bold">1ª DELEGACIA METROPOLITANA DE MARACANAÚ</strong>, sob a presidência do(a) Delegado(a) de Polícia Civil <strong className="font-bold">{(dpcName.trim() || 'FERNANDO MORETTO NACHTIGALL').toUpperCase()}</strong>{dpcMatricula.trim() ? ` (${dpcMatricula.trim()})` : ''}, com a presença dos Oficiais de Investigação Policial (OIP) adiante qualificados e assinados, foi formalmente <u className="font-black"><strong>CERTIFICADA A AUSÊNCIA E NÃO COMPARECIMENTO</strong></u> da seguinte pessoa intimada:
+                Aos <strong className="font-bold">{formatDateExtenso(termoDate)}</strong>, nesta cidade de Maracanaú, Estado do Ceará, no Cartório da <strong className="font-bold">1ª DELEGACIA METROPOLITANA DE MARACANAÚ</strong>, sob a presidência do(a) Delegado(a) de Polícia Civil <strong className="font-bold">{(dpcName.trim() || 'FERNANDO MORETTO NACHTIGALL').toUpperCase()}</strong>{dpcMatricula.trim() ? ` (${dpcMatricula.trim()})` : ''}, com a presença do(a) Oficial de Investigação Policial (OIP) adiante qualificado(a) e assinado(a), foi formalmente <u className="font-black"><strong>CERTIFICADA A AUSÊNCIA E NÃO COMPARECIMENTO</strong></u> da seguinte pessoa intimada:
               </p>
 
               {/* 4. Box de Qualificação do Intimado com Todas as Datas/Notificações */}
@@ -875,7 +862,7 @@ ${data.oip1Cargo}                ${data.oip2Cargo}`;
 
               {/* 6. Fechamento Legal */}
               <p className="text-[10px] text-justify leading-relaxed text-black mt-2">
-                Do que, para constar e produzir os regulares efeitos legais e jurídicos nos autos do procedimento em epígrafe, determinou a Autoridade Policial a lavratura do presente <strong className="font-bold">TERMO DE NÃO COMPARECIMENTO</strong>, o qual lido e achado conforme, vai devidamente assinado pela Autoridade Policial e pelos Oficiais de Investigação Policial presentes.
+                Do que, para constar e produzir os regulares efeitos legais e jurídicos nos autos do procedimento em epígrafe, determinou a Autoridade Policial a lavratura do presente <strong className="font-bold">TERMO DE NÃO COMPARECIMENTO</strong>, o qual lido e achado conforme, vai devidamente assinado pela Autoridade Policial e pelo(a) Oficial de Investigação Policial presente.
               </p>
 
               {/* 7. Local e Data (Alinhado à direita para padrão oficial e evitar sobreposição com assinatura) */}
@@ -883,39 +870,28 @@ ${data.oip1Cargo}                ${data.oip2Cargo}`;
                 Maracanaú/CE, {formatDateExtenso(termoDate)}.
               </p>
 
-              {/* 8. Signatures Section */}
-              <div className="pt-2 space-y-4 text-center">
-                {/* DPC Signature */}
-                <div className="w-56 mx-auto">
-                  <div className="w-full border-b border-black mb-1"></div>
-                  <p className="text-[9.5px] font-bold text-black uppercase">
+              {/* 8. Signatures Section (1 DPC + 1 OIP Lado a Lado) */}
+              <div className="grid grid-cols-2 gap-4 pt-2 text-center">
+                {/* DPC Signature (Esquerda) */}
+                <div>
+                  <div className="w-40 border-b border-black mx-auto mb-1"></div>
+                  <p className="text-[9px] font-bold text-black uppercase">
                     {(dpcName.trim() || 'FERNANDO MORETTO NACHTIGALL').toUpperCase()}
                   </p>
-                  <p className="text-[8px] text-zinc-700">
+                  <p className="text-[7.5px] text-zinc-700">
                     {dpcCargo.trim() || 'Delegado de Polícia Civil'}{dpcMatricula.trim() ? ` - Mat. ${dpcMatricula.trim()}` : ''}
                   </p>
                 </div>
 
-                {/* 2 OIP Signatures */}
-                <div className="grid grid-cols-2 gap-3 pt-1">
-                  <div>
-                    <div className="w-36 border-b border-black mx-auto mb-1"></div>
-                    <p className="text-[9px] font-bold text-black uppercase">
-                      {(oip1Name.trim() || 'OFICIAL INVESTIGADOR 1').toUpperCase()}
-                    </p>
-                    <p className="text-[7.5px] text-zinc-700">
-                      {oip1Cargo.trim() || 'Oficial de Investigação Policial'}{oip1Matricula.trim() ? ` - Mat. ${oip1Matricula.trim()}` : ''}
-                    </p>
-                  </div>
-                  <div>
-                    <div className="w-36 border-b border-black mx-auto mb-1"></div>
-                    <p className="text-[9px] font-bold text-black uppercase">
-                      {(oip2Name.trim() || 'OFICIAL INVESTIGADOR 2').toUpperCase()}
-                    </p>
-                    <p className="text-[7.5px] text-zinc-700">
-                      {oip2Cargo.trim() || 'Oficial de Investigação Policial'}{oip2Matricula.trim() ? ` - Mat. ${oip2Matricula.trim()}` : ''}
-                    </p>
-                  </div>
+                {/* 1 OIP Signature (Direita) */}
+                <div>
+                  <div className="w-40 border-b border-black mx-auto mb-1"></div>
+                  <p className="text-[9px] font-bold text-black uppercase">
+                    {(oipName.trim() || 'OFICIAL DE INVESTIGAÇÃO POLICIAL').toUpperCase()}
+                  </p>
+                  <p className="text-[7.5px] text-zinc-700">
+                    {oipCargo.trim() || 'Oficial de Investigação Policial'}{oipMatricula.trim() ? ` - Mat. ${oipMatricula.trim()}` : ''}
+                  </p>
                 </div>
               </div>
 

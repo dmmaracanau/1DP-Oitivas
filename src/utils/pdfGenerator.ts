@@ -471,17 +471,21 @@ export interface TermoNaoComparecimentoPdfData {
   dpcName: string;
   dpcMatricula: string;
   dpcCargo: string;
-  oip1Name: string;
-  oip1Matricula: string;
-  oip1Cargo: string;
-  oip2Name: string;
-  oip2Matricula: string;
-  oip2Cargo: string;
+  oipName: string;
+  oipMatricula: string;
+  oipCargo: string;
+  // Campos opcionais para compatibilidade retroativa:
+  oip1Name?: string;
+  oip1Matricula?: string;
+  oip1Cargo?: string;
+  oip2Name?: string;
+  oip2Matricula?: string;
+  oip2Cargo?: string;
 }
 
 /**
  * Direct PDF vector generator for "TERMO DE NÃO COMPARECIMENTO"
- * With official PCCE header, legal text, reason details, full notifications/reschedules list, and signatures for 1 DPC and 2 OIPs.
+ * With official PCCE header, legal text, reason details, full notifications/reschedules list, and signatures for 1 DPC and 1 OIP.
  */
 export async function generateTermoNaoComparecimentoPdf(data: TermoNaoComparecimentoPdfData): Promise<jsPDF> {
   const doc = new jsPDF({
@@ -557,7 +561,7 @@ export async function generateTermoNaoComparecimentoPdf(data: TermoNaoComparecim
     { text: '1ª DELEGACIA METROPOLITANA DE MARACANAÚ', bold: true },
     { text: ', sob a presidência do(a) Delegado(a) de Polícia Civil ' },
     { text: data.dpcName.toUpperCase(), bold: true },
-    { text: (data.dpcMatricula ? ` (${data.dpcMatricula})` : '') + ', com a presença dos Oficiais de Investigação Policial (OIP) adiante qualificados e assinados, foi formalmente ' },
+    { text: (data.dpcMatricula ? ` (${data.dpcMatricula})` : '') + ', com a presença do(a) Oficial de Investigação Policial (OIP) adiante qualificado(a) e assinado(a), foi formalmente ' },
     { text: 'CERTIFICADA A AUSÊNCIA E NÃO COMPARECIMENTO', bold: true, underline: true },
     { text: ' da seguinte pessoa intimada:' }
   ];
@@ -647,7 +651,7 @@ export async function generateTermoNaoComparecimentoPdf(data: TermoNaoComparecim
   const closingSpans: TextSpan[] = [
     { text: 'Do que, para constar e produzir os regulares efeitos legais e jurídicos nos autos do procedimento em epígrafe, determinou a Autoridade Policial a lavratura do presente ' },
     { text: 'TERMO DE NÃO COMPARECIMENTO', bold: true },
-    { text: ', o qual lido e achado conforme, vai devidamente assinado pela Autoridade Policial e pelos Oficiais de Investigação Policial presentes.' }
+    { text: ', o qual lido e achado conforme, vai devidamente assinado pela Autoridade Policial e pelo(a) Oficial de Investigação Policial presente.' }
   ];
 
   currentY = renderFormattedParagraph(doc, closingSpans, marginX, currentY, contentWidth, 4.4);
@@ -659,62 +663,48 @@ export async function generateTermoNaoComparecimentoPdf(data: TermoNaoComparecim
   const localDataStr = `Maracanaú/CE, ${termoDataStr}.`;
   doc.text(localDataStr, pageWidth - marginX, currentY, { align: 'right' });
 
-  // 8. Seção de Assinaturas (1 DPC no centro superior + 2 OIPs abaixo lado a lado)
+  // 8. Seção de Assinaturas (1 DPC à esquerda + 1 OIP à direita lado a lado)
   // Espaçamento vertical amplo (18mm) garantindo que a rubrica/assinatura não sobreponha a data nem o texto
   currentY += 18;
 
-  // DPC (Centro)
-  const dpcLineWidth = 85;
-  const dpcStartX = (pageWidth - dpcLineWidth) / 2;
+  const sigColWidth = 72;
+  const dpcStartX = marginX + 3;
+  const oipStartX = pageWidth - marginX - sigColWidth - 3;
+  const dpcCenterX = dpcStartX + (sigColWidth / 2);
+  const oipCenterX = oipStartX + (sigColWidth / 2);
+
   doc.setLineWidth(0.3);
   doc.setDrawColor(0, 0, 0);
-  doc.line(dpcStartX, currentY, dpcStartX + dpcLineWidth, currentY);
 
-  currentY += 4;
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
-  doc.text(data.dpcName.toUpperCase() || 'FERNANDO MORETTO NACHTIGALL', pageWidth / 2, currentY, { align: 'center' });
-
-  currentY += 3.5;
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
-  const dpcSub = data.dpcMatricula 
-    ? `${data.dpcCargo || 'Delegado de Polícia Civil'} - Mat. ${data.dpcMatricula}`
-    : (data.dpcCargo || 'Delegado de Polícia Civil');
-  doc.text(dpcSub, pageWidth / 2, currentY, { align: 'center' });
-
-  // 2 OIPs (Lado a lado)
-  currentY += 12;
-  const oipColWidth = 72;
-  const oip1StartX = marginX + 3;
-  const oip2StartX = pageWidth - marginX - oipColWidth - 3;
-
-  // Linha OIP 1
-  doc.line(oip1StartX, currentY, oip1StartX + oipColWidth, currentY);
-  // Linha OIP 2
-  doc.line(oip2StartX, currentY, oip2StartX + oipColWidth, currentY);
+  // Linhas de assinatura lado a lado
+  doc.line(dpcStartX, currentY, dpcStartX + sigColWidth, currentY);
+  doc.line(oipStartX, currentY, oipStartX + sigColWidth, currentY);
 
   currentY += 4;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8.5);
-  const oip1CenterX = oip1StartX + (oipColWidth / 2);
-  const oip2CenterX = oip2StartX + (oipColWidth / 2);
 
-  doc.text(data.oip1Name.toUpperCase() || 'OFICIAL INVESTIGADOR 1', oip1CenterX, currentY, { align: 'center' });
-  doc.text(data.oip2Name.toUpperCase() || 'OFICIAL INVESTIGADOR 2', oip2CenterX, currentY, { align: 'center' });
+  const dpcNameStr = (data.dpcName || 'FERNANDO MORETTO NACHTIGALL').toUpperCase();
+  const oipNameStr = (data.oipName || data.oip1Name || 'OFICIAL DE INVESTIGAÇÃO POLICIAL').toUpperCase();
+  doc.text(dpcNameStr, dpcCenterX, currentY, { align: 'center' });
+  doc.text(oipNameStr, oipCenterX, currentY, { align: 'center' });
 
   currentY += 3.5;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.2);
-  const oip1Sub = data.oip1Matricula 
-    ? `${data.oip1Cargo || 'Oficial de Investigação Policial'} - Mat. ${data.oip1Matricula}`
-    : (data.oip1Cargo || 'Oficial de Investigação Policial (OIP)');
-  const oip2Sub = data.oip2Matricula 
-    ? `${data.oip2Cargo || 'Oficial de Investigação Policial'} - Mat. ${data.oip2Matricula}`
-    : (data.oip2Cargo || 'Oficial de Investigação Policial (OIP)');
 
-  doc.text(oip1Sub, oip1CenterX, currentY, { align: 'center' });
-  doc.text(oip2Sub, oip2CenterX, currentY, { align: 'center' });
+  const dpcSub = data.dpcMatricula 
+    ? `${data.dpcCargo || 'Delegado de Polícia Civil'} - Mat. ${data.dpcMatricula}`
+    : (data.dpcCargo || 'Delegado de Polícia Civil');
+
+  const oipMat = data.oipMatricula || data.oip1Matricula || '';
+  const oipCargo = data.oipCargo || data.oip1Cargo || 'Oficial de Investigação Policial (OIP)';
+  const oipSub = oipMat 
+    ? `${oipCargo} - Mat. ${oipMat}`
+    : oipCargo;
+
+  doc.text(dpcSub, dpcCenterX, currentY, { align: 'center' });
+  doc.text(oipSub, oipCenterX, currentY, { align: 'center' });
 
   // 9. Official Footer
   const footerY = 278;

@@ -990,7 +990,7 @@ export const OitivaDetailModal: React.FC<OitivaDetailModalProps> = ({
                       type="button"
                       onClick={() => setIsTermoModalOpen(true)}
                       className="w-full flex items-center justify-center gap-2 py-2.5 px-3 bg-gradient-to-r from-rose-950 via-rose-900 to-rose-950 hover:from-rose-900 hover:to-rose-800 text-rose-100 hover:text-white border-2 border-rose-500/80 rounded-xl text-xs font-black shadow-md shadow-rose-950/70 transition-all cursor-pointer hover:scale-[1.01]"
-                      title="Gerar Ofício e Termo de Não Comparecimento em PDF com assinaturas de 1 DPC e 2 OIP"
+                      title="Gerar Ofício e Termo de Não Comparecimento em PDF com assinaturas de 1 DPC e 1 OIP"
                     >
                       <FileText className="w-4 h-4 text-rose-300" />
                       <span>Gerar Termo de Não Comparecimento (PDF)</span>
