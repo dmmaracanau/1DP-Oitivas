@@ -16,7 +16,7 @@ import { GoogleWorkspaceModal } from './components/GoogleWorkspaceModal';
 import { UserProfileModal } from './components/UserProfileModal';
 import { DelegadoSelectorModal } from './components/DelegadoSelectorModal';
 import { HolidaysModal } from './components/HolidaysModal';
-import { oitivaService } from './services/oitivaService';
+import { oitivaService, DEFAULT_SHARED_GUEST_UID } from './services/oitivaService';
 import { authService } from './services/authService';
 import { calendarService } from './services/calendarService';
 import { driveService } from './services/driveService';
@@ -76,13 +76,17 @@ export default function App() {
     const unsubAuth = authService.onAuthChange((currentUser) => {
       setUser(currentUser);
       setHasWorkspaceToken(authService.hasGoogleWorkspaceAccess());
+      if (currentUser?.uid) {
+        authService.autoReconcileUser(currentUser).catch(() => {});
+        oitivaService.migrateGuestOitivasToUser(currentUser.uid).catch(() => {});
+      }
     });
     return () => unsubAuth();
   }, []);
 
   // Oitivas real-time listener isolado por usuário no Firestore e Realtime Database
   useEffect(() => {
-    const activeUid = user?.uid || 'guest_user';
+    const activeUid = user?.uid || DEFAULT_SHARED_GUEST_UID;
     const unsubOitivas = oitivaService.subscribe(
       activeUid,
       (list) => {
@@ -111,14 +115,14 @@ export default function App() {
     return () => unsubSpecial();
   }, []);
 
-  // DLP: Auto-snapshot contínuo de segurança a cada alteração relevante
+  // DLP: Auto-snapshot contínuo de segurança a cada alteração relevante com sincronização na Nuvem
   useEffect(() => {
     if (oitivas.length > 0) {
       const timer = setTimeout(() => {
         backupService.createLocalSnapshot(
           oitivas,
-          'Auto-Save Contínuo de Segurança',
-          user?.uid || 'guest_default',
+          'Auto-Save Contínuo de Segurança Multi-Dispositivo',
+          user?.uid || DEFAULT_SHARED_GUEST_UID,
           specialDates
         );
       }, 3000);
@@ -208,7 +212,7 @@ export default function App() {
 
   const handleSaveOitiva = async (data: Omit<Oitiva, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
-      const currentUid = user?.uid || 'cartorio_maracanau';
+      const currentUid = user?.uid || DEFAULT_SHARED_GUEST_UID;
       if (editingOitiva) {
         await oitivaService.update(editingOitiva.id, {
           ...data,
@@ -233,7 +237,7 @@ export default function App() {
 
   const handleDeleteOitiva = async (id: string) => {
     try {
-      await oitivaService.delete(id, user?.uid);
+      await oitivaService.delete(id, user?.uid || DEFAULT_SHARED_GUEST_UID);
       showToast('Oitiva removida do sistema.', 'info');
       setIsDetailModalOpen(false);
     } catch (err: any) {

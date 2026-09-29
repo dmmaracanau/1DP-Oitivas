@@ -25,7 +25,7 @@ import { WhatsAppShareModal } from './WhatsAppShareModal';
 import { IntimationNumberPromptModal } from './IntimationNumberPromptModal';
 import { DelegadoInfo, delegadoService } from '../services/delegadoService';
 import { downloadMandadoPdf, MandadoPdfData } from '../utils/pdfGenerator';
-import { oitivaService } from '../services/oitivaService';
+import { oitivaService, DEFAULT_SHARED_GUEST_UID } from '../services/oitivaService';
 
 interface PrintIntimacaoModalProps {
   isOpen: boolean;
@@ -132,7 +132,7 @@ export const PrintIntimacaoModal: React.FC<PrintIntimacaoModalProps> = ({
     // Save intimation number on oitiva in background
     if (oitiva) {
       try {
-        const currentUid = user?.uid || oitiva.uid || 'cartorio_maracanau';
+        const currentUid = user?.uid || oitiva.uid || DEFAULT_SHARED_GUEST_UID;
         await oitivaService.update(oitiva.id, { intimationNumber: finalNumber }, currentUid);
       } catch (err) {
         console.warn('Não foi possível persistir número da intimação no banco:', err);

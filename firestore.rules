@@ -4,6 +4,21 @@ service cloud.firestore {
     // Sincronização de perfis e configurações de usuários entre múltiplos dispositivos
     match /users/{userId} {
       allow read, write: if true;
+
+      // Oitivas isoladas por usuário
+      match /oitivas/{oitivaId} {
+        allow read, write: if true;
+      }
+
+      // Snapshots de segurança sincronizados na nuvem
+      match /snapshots/{snapshotId} {
+        allow read, write: if true;
+      }
+
+      // Lixeira e histórico de exclusão sincronizados na nuvem
+      match /trash/{recordId} {
+        allow read, write: if true;
+      }
     }
 
     // Coleção principal de oitivas e agendamentos policiais

@@ -1,11 +1,35 @@
 import { Oitiva, UserProfile, CalendarSpecialDate, BackupFilePayload, DataSnapshot, DeletedOitivaRecord, ImportValidationResult } from '../types/oitiva';
 import { oitivaService } from './oitivaService';
 import { specialDateService } from './specialDateService';
+import { 
+  collection, 
+  doc, 
+  setDoc, 
+  getDocs, 
+  deleteDoc, 
+  onSnapshot, 
+  query, 
+  orderBy, 
+  limit, 
+  Unsubscribe 
+} from 'firebase/firestore';
+import { ref as rtdbRef, set as rtdbSet, remove as rtdbRemove } from 'firebase/database';
+import { db, rtdb, executeFirestoreWithRetry, handleFirestoreError, OperationType } from '../firebase';
 
 const SNAPSHOTS_KEY_PREFIX = 'oitivas_auto_snapshots_';
 const TRASH_KEY_PREFIX = 'oitivas_trash_bin_';
 const MAX_SNAPSHOTS = 10;
 const MAX_TRASH_DAYS = 30;
+
+function sanitizePayload<T extends Record<string, any>>(obj: T): Record<string, any> {
+  const result: Record<string, any> = {};
+  for (const key of Object.keys(obj)) {
+    if (obj[key] !== undefined && obj[key] !== null) {
+      result[key] = obj[key];
+    }
+  }
+  return result;
+}
 
 export const backupService = {
   /**
@@ -302,11 +326,36 @@ export const backupService = {
   },
 
   // =========================================================================
-  // SNAPSHOTS AUTOMÁTICOS & PONTOS DE RESTAURAÇÃO LOCAIS (DLP)
+  // SNAPSHOTS AUTOMÁTICOS & PONTOS DE RESTAURAÇÃO (DLP MULTI-DISPOSITIVO)
   // =========================================================================
 
   /**
-   * Salva um snapshot local rotativo de segurança
+   * Limpa snapshots antigos na nuvem para manter apenas os mais recentes
+   */
+  async cleanOldCloudSnapshots(targetUid: string): Promise<void> {
+    if (!targetUid) return;
+    try {
+      const snapCol = collection(db, 'users', targetUid, 'snapshots');
+      const snapDocs = await getDocs(snapCol);
+      if (snapDocs.size > MAX_SNAPSHOTS) {
+        const sorted = snapDocs.docs
+          .map(d => ({ id: d.id, timestamp: d.data().timestamp || 0 }))
+          .sort((a, b) => b.timestamp - a.timestamp);
+        
+        const toDelete = sorted.slice(MAX_SNAPSHOTS);
+        for (const item of toDelete) {
+          await deleteDoc(doc(db, 'users', targetUid, 'snapshots', item.id)).catch(() => {});
+          if (rtdb) {
+            await rtdbRemove(rtdbRef(rtdb, `users/${targetUid}/snapshots/${item.id}`)).catch(() => {});
+          }
+        }
+      }
+    } catch {}
+  },
+
+  /**
+   * Salva um snapshot rotativo de segurança com sincronização na Nuvem e cache local
+   * Garante disponibilidade imediata em qualquer dispositivo
    */
   createLocalSnapshot(
     oitivas: Oitiva[],
@@ -328,6 +377,7 @@ export const backupService = {
         specialDates
       };
 
+      // 1. Salva no cache local do dispositivo
       const key = `${SNAPSHOTS_KEY_PREFIX}${targetUid}`;
       const existingRaw = localStorage.getItem(key);
       let list: DataSnapshot[] = [];
@@ -340,17 +390,35 @@ export const backupService = {
       }
 
       // Adiciona no início e limita a MAX_SNAPSHOTS
-      const updated = [snapshot, ...list].slice(0, MAX_SNAPSHOTS);
+      const updated = [snapshot, ...list.filter(s => s.id !== snapshot.id)].slice(0, MAX_SNAPSHOTS);
       localStorage.setItem(key, JSON.stringify(updated));
+
+      // 2. Sincroniza diretamente na Nuvem (Cloud Firestore + RTDB) para estar disponível em todos os dispositivos
+      const sanitized = sanitizePayload(snapshot);
+      const snapDocRef = doc(db, 'users', targetUid, 'snapshots', snapshot.id);
+      
+      executeFirestoreWithRetry(
+        () => setDoc(snapDocRef, sanitized),
+        { operationName: `saveCloudSnapshot:${snapshot.id}` }
+      ).then(() => {
+        this.cleanOldCloudSnapshots(targetUid);
+      }).catch(err => {
+        console.warn("[AntiDataLoss] Aviso ao sincronizar snapshot na nuvem:", err);
+      });
+
+      if (rtdb) {
+        rtdbSet(rtdbRef(rtdb, `users/${targetUid}/snapshots/${snapshot.id}`), sanitized).catch(() => {});
+      }
+
       return snapshot;
     } catch (err) {
-      console.warn("Aviso ao gerar snapshot local:", err);
+      console.warn("Aviso ao gerar snapshot:", err);
       return null;
     }
   },
 
   /**
-   * Retorna os snapshots disponíveis para o usuário ativo
+   * Retorna os snapshots disponíveis localmente para o usuário ativo
    */
   getLocalSnapshots(targetUid: string): DataSnapshot[] {
     if (!targetUid) return [];
@@ -366,15 +434,104 @@ export const backupService = {
   },
 
   /**
-   * Restaura um snapshot específico no sistema
+   * Carrega snapshots da Nuvem e mescla com os snapshots locais
+   */
+  async fetchCloudSnapshots(targetUid: string): Promise<DataSnapshot[]> {
+    if (!targetUid) return [];
+    const localSnaps = this.getLocalSnapshots(targetUid);
+    const snapsMap = new Map<string, DataSnapshot>();
+    localSnaps.forEach(s => snapsMap.set(s.id, s));
+
+    try {
+      const snapDocs = await getDocs(collection(db, 'users', targetUid, 'snapshots'));
+      snapDocs.forEach(d => {
+        const data = d.data() as DataSnapshot;
+        snapsMap.set(d.id, { ...data, id: d.id });
+      });
+
+      const merged = Array.from(snapsMap.values())
+        .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
+        .slice(0, MAX_SNAPSHOTS);
+
+      const key = `${SNAPSHOTS_KEY_PREFIX}${targetUid}`;
+      localStorage.setItem(key, JSON.stringify(merged));
+      return merged;
+    } catch (err) {
+      console.warn("[AntiDataLoss] Aviso ao buscar snapshots da nuvem:", err);
+      return localSnaps;
+    }
+  },
+
+  /**
+   * Escuta em tempo real os snapshots na Nuvem sincronizados entre todos os dispositivos
+   */
+  subscribeSnapshots(
+    targetUid: string,
+    callback: (snapshots: DataSnapshot[]) => void
+  ): () => void {
+    if (!targetUid) {
+      callback([]);
+      return () => {};
+    }
+
+    // Emite os locais imediatamente
+    const initialLocal = this.getLocalSnapshots(targetUid);
+    callback(initialLocal);
+
+    try {
+      const snapCol = collection(db, 'users', targetUid, 'snapshots');
+      const unsub = onSnapshot(snapCol, (snapshot) => {
+        const cloudItems: DataSnapshot[] = [];
+        snapshot.forEach(docSnap => {
+          cloudItems.push({
+            ...(docSnap.data() as DataSnapshot),
+            id: docSnap.id
+          });
+        });
+
+        // Mescla com o local
+        const snapsMap = new Map<string, DataSnapshot>();
+        this.getLocalSnapshots(targetUid).forEach(s => snapsMap.set(s.id, s));
+        cloudItems.forEach(s => snapsMap.set(s.id, s));
+
+        const merged = Array.from(snapsMap.values())
+          .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
+          .slice(0, MAX_SNAPSHOTS);
+
+        const key = `${SNAPSHOTS_KEY_PREFIX}${targetUid}`;
+        try {
+          localStorage.setItem(key, JSON.stringify(merged));
+        } catch {}
+
+        callback(merged);
+      }, (err) => {
+        console.warn("[AntiDataLoss] Snapshot listener notice:", err);
+        callback(this.getLocalSnapshots(targetUid));
+      });
+
+      return unsub;
+    } catch {
+      return () => {};
+    }
+  },
+
+  /**
+   * Restaura um snapshot específico no sistema e sincroniza com todos os dispositivos
    */
   async restoreLocalSnapshot(
     snapshotId: string,
     targetUid: string,
     currentOitivas: Oitiva[]
   ): Promise<Oitiva[]> {
-    const snapshots = backupService.getLocalSnapshots(targetUid);
-    const target = snapshots.find(s => s.id === snapshotId);
+    // Busca dos locais ou da nuvem
+    let snapshots = backupService.getLocalSnapshots(targetUid);
+    let target = snapshots.find(s => s.id === snapshotId);
+    
+    if (!target) {
+      const cloudSnaps = await this.fetchCloudSnapshots(targetUid);
+      target = cloudSnaps.find(s => s.id === snapshotId);
+    }
+
     if (!target) {
       throw new Error('Ponto de restauração não encontrado.');
     }
@@ -386,7 +543,7 @@ export const backupService = {
       targetUid
     );
 
-    // Salva todas as oitivas do snapshot no Firestore
+    // Salva todas as oitivas do snapshot no Firestore e RTDB (refletirá em tempo real em todos os computadores/celulares)
     for (const item of target.oitivas) {
       await oitivaService.update(item.id, { ...item, uid: targetUid }, targetUid);
     }
@@ -395,23 +552,30 @@ export const backupService = {
   },
 
   /**
-   * Remove um snapshot
+   * Remove um snapshot local e da nuvem
    */
-  deleteLocalSnapshot(snapshotId: string, targetUid: string): void {
+  async deleteLocalSnapshot(snapshotId: string, targetUid: string): Promise<void> {
     try {
       const key = `${SNAPSHOTS_KEY_PREFIX}${targetUid}`;
       const snapshots = backupService.getLocalSnapshots(targetUid);
       const filtered = snapshots.filter(s => s.id !== snapshotId);
       localStorage.setItem(key, JSON.stringify(filtered));
-    } catch {}
+
+      await deleteDoc(doc(db, 'users', targetUid, 'snapshots', snapshotId)).catch(() => {});
+      if (rtdb) {
+        await rtdbRemove(rtdbRef(rtdb, `users/${targetUid}/snapshots/${snapshotId}`)).catch(() => {});
+      }
+    } catch (e) {
+      console.warn("Aviso ao remover snapshot:", e);
+    }
   },
 
   // =========================================================================
-  // LIXEIRA DE RECUPERAÇÃO SEGURA (SOFT DELETE / TRASH BIN)
+  // LIXEIRA DE RECUPERAÇÃO SEGURA (SOFT DELETE / TRASH BIN MULTI-DISPOSITIVO)
   // =========================================================================
 
   /**
-   * Adiciona um item excluído na lixeira de segurança
+   * Adiciona um item excluído na lixeira de segurança com persistência na Nuvem e local
    */
   saveToTrash(oitiva: Oitiva, targetUid: string, deletedBy?: string): void {
     if (!targetUid || !oitiva) return;
@@ -426,6 +590,7 @@ export const backupService = {
         oitiva
       };
 
+      // 1. Salva localmente
       const key = `${TRASH_KEY_PREFIX}${targetUid}`;
       const existingRaw = localStorage.getItem(key);
       let list: DeletedOitivaRecord[] = [];
@@ -443,13 +608,20 @@ export const backupService = {
 
       const updated = [record, ...filtered].slice(0, 50); // Mantém até 50 itens excluídos
       localStorage.setItem(key, JSON.stringify(updated));
+
+      // 2. Salva na Nuvem (Firestore + RTDB) para restauração de qualquer dispositivo
+      const sanitized = sanitizePayload(record);
+      setDoc(doc(db, 'users', targetUid, 'trash', record.id), sanitized).catch(() => {});
+      if (rtdb) {
+        rtdbSet(rtdbRef(rtdb, `users/${targetUid}/trash/${record.id}`), sanitized).catch(() => {});
+      }
     } catch (err) {
       console.warn("Aviso ao salvar na lixeira de segurança:", err);
     }
   },
 
   /**
-   * Retorna os registros da lixeira
+   * Retorna os registros da lixeira local
    */
   getTrashRecords(targetUid: string): DeletedOitivaRecord[] {
     if (!targetUid) return [];
@@ -465,11 +637,94 @@ export const backupService = {
   },
 
   /**
-   * Restaura uma oitiva da lixeira de volta para a agenda ativa
+   * Busca registros da lixeira na Nuvem e mescla com os registros locais
+   */
+  async fetchCloudTrash(targetUid: string): Promise<DeletedOitivaRecord[]> {
+    if (!targetUid) return [];
+    const local = this.getTrashRecords(targetUid);
+    const trashMap = new Map<string, DeletedOitivaRecord>();
+    local.forEach(r => trashMap.set(r.id, r));
+
+    try {
+      const snapDocs = await getDocs(collection(db, 'users', targetUid, 'trash'));
+      snapDocs.forEach(d => {
+        const data = d.data() as DeletedOitivaRecord;
+        trashMap.set(d.id, { ...data, id: d.id });
+      });
+
+      const merged = Array.from(trashMap.values())
+        .sort((a, b) => b.deletedAt - a.deletedAt)
+        .slice(0, 50);
+
+      const key = `${TRASH_KEY_PREFIX}${targetUid}`;
+      localStorage.setItem(key, JSON.stringify(merged));
+      return merged;
+    } catch {
+      return local;
+    }
+  },
+
+  /**
+   * Escuta em tempo real a lixeira na Nuvem compartilhada entre dispositivos
+   */
+  subscribeTrash(
+    targetUid: string,
+    callback: (records: DeletedOitivaRecord[]) => void
+  ): () => void {
+    if (!targetUid) {
+      callback([]);
+      return () => {};
+    }
+
+    callback(this.getTrashRecords(targetUid));
+
+    try {
+      const trashCol = collection(db, 'users', targetUid, 'trash');
+      const unsub = onSnapshot(trashCol, (snapshot) => {
+        const cloudRecords: DeletedOitivaRecord[] = [];
+        snapshot.forEach(docSnap => {
+          cloudRecords.push({
+            ...(docSnap.data() as DeletedOitivaRecord),
+            id: docSnap.id
+          });
+        });
+
+        const trashMap = new Map<string, DeletedOitivaRecord>();
+        this.getTrashRecords(targetUid).forEach(r => trashMap.set(r.id, r));
+        cloudRecords.forEach(r => trashMap.set(r.id, r));
+
+        const merged = Array.from(trashMap.values())
+          .sort((a, b) => b.deletedAt - a.deletedAt)
+          .slice(0, 50);
+
+        const key = `${TRASH_KEY_PREFIX}${targetUid}`;
+        try {
+          localStorage.setItem(key, JSON.stringify(merged));
+        } catch {}
+
+        callback(merged);
+      }, () => {
+        callback(this.getTrashRecords(targetUid));
+      });
+
+      return unsub;
+    } catch {
+      return () => {};
+    }
+  },
+
+  /**
+   * Restaura uma oitiva da lixeira de volta para a agenda ativa e remove da lixeira
    */
   async restoreFromTrash(recordId: string, targetUid: string): Promise<Oitiva | null> {
-    const records = backupService.getTrashRecords(targetUid);
-    const target = records.find(r => r.id === recordId);
+    let records = backupService.getTrashRecords(targetUid);
+    let target = records.find(r => r.id === recordId);
+    
+    if (!target) {
+      const cloudTrash = await this.fetchCloudTrash(targetUid);
+      target = cloudTrash.find(r => r.id === recordId);
+    }
+
     if (!target || !target.oitiva) {
       throw new Error('Registro excluído não encontrado na lixeira.');
     }
@@ -480,11 +735,11 @@ export const backupService = {
       updatedAt: Date.now()
     };
 
-    // Recria no Firestore
+    // Recria no Firestore e RTDB
     await oitivaService.update(oitivaToRestore.id, oitivaToRestore, targetUid);
 
-    // Remove da lixeira
-    backupService.deleteTrashRecord(recordId, targetUid);
+    // Remove da lixeira local e da Nuvem
+    await backupService.deleteTrashRecord(recordId, targetUid);
 
     return oitivaToRestore;
   },
@@ -492,22 +747,35 @@ export const backupService = {
   /**
    * Remove registro individual da lixeira permanentemente
    */
-  deleteTrashRecord(recordId: string, targetUid: string): void {
+  async deleteTrashRecord(recordId: string, targetUid: string): Promise<void> {
     try {
       const key = `${TRASH_KEY_PREFIX}${targetUid}`;
       const records = backupService.getTrashRecords(targetUid);
       const filtered = records.filter(r => r.id !== recordId);
       localStorage.setItem(key, JSON.stringify(filtered));
+
+      await deleteDoc(doc(db, 'users', targetUid, 'trash', recordId)).catch(() => {});
+      if (rtdb) {
+        await rtdbRemove(rtdbRef(rtdb, `users/${targetUid}/trash/${recordId}`)).catch(() => {});
+      }
     } catch {}
   },
 
   /**
    * Esvazia toda a lixeira
    */
-  clearTrash(targetUid: string): void {
+  async clearTrash(targetUid: string): Promise<void> {
     try {
       const key = `${TRASH_KEY_PREFIX}${targetUid}`;
       localStorage.removeItem(key);
+
+      const trashDocs = await getDocs(collection(db, 'users', targetUid, 'trash'));
+      for (const d of trashDocs.docs) {
+        await deleteDoc(doc(db, 'users', targetUid, 'trash', d.id)).catch(() => {});
+      }
+      if (rtdb) {
+        await rtdbRemove(rtdbRef(rtdb, `users/${targetUid}/trash`)).catch(() => {});
+      }
     } catch {}
   }
 };

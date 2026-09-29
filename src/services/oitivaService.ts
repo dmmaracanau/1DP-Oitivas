@@ -30,6 +30,8 @@ function sanitizePayload<T extends Record<string, any>>(obj: T): Record<string, 
   return result;
 }
 
+export const DEFAULT_SHARED_GUEST_UID = 'cartorio_geral_maracanau';
+
 // Helpers de cache local e segurança de dados isolados por UID do usuário
 function getLocalCache(uid: string): Oitiva[] {
   try {
@@ -67,14 +69,22 @@ function setLocalCache(uid: string, data: Oitiva[]) {
 }
 
 // Resgata o UID ativo com múltiplas camadas de fallback resilientes
-function resolveActiveUid(explicitUid?: string, dataUid?: string): string {
-  if (explicitUid && explicitUid.trim() && explicitUid !== 'guest_default' && explicitUid !== 'guest_user') {
+export function resolveActiveUid(explicitUid?: string, dataUid?: string): string {
+  if (explicitUid && explicitUid.trim() && 
+      explicitUid !== 'guest_default' && 
+      explicitUid !== 'guest_user' && 
+      explicitUid !== 'cartorio_maracanau' &&
+      explicitUid !== DEFAULT_SHARED_GUEST_UID) {
     return explicitUid.trim();
   }
-  if (dataUid && dataUid.trim() && dataUid !== 'guest_default' && dataUid !== 'guest_user') {
+  if (dataUid && dataUid.trim() && 
+      dataUid !== 'guest_default' && 
+      dataUid !== 'guest_user' && 
+      dataUid !== 'cartorio_maracanau' &&
+      dataUid !== DEFAULT_SHARED_GUEST_UID) {
     return dataUid.trim();
   }
-  if (auth.currentUser?.uid) {
+  if (auth.currentUser?.uid && !auth.currentUser.isAnonymous) {
     return auth.currentUser.uid;
   }
   // Tenta recuperar da sessão salva em localStorage
@@ -82,10 +92,15 @@ function resolveActiveUid(explicitUid?: string, dataUid?: string): string {
     const sessionRaw = localStorage.getItem('oitivas_user_session');
     if (sessionRaw) {
       const parsed = JSON.parse(sessionRaw);
-      if (parsed?.uid) return parsed.uid;
+      if (parsed?.uid && 
+          parsed.uid !== 'guest_default' && 
+          parsed.uid !== 'guest_user' && 
+          parsed.uid !== 'cartorio_maracanau') {
+        return parsed.uid;
+      }
     }
   } catch {}
-  return explicitUid || dataUid || 'guest_default';
+  return DEFAULT_SHARED_GUEST_UID;
 }
 
 function sortOitivas(items: Oitiva[]): Oitiva[] {
@@ -170,12 +185,38 @@ export const oitivaService = {
 
           // Proteção anti-perda: se o snapshot do Firestore vier vazio (por exemplo, durante oscilação transitória de conexão),
           // mas nós temos cache local ou backup com dados válidos, preservamos os dados em cache e sincronizamos
-          if (itemsMap.size === 0 && snapshot.metadata.fromCache) {
+          if (itemsMap.size === 0) {
             const existingCache = getLocalCache(targetUid);
             if (existingCache.length > 0) {
+              console.warn(`[AntiDataLoss] Snapshot vazio recebido para UID ${targetUid}, mas cache local contém ${existingCache.length} oitivas. Preservando e garantindo integridade.`);
               onData(sortOitivas(existingCache));
+              
+              // Se a resposta veio do servidor (não apenas cache) e está vazia, pode ser que o usuário acabou de trocar de dispositivo
+              // ou houve uma oscilação na nuvem: re-sincroniza preventivamente o cache local para o Firestore
+              if (!snapshot.metadata.fromCache) {
+                existingCache.forEach(cachedItem => {
+                  const docRef = doc(db, 'users', targetUid, 'oitivas', cachedItem.id);
+                  setDoc(docRef, sanitizePayload(cachedItem), { merge: true }).catch(() => {});
+                });
+              }
               return;
             }
+          }
+
+          // Merge inteligente com cache local: caso haja alguma oitiva recente salva localmente que ainda não foi baixada pelo snapshot
+          const existingCache = getLocalCache(targetUid);
+          if (existingCache.length > 0) {
+            existingCache.forEach(cachedItem => {
+              if (!itemsMap.has(cachedItem.id)) {
+                // Se foi atualizada nos últimos 7 dias, preserva para não perder alterações não enviadas
+                const ageMs = Date.now() - (cachedItem.updatedAt || 0);
+                if (ageMs < 7 * 24 * 60 * 60 * 1000) {
+                  itemsMap.set(cachedItem.id, cachedItem);
+                  const docRef = doc(db, 'users', targetUid, 'oitivas', cachedItem.id);
+                  setDoc(docRef, sanitizePayload(cachedItem), { merge: true }).catch(() => {});
+                }
+              }
+            });
           }
 
           const sortedList = sortOitivas(Array.from(itemsMap.values()));
@@ -244,6 +285,53 @@ export const oitivaService = {
       if (unsubFirestore) unsubFirestore();
       if (unsubRTDB) unsubRTDB();
     };
+  },
+
+  /**
+   * Migra oitivas salvas no modo não-autenticado/convidado para a conta do usuário
+   * Garante que entradas feitas antes de efetuar login em um dispositivo nunca sejam perdidas
+   */
+  async migrateGuestOitivasToUser(targetUserUid: string): Promise<number> {
+    if (!targetUserUid || targetUserUid === DEFAULT_SHARED_GUEST_UID) return 0;
+    let migratedCount = 0;
+
+    const guestUidsToCheck = [
+      DEFAULT_SHARED_GUEST_UID,
+      'guest_user',
+      'guest_default',
+      'cartorio_maracanau'
+    ];
+
+    for (const gUid of guestUidsToCheck) {
+      try {
+        // 1. Verifica cache local
+        const localGuest = getLocalCache(gUid);
+        if (localGuest.length > 0) {
+          for (const item of localGuest) {
+            await this.update(item.id, { ...item, uid: targetUserUid }, targetUserUid);
+            migratedCount++;
+          }
+          localStorage.removeItem(`oitivas_user_${gUid}`);
+          localStorage.removeItem(`oitivas_backup_${gUid}`);
+        }
+
+        // 2. Verifica Firestore
+        const guestDocs = await getDocs(collection(db, 'users', gUid, 'oitivas'));
+        for (const gDoc of guestDocs.docs) {
+          const data = gDoc.data() as Oitiva;
+          await this.update(gDoc.id, { ...data, uid: targetUserUid }, targetUserUid);
+          await deleteDoc(doc(db, 'users', gUid, 'oitivas', gDoc.id)).catch(() => {});
+          migratedCount++;
+        }
+      } catch (err) {
+        console.warn(`[AntiDataLoss] Aviso ao migrar dados de ${gUid}:`, err);
+      }
+    }
+
+    if (migratedCount > 0) {
+      console.log(`[AntiDataLoss] ${migratedCount} oitiva(s) de sessão anterior migradas para a conta ${targetUserUid}.`);
+    }
+    return migratedCount;
   },
 
   /**

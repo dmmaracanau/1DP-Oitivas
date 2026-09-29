@@ -33,7 +33,7 @@ import {
 import { DelegadoSelectorModal } from './DelegadoSelectorModal';
 import { IntimationNumberPromptModal } from './IntimationNumberPromptModal';
 import { DelegadoInfo, delegadoService } from '../services/delegadoService';
-import { oitivaService } from '../services/oitivaService';
+import { oitivaService, DEFAULT_SHARED_GUEST_UID } from '../services/oitivaService';
 
 interface WhatsAppShareModalProps {
   isOpen: boolean;
@@ -173,7 +173,7 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
   const saveIntimationNumberInBackground = async (num: string) => {
     if (oitiva) {
       try {
-        const currentUid = user?.uid || oitiva.uid || 'cartorio_maracanau';
+        const currentUid = user?.uid || oitiva.uid || DEFAULT_SHARED_GUEST_UID;
         await oitivaService.update(oitiva.id, { intimationNumber: num }, currentUid);
       } catch (err) {
         console.warn('Erro ao salvar número da intimação:', err);

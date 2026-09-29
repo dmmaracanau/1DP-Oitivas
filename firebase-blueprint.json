@@ -340,6 +340,14 @@
       "schema": "oitiva",
       "description": "Coleção isolada de oitivas e agendamentos policiais de cada usuário"
     },
+    "/users/{userId}/snapshots/{snapshotId}": {
+      "schema": "object",
+      "description": "Snapshots e pontos de restauração sincronizados na nuvem para proteção e persistência entre múltiplos dispositivos"
+    },
+    "/users/{userId}/trash/{recordId}": {
+      "schema": "object",
+      "description": "Lixeira de segurança e histórico de itens excluídos sincronizados na nuvem"
+    },
     "/oitivas/{oitivaId}": {
       "schema": "oitiva",
       "description": "Coleção de oitivas e agendamentos policiais sincronizada em tempo real"

@@ -27,6 +27,7 @@ import {
 import { ref as rtdbRef, set as rtdbSet, get as rtdbGet } from 'firebase/database';
 import { auth, db, rtdb, googleProvider, googleClientId } from '../firebase';
 import { UserProfile, DuplicateUserGroup, MergeUsersResult } from '../types/oitiva';
+import { oitivaService } from './oitivaService';
 
 const LOCAL_USER_KEY = 'oitivas_user_session';
 const USERS_COLLECTION = 'users';
@@ -340,6 +341,9 @@ export const authService = {
                 };
                 localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(liveProfile));
                 callback(liveProfile);
+                // Reconciliação multi-dispositivo automática
+                this.autoReconcileUser(liveProfile).catch(() => {});
+                oitivaService.migrateGuestOitivasToUser(effectiveUid).catch(() => {});
               } else {
                 // Se documento ainda não existe no Firestore, salva o perfil inicial
                 setDoc(userDocRef, sanitizeData({ ...baseProfile, updatedAt: Date.now() }), { merge: true }).catch(() => {});
@@ -348,6 +352,8 @@ export const authService = {
                 }
                 localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(baseProfile));
                 callback(baseProfile);
+                this.autoReconcileUser(baseProfile).catch(() => {});
+                oitivaService.migrateGuestOitivasToUser(effectiveUid).catch(() => {});
               }
             }, (docErr) => {
               console.warn("[FirebaseAuth] Realtime user profile sync notice:", docErr);
@@ -568,6 +574,8 @@ export const authService = {
     }
 
     localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(profile));
+    // Auto-reconciliação para consolidar oitivas vinculadas ao mesmo e-mail institucional
+    this.autoReconcileUser(profile).catch(() => {});
     return { profile, token: cachedAccessToken || undefined };
   },
 
@@ -675,6 +683,8 @@ export const authService = {
       const isPasswordValid = fbSuccess || (storedHash && storedHash === pHash) || (!storedHash && fbSuccess);
 
       if (isPasswordValid) {
+        const originalDocId = userDocSnap?.id;
+
         // Se a senha é válida mas o usuário ainda não existia no Firebase Authentication, provisiona
         if (!fbSuccess && loginEmail && (authAttemptError?.code === 'auth/user-not-found' || authAttemptError?.code === 'auth/invalid-credential')) {
           try {
@@ -696,9 +706,21 @@ export const authService = {
           } catch {}
         }
 
+        // Se um novo Auth UID foi provisionado e difere do documento original no Firestore, migra imediatamente
+        // todas as oitivas, snapshots e lixeira para o novo UID para garantir continuidade e integridade entre dispositivos
+        if (userUid && originalDocId && userUid !== originalDocId) {
+          console.log(`[AntiDataLoss] Migrando dados do documento prévio ${originalDocId} para o novo UID ${userUid}...`);
+          try {
+            await this.mergeDuplicateUsers(userUid, [originalDocId]);
+          } catch (mErr) {
+            console.warn("[AntiDataLoss] Aviso na migração pós-provisionamento:", mErr);
+          }
+        }
+
+        const effectiveUid = userUid || originalDocId || `user_${cleanIdentifier}`;
         const isAdmin = Boolean(userDocData.isAdmin || userDocData.role === 'admin');
         const profile: UserProfile = {
-          uid: userUid || userDocSnap?.id || `user_${cleanIdentifier}`,
+          uid: effectiveUid,
           username: userDocData.username || cleanIdentifier.replace(/[^a-z0-9_.]/g, ''),
           email: userDocData.email || loginEmail || null,
           displayName: userDocData.displayName || cleanIdentifier,
@@ -722,6 +744,8 @@ export const authService = {
         } catch {}
 
         localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(profile));
+        // Auto-reconciliação para varrer e unificar quaisquer contas duplicadas
+        this.autoReconcileUser(profile).catch(() => {});
         return profile;
       } else {
         throw new Error("Senha incorreta. Verifique suas credenciais.");
@@ -768,18 +792,37 @@ export const authService = {
       throw new Error("Por favor, forneça um nome de usuário válido.");
     }
 
-    // Verifica se já existe um usuário com esse username no Firestore
+    const pHash = await hashPassword(pass);
+
+    // Verifica se já existe um usuário com esse username ou email no Firestore
     try {
       const uQuery = query(collection(db, USERS_COLLECTION), where('username', '==', cleanUsername));
       const uSnap = await getDocs(uQuery);
       if (!uSnap.empty) {
-        throw new Error(`O nome de usuário "${cleanUsername}" já está em uso. Por favor, escolha outro.`);
+        const existingData = uSnap.docs[0].data();
+        if (existingData.passwordHash && existingData.passwordHash === pHash) {
+          console.log(`[AntiDataLoss] Usuário "${cleanUsername}" já cadastrado. Realizando login automático.`);
+          return await this.loginWithEmail(cleanUsername, pass);
+        }
+        throw new Error(`O nome de usuário "${cleanUsername}" já está cadastrado no sistema. Por favor, acesse a opção de Login com sua senha.`);
+      }
+
+      if (cleanEmail) {
+        const eQuery = query(collection(db, USERS_COLLECTION), where('email', '==', cleanEmail));
+        const eSnap = await getDocs(eQuery);
+        if (!eSnap.empty) {
+          const existingData = eSnap.docs[0].data();
+          if (existingData.passwordHash && existingData.passwordHash === pHash) {
+            console.log(`[AntiDataLoss] E-mail "${cleanEmail}" já cadastrado. Realizando login automático.`);
+            return await this.loginWithEmail(cleanEmail, pass);
+          }
+          throw new Error(`O e-mail "${cleanEmail}" já está cadastrado no sistema. Por favor, acesse a opção de Login com sua senha.`);
+        }
       }
     } catch (e: any) {
-      if (e.message && e.message.includes('já está em uso')) throw e;
+      if (e.message && e.message.includes('já está cadastrado')) throw e;
     }
 
-    const pHash = await hashPassword(pass);
     let targetUid = '';
 
     // 1. Tenta criar usuário diretamente no Firebase Authentication
@@ -803,7 +846,7 @@ export const authService = {
           const anonRes = await signInAnonymously(auth);
           targetUid = anonRes.user.uid;
         } catch {
-          targetUid = 'user_' + cleanUsername + '_' + Date.now().toString(36);
+          targetUid = 'user_' + cleanUsername;
         }
       } else {
         throw new Error(mapAuthError(fbErr));
@@ -811,7 +854,7 @@ export const authService = {
     }
 
     if (!targetUid) {
-      targetUid = 'user_' + cleanUsername + '_' + Date.now().toString(36);
+      targetUid = 'user_' + cleanUsername;
     }
 
     const profile: UserProfile = {
@@ -845,6 +888,8 @@ export const authService = {
     }
 
     localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(profile));
+    // Auto-reconciliação para consolidar quaisquer oitivas prévias associadas
+    this.autoReconcileUser(profile).catch(() => {});
     return profile;
   },
 
@@ -1566,6 +1611,24 @@ export const authService = {
         console.warn(`[Admin Unify] Erro ao transferir oitivas de ${secUid}:`, oitivaErr);
       }
 
+      // 5.b Migra snapshots de segurança da conta secundária
+      try {
+        const snapsSnap = await getDocs(collection(db, 'users', secUid, 'snapshots'));
+        for (const sDoc of snapsSnap.docs) {
+          await setDoc(doc(db, 'users', primaryUid, 'snapshots', sDoc.id), sanitizeData(sDoc.data()), { merge: true });
+          await deleteDoc(doc(db, 'users', secUid, 'snapshots', sDoc.id));
+        }
+      } catch {}
+
+      // 5.c Migra histórico e itens da lixeira da conta secundária
+      try {
+        const trashSnap = await getDocs(collection(db, 'users', secUid, 'trash'));
+        for (const tDoc of trashSnap.docs) {
+          await setDoc(doc(db, 'users', primaryUid, 'trash', tDoc.id), sanitizeData(tDoc.data()), { merge: true });
+          await deleteDoc(doc(db, 'users', secUid, 'trash', tDoc.id));
+        }
+      } catch {}
+
       // 6. Exclui a conta secundária duplicada
       try {
         await deleteDoc(doc(db, USERS_COLLECTION, secUid));
@@ -1579,6 +1642,7 @@ export const authService = {
       // Limpa cache local da conta secundária
       try {
         localStorage.removeItem(`oitivas_user_${secUid}`);
+        localStorage.removeItem(`oitivas_backup_${secUid}`);
       } catch {}
     }
 
@@ -1604,6 +1668,45 @@ export const authService = {
       addedOitivasCount,
       message: `Unificação concluída com sucesso! ${cleanSecondary.length} conta(s) fundida(s) no perfil principal "${mergedProfile.displayName}". ${transferredOitivasCount} oitiva(s) processada(s)${detailMsg}.`
     };
+  },
+
+  // Reconciliação e Unificação Automática de Contas e Oitivas entre Múltiplos Dispositivos
+  async autoReconcileUser(currentProfile: UserProfile): Promise<number> {
+    if (!currentProfile || !currentProfile.uid) return 0;
+    try {
+      const cleanUsername = (currentProfile.username || '').trim().toLowerCase();
+      const cleanEmail = (currentProfile.email || '').trim().toLowerCase();
+      const cleanInstEmail = (currentProfile.institutionalEmail || '').trim().toLowerCase();
+
+      const usersSnap = await getDocs(collection(db, USERS_COLLECTION));
+      const uidsToMerge: string[] = [];
+
+      usersSnap.forEach(docSnap => {
+        if (docSnap.id === currentProfile.uid) return;
+        const d = docSnap.data();
+        const dUsername = (d.username || '').trim().toLowerCase();
+        const dEmail = (d.email || '').trim().toLowerCase();
+        const dInstEmail = (d.institutionalEmail || '').trim().toLowerCase();
+
+        const matchUser = cleanUsername && dUsername && dUsername === cleanUsername;
+        const matchEmail = cleanEmail && dEmail && dEmail === cleanEmail;
+        const matchInst = cleanInstEmail && dInstEmail && dInstEmail === cleanInstEmail;
+
+        if (matchUser || matchEmail || matchInst) {
+          uidsToMerge.push(docSnap.id);
+        }
+      });
+
+      if (uidsToMerge.length > 0) {
+        console.log(`[AntiDataLoss] Detectadas ${uidsToMerge.length} contas duplicadas associadas a "${currentProfile.displayName}". Unificando dados automaticamente...`);
+        const res = await this.mergeDuplicateUsers(currentProfile.uid, uidsToMerge);
+        console.log(`[AntiDataLoss] Reconciliação concluída: ${res.transferredOitivasCount} oitivas protegidas e migradas.`);
+        return res.transferredOitivasCount;
+      }
+    } catch (err) {
+      console.warn("[AntiDataLoss] Aviso na auto-reconciliação:", err);
+    }
+    return 0;
   },
 
   // Unifica automaticamente todos os grupos duplicados encontrados no sistema

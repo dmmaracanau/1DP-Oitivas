@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { Oitiva, UserProfile, CalendarSpecialDate, DataSnapshot, DeletedOitivaRecord, ImportValidationResult } from '../types/oitiva';
 import { backupService } from '../services/backupService';
+import { DEFAULT_SHARED_GUEST_UID } from '../services/oitivaService';
 import { formatDateBR } from '../utils/formatters';
 
 interface UserBackupPanelProps {
@@ -39,7 +40,7 @@ export const UserBackupPanel: React.FC<UserBackupPanelProps> = ({
   onDataRestored,
   showToast
 }) => {
-  const targetUid = user?.uid || 'guest_default';
+  const targetUid = user?.uid || DEFAULT_SHARED_GUEST_UID;
   
   // Snapshots & Trash states
   const [snapshots, setSnapshots] = useState<DataSnapshot[]>([]);
@@ -61,17 +62,33 @@ export const UserBackupPanel: React.FC<UserBackupPanelProps> = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load snapshots & trash on mount or when targetUid changes
+  // Load snapshots & trash on mount and sync with Cloud
   const reloadSafetyData = () => {
     if (!targetUid) return;
     const snaps = backupService.getLocalSnapshots(targetUid);
     setSnapshots(snaps);
     const trash = backupService.getTrashRecords(targetUid);
     setTrashRecords(trash);
+    backupService.fetchCloudSnapshots(targetUid).then(s => setSnapshots(s));
+    backupService.fetchCloudTrash(targetUid).then(t => setTrashRecords(t));
   };
 
   useEffect(() => {
+    if (!targetUid) return;
     reloadSafetyData();
+
+    // Escuta em tempo real snapshots e lixeira na nuvem para manter todos os dispositivos atualizados
+    const unsubSnaps = backupService.subscribeSnapshots(targetUid, (cloudSnaps) => {
+      setSnapshots(cloudSnaps);
+    });
+    const unsubTrash = backupService.subscribeTrash(targetUid, (cloudTrash) => {
+      setTrashRecords(cloudTrash);
+    });
+
+    return () => {
+      unsubSnaps();
+      unsubTrash();
+    };
   }, [targetUid]);
 
   // Handle Export
@@ -255,15 +272,15 @@ export const UserBackupPanel: React.FC<UserBackupPanelProps> = ({
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h3 className="text-base font-black text-white tracking-tight">
-                Prevenção Ativa de Perda de Dados
+                Prevenção Ativa de Perda de Dados Multi-Dispositivo
               </h3>
               <span className="px-2.5 py-0.5 text-[10px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 rounded-full flex items-center gap-1">
                 <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                SISTEMA PROTEGIDO
+                NUVEM & DISPOSITIVOS CONECTADOS
               </span>
             </div>
             <p className="text-xs text-zinc-300 mt-1">
-              Seus agendamentos contam com auto-save em tempo real, lixeira de recuperação e controle de snapshots locais rotativos.
+              Sincronização em tempo real ativa na Nuvem: acesse no computador do cartório, notebook ou celular com auto-save instantâneo, unificação de contas e snapshots de segurança.
             </p>
           </div>
         </div>
@@ -466,7 +483,7 @@ export const UserBackupPanel: React.FC<UserBackupPanelProps> = ({
 
       </div>
 
-      {/* SEÇÃO 3: PONTOS DE RESTAURAÇÃO LOCAIS (SNAPSHOTS) */}
+      {/* SEÇÃO 3: PONTOS DE RESTAURAÇÃO (SNAPSHOTS MULTI-DISPOSITIVO) */}
       <div className="bg-[#181328] p-5 rounded-2xl border border-purple-900/40 space-y-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -474,9 +491,9 @@ export const UserBackupPanel: React.FC<UserBackupPanelProps> = ({
               <RotateCcw className="w-5 h-5" />
             </div>
             <div>
-              <h4 className="text-sm font-bold text-white">Pontos de Restauração Locais (Snapshots)</h4>
+              <h4 className="text-sm font-bold text-white">Pontos de Restauração Sincronizados na Nuvem (Snapshots)</h4>
               <p className="text-xs text-zinc-400">
-                Snapshots automáticos salvos no navegador. Restaure o estado da agenda com 1 clique caso ocorra um erro.
+                Snapshots automáticos salvos na Nuvem e no dispositivo. Acessíveis e restauráveis de qualquer computador, tablet ou celular.
               </p>
             </div>
           </div>
