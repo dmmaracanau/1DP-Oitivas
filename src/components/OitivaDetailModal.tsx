@@ -635,19 +635,28 @@ export const OitivaDetailModal: React.FC<OitivaDetailModalProps> = ({
 
               {/* BLOCO 6 (MOBILE): HISTÓRICO DESTA OITIVA & OBSERVAÇÕES */}
               <div className="bg-[#171326] p-3.5 rounded-2xl border border-purple-900/40 text-xs space-y-2 shadow-md">
-                <div className="flex items-center justify-between">
-                  <div 
-                    className="flex items-center gap-1.5 cursor-pointer select-none flex-1 min-w-0" 
+                <div className="flex items-center justify-between gap-3">
+                  {/* Título clicável para expandir/recolher histórico */}
+                  <button
+                    type="button"
                     onClick={() => setShowFullHistory(!showFullHistory)}
+                    className="flex items-center gap-2 cursor-pointer select-none flex-1 min-w-0 text-left group py-0.5 rounded-lg hover:bg-purple-900/20 px-1 -mx-1 transition-colors"
+                    title={showFullHistory ? "Recolher histórico desta oitiva" : "Expandir histórico desta oitiva"}
                   >
-                    <History className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                    <span className="text-[11px] font-bold text-white uppercase tracking-wider truncate">
+                    <History className="w-3.5 h-3.5 text-indigo-400 shrink-0 group-hover:text-indigo-300 transition-colors" />
+                    <span className="text-[11px] font-bold text-white uppercase tracking-wider truncate group-hover:text-purple-200 transition-colors">
                       Histórico Desta Oitiva ({oitivaHistoryItems.length})
                     </span>
-                  </div>
+                    {showFullHistory ? (
+                      <ChevronUp className="w-3.5 h-3.5 text-zinc-400 group-hover:text-white shrink-0 transition-colors" />
+                    ) : (
+                      <ChevronDown className="w-3.5 h-3.5 text-zinc-400 group-hover:text-white shrink-0 transition-colors" />
+                    )}
+                  </button>
 
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    {oitivaHistoryItems.length > 0 && (
+                  {/* Botão de lixeira isolado: apenas ícone para limpar histórico */}
+                  {oitivaHistoryItems.length > 0 && (
+                    <div className="flex items-center shrink-0 pl-2">
                       <button
                         id="btn-clear-oitiva-history-mobile"
                         type="button"
@@ -655,22 +664,14 @@ export const OitivaDetailModal: React.FC<OitivaDetailModalProps> = ({
                           e.stopPropagation();
                           setShowClearHistoryConfirm(true);
                         }}
-                        className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 hover:text-white border border-rose-600/50 text-[10px] font-bold"
-                        title="Limpar o histórico de remarcações e alterações apenas desta oitiva"
+                        className="p-1.5 rounded-lg bg-rose-950/40 hover:bg-rose-900/80 text-rose-400 hover:text-rose-200 border border-rose-800/40 hover:border-rose-500 transition-all cursor-pointer shadow-sm"
+                        title="Limpar histórico de remarcações desta oitiva"
+                        aria-label="Limpar histórico desta oitiva"
                       >
-                        <Trash2 className="w-3 h-3" />
-                        <span>Limpar</span>
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
-                    )}
-
-                    <button 
-                      type="button" 
-                      onClick={() => setShowFullHistory(!showFullHistory)}
-                      className="text-zinc-400 hover:text-white p-1"
-                    >
-                      {showFullHistory ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                    </button>
-                  </div>
+                    </div>
+                  )}
                 </div>
 
                 {otherOitivasForPerson.length > 0 && (
@@ -893,19 +894,28 @@ export const OitivaDetailModal: React.FC<OitivaDetailModalProps> = ({
 
                   {/* PAINEL DE HISTÓRICO ISOLADO DESTA OITIVA */}
                   <div className="bg-[#171326] p-3 rounded-2xl border border-purple-900/40 text-xs space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div 
-                        className="flex items-center gap-1.5 cursor-pointer select-none flex-1 min-w-0" 
+                    <div className="flex items-center justify-between gap-3">
+                      {/* Título clicável para expandir/recolher histórico */}
+                      <button
+                        type="button"
                         onClick={() => setShowFullHistory(!showFullHistory)}
+                        className="flex items-center gap-2 cursor-pointer select-none flex-1 min-w-0 text-left group py-0.5 rounded-lg hover:bg-purple-900/20 px-1 -mx-1 transition-colors"
+                        title={showFullHistory ? "Recolher histórico desta oitiva" : "Expandir histórico desta oitiva"}
                       >
-                        <History className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                        <span className="text-[11px] font-bold text-white uppercase tracking-wider truncate">
+                        <History className="w-3.5 h-3.5 text-indigo-400 shrink-0 group-hover:text-indigo-300 transition-colors" />
+                        <span className="text-[11px] font-bold text-white uppercase tracking-wider truncate group-hover:text-purple-200 transition-colors">
                           Histórico Desta Oitiva ({oitivaHistoryItems.length})
                         </span>
-                      </div>
+                        {showFullHistory ? (
+                          <ChevronUp className="w-3.5 h-3.5 text-zinc-400 group-hover:text-white shrink-0 transition-colors" />
+                        ) : (
+                          <ChevronDown className="w-3.5 h-3.5 text-zinc-400 group-hover:text-white shrink-0 transition-colors" />
+                        )}
+                      </button>
 
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {oitivaHistoryItems.length > 0 && (
+                      {/* Botão de lixeira isolado: apenas ícone para limpar histórico */}
+                      {oitivaHistoryItems.length > 0 && (
+                        <div className="flex items-center shrink-0 pl-2">
                           <button
                             id="btn-clear-oitiva-history"
                             type="button"
@@ -913,23 +923,14 @@ export const OitivaDetailModal: React.FC<OitivaDetailModalProps> = ({
                               e.stopPropagation();
                               setShowClearHistoryConfirm(true);
                             }}
-                            className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 hover:text-white border border-rose-600/50 hover:border-rose-400 text-[10px] font-bold transition-all cursor-pointer shadow-sm"
-                            title="Limpar o histórico de remarcações e alterações apenas desta oitiva"
+                            className="p-1.5 rounded-lg bg-rose-950/40 hover:bg-rose-900/80 text-rose-400 hover:text-rose-200 border border-rose-800/40 hover:border-rose-500 transition-all cursor-pointer shadow-sm"
+                            title="Limpar histórico de remarcações desta oitiva"
+                            aria-label="Limpar histórico desta oitiva"
                           >
-                            <Trash2 className="w-3 h-3" />
-                            <span>Limpar Histórico</span>
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
-                        )}
-
-                        <button 
-                          type="button" 
-                          onClick={() => setShowFullHistory(!showFullHistory)}
-                          className="text-zinc-400 hover:text-white p-1"
-                          title={showFullHistory ? "Recolher histórico" : "Expandir histórico"}
-                        >
-                          {showFullHistory ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                        </button>
-                      </div>
+                        </div>
+                      )}
                     </div>
 
                     {otherOitivasForPerson.length > 0 && (
