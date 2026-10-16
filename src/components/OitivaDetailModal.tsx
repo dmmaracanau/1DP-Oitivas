@@ -47,7 +47,8 @@ interface OitivaDetailModalProps {
   onStatusChange: (id: string, newStatus: HearingStatus) => void;
   onToggleIntimationSent?: (id: string, nextStatus: boolean) => void;
   onReschedule?: (id: string, newDate: string, newTime: string, reason?: string) => Promise<void> | void;
-  onClearPersonHistory?: (personName: string, cpf?: string) => Promise<void> | void;
+  onClearOitivaHistory?: (id: string) => Promise<void> | void;
+  onClearPersonHistory?: (personName: string, cpf?: string, oitivaId?: string) => Promise<void> | void;
   onOpenPrint?: () => void;
   onOpenPrintIntimacao?: () => void;
   onOpenWhatsApp?: (oitiva: Oitiva) => void;
@@ -67,6 +68,7 @@ export const OitivaDetailModal: React.FC<OitivaDetailModalProps> = ({
   onStatusChange,
   onToggleIntimationSent,
   onReschedule,
+  onClearOitivaHistory,
   onClearPersonHistory,
   onOpenPrintIntimacao,
   onOpenWhatsApp,
@@ -95,11 +97,16 @@ export const OitivaDetailModal: React.FC<OitivaDetailModalProps> = ({
 
   const statuses: HearingStatus[] = ['Agendada', 'Realizada', 'Remarcada', 'Não Compareceu', 'Cancelada'];
 
-  // Resgata histórico completo da pessoa (todas as oitivas e reagendamentos da mesma pessoa)
-  const personHistory = oitivaService.getPersonHistory(
-    oitiva.personName,
-    oitiva.cpf,
-    allOitivas.length > 0 ? allOitivas : [oitiva]
+  // Histórico isolado e exclusivo DESTA oitiva específica
+  const oitivaHistoryItems = Array.isArray(oitiva.history) ? oitiva.history : [];
+  const oitivaTimeline = oitivaService.getOitivaTimeline(oitiva);
+
+  // Verificação de segurança: outras oitivas desta mesma pessoa no sistema (que permanecem intactas)
+  const otherOitivasForPerson = allOitivas.filter(o => 
+    o.id !== oitiva.id && (
+      (oitiva.cpf && o.cpf && oitiva.cpf.replace(/\D/g, '') === o.cpf.replace(/\D/g, '')) ||
+      (oitiva.personName && o.personName && oitiva.personName.trim().toLowerCase() === o.personName.trim().toLowerCase())
+    )
   );
 
   const handleConfirmDelete = async () => {
@@ -118,14 +125,16 @@ export const OitivaDetailModal: React.FC<OitivaDetailModalProps> = ({
     if (!oitiva) return;
     setIsClearingHistory(true);
     try {
-      if (onClearPersonHistory) {
-        await onClearPersonHistory(oitiva.personName, oitiva.cpf);
+      if (onClearOitivaHistory) {
+        await onClearOitivaHistory(oitiva.id);
+      } else if (onClearPersonHistory) {
+        await onClearPersonHistory(oitiva.personName, oitiva.cpf, oitiva.id);
       } else {
-        await oitivaService.clearPersonHistory(oitiva.personName, oitiva.cpf);
+        await oitivaService.clearOitivaHistory(oitiva.id);
       }
       setShowClearHistoryConfirm(false);
     } catch (err) {
-      console.error('Erro ao limpar histórico da pessoa:', err);
+      console.error('Erro ao limpar histórico da oitiva:', err);
     } finally {
       setIsClearingHistory(false);
     }
@@ -184,9 +193,9 @@ export const OitivaDetailModal: React.FC<OitivaDetailModalProps> = ({
                   <span className={`text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full border-2 ${getStatusBadgeClasses(oitiva.status)}`}>
                     {oitiva.status}
                   </span>
-                  {personHistory.timeline.length > 1 && (
+                  {oitivaHistoryItems.length > 0 && (
                     <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-indigo-950 text-indigo-200 border border-indigo-400">
-                      {personHistory.timeline.length} Registros Históricos
+                      {oitivaHistoryItems.length} {oitivaHistoryItems.length === 1 ? 'Alteração Registrada' : 'Alterações Registradas'}
                     </span>
                   )}
                 </div>
@@ -624,7 +633,7 @@ export const OitivaDetailModal: React.FC<OitivaDetailModalProps> = ({
                 )}
               </div>
 
-              {/* BLOCO 6 (MOBILE): HISTÓRICO DA PESSOA & OBSERVAÇÕES */}
+              {/* BLOCO 6 (MOBILE): HISTÓRICO DESTA OITIVA & OBSERVAÇÕES */}
               <div className="bg-[#171326] p-3.5 rounded-2xl border border-purple-900/40 text-xs space-y-2 shadow-md">
                 <div className="flex items-center justify-between">
                   <div 
@@ -633,19 +642,21 @@ export const OitivaDetailModal: React.FC<OitivaDetailModalProps> = ({
                   >
                     <History className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
                     <span className="text-[11px] font-bold text-white uppercase tracking-wider truncate">
-                      Histórico desta Pessoa ({personHistory.timeline.length})
+                      Histórico Desta Oitiva ({oitivaHistoryItems.length})
                     </span>
                   </div>
 
                   <div className="flex items-center gap-1.5 shrink-0">
-                    {personHistory.timeline.length > 0 && (
+                    {oitivaHistoryItems.length > 0 && (
                       <button
+                        id="btn-clear-oitiva-history-mobile"
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           setShowClearHistoryConfirm(true);
                         }}
                         className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 hover:text-white border border-rose-600/50 text-[10px] font-bold"
+                        title="Limpar o histórico de remarcações e alterações apenas desta oitiva"
                       >
                         <Trash2 className="w-3 h-3" />
                         <span>Limpar</span>
@@ -662,20 +673,29 @@ export const OitivaDetailModal: React.FC<OitivaDetailModalProps> = ({
                   </div>
                 </div>
 
+                {otherOitivasForPerson.length > 0 && (
+                  <p className="text-[10px] text-zinc-400 pl-5">
+                    Nota: {otherOitivasForPerson.length} outro(s) agendamento(s) desta pessoa permanecem intactos.
+                  </p>
+                )}
+
                 {showFullHistory && (
                   <div className="space-y-2 pt-1 border-t border-purple-900/30 max-h-48 overflow-y-auto pr-1">
-                    {personHistory.timeline.length > 0 ? (
-                      personHistory.timeline.map((item) => (
+                    {oitivaTimeline.length > 0 ? (
+                      oitivaTimeline.map((item) => (
                         <div key={item.id} className="p-2 rounded-xl bg-[#100c1e] border border-purple-900/30 text-[11px] space-y-0.5">
                           <div className="flex items-center justify-between text-zinc-400 text-[10px]">
                             <span className="font-semibold text-purple-300">{item.action}</span>
                             <span>{formatDateBR(item.dateStr)} {item.timeStr ? `às ${item.timeStr}h` : ''}</span>
                           </div>
                           <p className="text-zinc-200 text-[10px] leading-tight">{item.details}</p>
+                          {item.procedureNumber && (
+                            <span className="text-[9px] text-zinc-400 block">Proc: {item.procedureNumber}</span>
+                          )}
                         </div>
                       ))
                     ) : (
-                      <p className="text-[10px] text-zinc-400 py-2 text-center">Nenhum evento registrado no histórico.</p>
+                      <p className="text-[10px] text-zinc-400 py-2 text-center">Nenhum evento registrado no histórico desta oitiva.</p>
                     )}
                   </div>
                 )}
@@ -871,7 +891,7 @@ export const OitivaDetailModal: React.FC<OitivaDetailModalProps> = ({
                     </div>
                   </div>
 
-                  {/* PAINEL DE HISTÓRICO DE OITIVAS DESTA PESSOA */}
+                  {/* PAINEL DE HISTÓRICO ISOLADO DESTA OITIVA */}
                   <div className="bg-[#171326] p-3 rounded-2xl border border-purple-900/40 text-xs space-y-2">
                     <div className="flex items-center justify-between">
                       <div 
@@ -880,21 +900,21 @@ export const OitivaDetailModal: React.FC<OitivaDetailModalProps> = ({
                       >
                         <History className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
                         <span className="text-[11px] font-bold text-white uppercase tracking-wider truncate">
-                          Histórico desta Pessoa ({personHistory.timeline.length})
+                          Histórico Desta Oitiva ({oitivaHistoryItems.length})
                         </span>
                       </div>
 
                       <div className="flex items-center gap-1.5 shrink-0">
-                        {personHistory.timeline.length > 0 && (
+                        {oitivaHistoryItems.length > 0 && (
                           <button
-                            id="btn-clear-person-history"
+                            id="btn-clear-oitiva-history"
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
                               setShowClearHistoryConfirm(true);
                             }}
                             className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 hover:text-white border border-rose-600/50 hover:border-rose-400 text-[10px] font-bold transition-all cursor-pointer shadow-sm"
-                            title="Limpar todo o histórico de remarcações e alterações desta pessoa"
+                            title="Limpar o histórico de remarcações e alterações apenas desta oitiva"
                           >
                             <Trash2 className="w-3 h-3" />
                             <span>Limpar Histórico</span>
@@ -912,10 +932,16 @@ export const OitivaDetailModal: React.FC<OitivaDetailModalProps> = ({
                       </div>
                     </div>
 
+                    {otherOitivasForPerson.length > 0 && (
+                      <p className="text-[10px] text-zinc-400 pl-5">
+                        Nota: {otherOitivasForPerson.length} outro(s) agendamento(s) de "{oitiva.personName}" permanecem preservados e intactos.
+                      </p>
+                    )}
+
                     {showFullHistory && (
                       <div className="space-y-2 pt-1 border-t border-purple-900/30 max-h-48 overflow-y-auto pr-1">
-                        {personHistory.timeline.length > 0 ? (
-                          personHistory.timeline.map((item) => (
+                        {oitivaTimeline.length > 0 ? (
+                          oitivaTimeline.map((item) => (
                             <div key={item.id} className="p-2 rounded-xl bg-[#100c1e] border border-purple-900/30 text-[11px] space-y-0.5">
                               <div className="flex items-center justify-between text-zinc-400 text-[10px]">
                                 <span className="font-semibold text-purple-300">{item.action}</span>
@@ -928,7 +954,7 @@ export const OitivaDetailModal: React.FC<OitivaDetailModalProps> = ({
                             </div>
                           ))
                         ) : (
-                          <p className="text-[10px] text-zinc-400 py-2 text-center">Nenhum evento registrado no histórico.</p>
+                          <p className="text-[10px] text-zinc-400 py-2 text-center">Nenhum evento registrado no histórico desta oitiva.</p>
                         )}
                       </div>
                     )}
@@ -1178,14 +1204,14 @@ export const OitivaDetailModal: React.FC<OitivaDetailModalProps> = ({
         isLoading={isDeleting}
       />
 
-      {/* Modal de Confirmação para Limpeza de Histórico da Pessoa */}
+      {/* Modal de Confirmação para Limpeza de Histórico Desta Oitiva */}
       <ConfirmModal
         isOpen={showClearHistoryConfirm}
         onClose={() => setShowClearHistoryConfirm(false)}
         onConfirm={handleConfirmClearHistory}
-        title="Limpar Histórico da Pessoa?"
-        message={`Confirma a exclusão de todo o histórico de eventos, remarcações e intimações registradas para "${oitiva.personName}"? Os dados cadastrais da oitiva atual serão mantidos.`}
-        confirmText="Sim, Limpar Histórico"
+        title="Limpar Histórico Desta Oitiva?"
+        message={`Confirma a exclusão de todo o histórico de remarcações e alterações desta oitiva de "${oitiva.personName}" (Procedimento: ${oitiva.procedureNumber || 'S/N'})? Os dados cadastrais desta oitiva e quaisquer outros agendamentos cadastrados permanecerão totalmente intactos e preservados.`}
+        confirmText="Sim, Limpar Histórico Desta Oitiva"
         cancelText="Cancelar"
         isDestructive={true}
         isLoading={isClearingHistory}

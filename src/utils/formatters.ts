@@ -251,6 +251,7 @@ export interface OitivaScheduleAttempt {
   dateFormatted: string; // "10/08/2026"
   timeFormatted: string; // "09:30h"
   description?: string; // "Remarcado", "Ausência injustificada", etc.
+  observation?: string; // Observação específica da tentativa
   isCurrent?: boolean;
 }
 
@@ -430,6 +431,8 @@ export function extractOitivaScheduleAttempts(
       label = `${order}ª Notificação`;
     }
 
+    const obs = item.reason && item.reason !== 'Designação Atual' ? item.reason : undefined;
+
     return {
       order,
       label,
@@ -437,7 +440,8 @@ export function extractOitivaScheduleAttempts(
       time: item.time,
       dateFormatted: formatDateBR(item.date),
       timeFormatted: item.time ? `${item.time}h` : 'horário aprazado',
-      description: undefined,
+      description: obs,
+      observation: obs,
       isCurrent: item.isCurrent || idx === total - 1
     };
   });

@@ -18,6 +18,7 @@ import {
 } from 'firebase/database';
 import { db, rtdb, auth, handleFirestoreError, OperationType, executeFirestoreWithRetry } from '../firebase';
 import { Oitiva } from '../types/oitiva';
+import { formatDateBR } from '../utils/formatters';
 
 // Sanitiza payload para evitar valores undefined no Firestore
 function sanitizePayload<T extends Record<string, any>>(obj: T): Record<string, any> {
@@ -632,13 +633,112 @@ export const oitivaService = {
   },
 
   /**
-   * Limpa o histórico de eventos/remarcações de uma pessoa em suas oitivas
+   * Resgata a linha do tempo isolada e exclusiva de uma única oitiva (apenas os eventos desta oitiva).
+   * Previne misturar históricos de outras oitivas mesmo que sejam da mesma pessoa ou procedimento.
    */
-  async clearPersonHistory(personName: string, cpf?: string, currentUid?: string): Promise<void> {
+  getOitivaTimeline(oitiva: Oitiva): Array<{
+    id: string;
+    timestamp: number;
+    dateStr: string;
+    timeStr?: string;
+    action: string;
+    details: string;
+    procedureNumber?: string;
+    isInitial?: boolean;
+  }> {
+    if (!oitiva) return [];
+
+    const timeline: Array<{
+      id: string;
+      timestamp: number;
+      dateStr: string;
+      timeStr?: string;
+      action: string;
+      details: string;
+      procedureNumber?: string;
+      isInitial?: boolean;
+    }> = [];
+
+    // 1. Eventos registrados estritamente nesta oitiva
+    if (Array.isArray(oitiva.history)) {
+      oitiva.history.forEach(h => {
+        let actionLabel = 'Alteração';
+        if (h.action === 'remarcada') actionLabel = 'Oitiva Remarcada';
+        else if (h.action === 'data_alterada') actionLabel = 'Data Reagendada';
+        else if (h.action === 'intimacao_enviada') actionLabel = 'Intimação Notificada';
+        else if (h.action === 'status_alterado') actionLabel = 'Status Alterado';
+        else if (h.action === 'restaurada') actionLabel = 'Restaurada';
+
+        const prevDateFormatted = h.previousDate ? formatDateBR(h.previousDate) : 'data anterior';
+        const newDateFormatted = h.newDate ? formatDateBR(h.newDate) : formatDateBR(oitiva.date);
+
+        timeline.push({
+          id: h.id,
+          timestamp: h.timestamp || 0,
+          dateStr: h.newDate || h.previousDate || oitiva.date,
+          timeStr: h.newTime || h.previousTime || oitiva.time,
+          action: actionLabel,
+          details: h.reason 
+            ? `${h.reason} (De ${prevDateFormatted} para ${newDateFormatted})`
+            : `Alterada de ${prevDateFormatted} para ${newDateFormatted}`,
+          procedureNumber: oitiva.procedureNumber,
+          isInitial: false
+        });
+      });
+    }
+
+    // 2. Registro do agendamento original desta oitiva
+    timeline.push({
+      id: `initial_${oitiva.id}`,
+      timestamp: oitiva.createdAt || 0,
+      dateStr: oitiva.date,
+      timeStr: oitiva.time,
+      action: 'Agendamento Inicial',
+      details: `Oitiva agendada para ${formatDateBR(oitiva.date)} às ${oitiva.time ? `${oitiva.time}h` : '10:00h'} (${oitiva.modality || 'Presencial'})`,
+      procedureNumber: oitiva.procedureNumber,
+      isInitial: true
+    });
+
+    timeline.sort((a, b) => b.timestamp - a.timestamp);
+    return timeline;
+  },
+
+  /**
+   * Limpa ESTRITAMENTE o histórico de uma única oitiva específica (por ID).
+   * Garante isolamento absoluto:
+   * - Nunca altera o histórico de outras oitivas (mesmo da mesma pessoa)
+   * - Nunca exclui ou altera nenhuma outra oitiva do sistema
+   * - Preserva intactos todos os dados cadastrais (nome, data, hora, status, procedimento, observações)
+   */
+  async clearOitivaHistory(oitivaId: string, currentUid?: string): Promise<void> {
+    if (!oitivaId || typeof oitivaId !== 'string') {
+      throw new Error('ID da oitiva inválido para limpeza de histórico.');
+    }
+    const targetUid = resolveActiveUid(currentUid);
+
+    // Atualiza estritamente e exclusivamente a oitiva com este ID exato
+    await this.update(
+      oitivaId,
+      {
+        history: []
+      },
+      targetUid
+    );
+  },
+
+  /**
+   * Limpa o histórico com suporte a direcionamento estrito por oitivaId ou fallback seguro
+   */
+  async clearPersonHistory(personName: string, cpf?: string, currentUid?: string, specificOitivaId?: string): Promise<void> {
+    if (specificOitivaId) {
+      return this.clearOitivaHistory(specificOitivaId, currentUid);
+    }
     const targetUid = resolveActiveUid(currentUid);
     const list = getLocalCache(targetUid);
     const cleanName = (personName || '').trim().toLowerCase();
     const cleanCpf = (cpf || '').replace(/\D/g, '');
+
+    if (!cleanName && !cleanCpf) return;
 
     const matched = list.filter(o => {
       if (cleanCpf && o.cpf) {

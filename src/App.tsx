@@ -326,16 +326,38 @@ export default function App() {
     }
   };
 
-  const handleClearPersonHistory = async (personName: string, cpf?: string) => {
+  const handleClearOitivaHistory = async (oitivaId: string) => {
+    try {
+      await oitivaService.clearOitivaHistory(oitivaId, user?.uid);
+      // Atualização atômica imediata no estado: estritamente para a oitiva limpa
+      setOitivas(prev => prev.map(o => o.id === oitivaId ? { ...o, history: [], updatedAt: Date.now() } : o));
+      if (selectedOitiva && selectedOitiva.id === oitivaId) {
+        setSelectedOitiva(prev => prev ? { ...prev, history: [], updatedAt: Date.now() } : null);
+      }
+      showToast('Histórico desta oitiva limpo com sucesso!');
+    } catch (err: any) {
+      console.error('Erro ao limpar histórico da oitiva:', err);
+      showToast('Erro ao limpar histórico da oitiva.', 'error');
+    }
+  };
+
+  const handleClearPersonHistory = async (personName: string, cpf?: string, specificOitivaId?: string) => {
+    if (specificOitivaId) {
+      await handleClearOitivaHistory(specificOitivaId);
+      return;
+    }
+    if (selectedOitiva?.id) {
+      await handleClearOitivaHistory(selectedOitiva.id);
+      return;
+    }
     try {
       await oitivaService.clearPersonHistory(personName, cpf, user?.uid);
-      showToast(`Histórico de "${personName}" limpo com sucesso!`);
-      // Forçar atualização do modal se estiver aberto
+      showToast(`Histórico limpo com sucesso!`);
       if (selectedOitiva) {
         setSelectedOitiva(prev => prev ? { ...prev, history: [] } : null);
       }
     } catch (err: any) {
-      showToast('Erro ao limpar histórico da pessoa.', 'error');
+      showToast('Erro ao limpar histórico.', 'error');
     }
   };
 
@@ -579,6 +601,7 @@ export default function App() {
         onDelete={handleDeleteOitiva}
         onStatusChange={handleStatusChange}
         onReschedule={handleRescheduleOitiva}
+        onClearOitivaHistory={handleClearOitivaHistory}
         onClearPersonHistory={handleClearPersonHistory}
         onToggleIntimationSent={handleToggleIntimationSent}
         onOpenPrint={() => setIsPrintModalOpen(true)}

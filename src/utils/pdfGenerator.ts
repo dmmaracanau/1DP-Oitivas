@@ -451,6 +451,7 @@ export interface TermoScheduleAttempt {
   dateFormatted: string;
   timeFormatted: string;
   description?: string;
+  observation?: string;
   isCurrent?: boolean;
 }
 
@@ -619,13 +620,27 @@ export async function generateTermoNaoComparecimentoPdf(data: TermoNaoComparecim
       boxTextY += 3.8;
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8.5);
-      doc.text(`• ${att.label}: ${att.dateFormatted} às ${att.timeFormatted}`, marginX + 5, boxTextY);
+      const obsStr = att.observation && att.observation.trim() ? ` - ${att.observation.trim()}` : '';
+      const lineText = `• ${att.label}: ${att.dateFormatted} às ${att.timeFormatted}${obsStr}`;
+      const wrappedLines: string[] = doc.splitTextToSize(lineText, contentWidth - 8);
+      wrappedLines.forEach((wLine: string, lineIdx: number) => {
+        if (lineIdx > 0) boxTextY += 3.5;
+        doc.text(wLine, marginX + 5, boxTextY);
+      });
     });
   } else {
     boxTextY += 4.2;
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8.5);
-    doc.text(`Data e Horário Designados: ${data.dateFormatted} às ${timeDisplay}`, marginX + 3, boxTextY);
+    const singleObs = attempts[0]?.observation && attempts[0].observation.trim() 
+      ? ` - ${attempts[0].observation.trim()}` 
+      : '';
+    const lineText = `Data e Horário Designados: ${data.dateFormatted} às ${timeDisplay}${singleObs}`;
+    const wrappedLines: string[] = doc.splitTextToSize(lineText, contentWidth - 6);
+    wrappedLines.forEach((wLine: string, lineIdx: number) => {
+      if (lineIdx > 0) boxTextY += 3.8;
+      doc.text(wLine, marginX + 3, boxTextY);
+    });
   }
 
   const boxHeight = (boxTextY - boxStartY) + 3.5;

@@ -97,6 +97,7 @@ export const TermoNaoComparecimentoModal: React.FC<TermoNaoComparecimentoModalPr
   const [newAttemptDate, setNewAttemptDate] = useState('');
   const [newAttemptTime, setNewAttemptTime] = useState('09:00');
   const [newAttemptReason, setNewAttemptReason] = useState('Remarcação anterior');
+  const [newAttemptObservation, setNewAttemptObservation] = useState('');
 
   // Motivo
   const [selectedMotivoCategoria, setSelectedMotivoCategoria] = useState<string>(MOTIVOS_PREDEFINIDOS[0].value);
@@ -190,6 +191,7 @@ export const TermoNaoComparecimentoModal: React.FC<TermoNaoComparecimentoModalPr
   const handleAddAttempt = () => {
     if (!newAttemptDate) return;
     const cleanTime = (newAttemptTime || '09:00').trim().replace(/h$/i, '');
+    const cleanObs = newAttemptObservation.trim() || undefined;
     const newEntry: OitivaScheduleAttempt = {
       order: scheduleAttempts.length + 1,
       label: `Notificação`,
@@ -197,6 +199,8 @@ export const TermoNaoComparecimentoModal: React.FC<TermoNaoComparecimentoModalPr
       time: cleanTime,
       dateFormatted: formatDateBR(newAttemptDate),
       timeFormatted: `${cleanTime}h`,
+      description: cleanObs,
+      observation: cleanObs,
       isCurrent: false
     };
 
@@ -219,7 +223,22 @@ export const TermoNaoComparecimentoModal: React.FC<TermoNaoComparecimentoModalPr
 
     setScheduleAttempts(reindexed);
     setNewAttemptDate('');
+    setNewAttemptTime('09:00');
+    setNewAttemptObservation('');
     setShowAddAttemptForm(false);
+  };
+
+  const handleUpdateAttemptObservation = (index: number, val: string) => {
+    setScheduleAttempts(prev => prev.map((item, idx) => {
+      if (idx === index) {
+        return {
+          ...item,
+          observation: val,
+          description: val || undefined
+        };
+      }
+      return item;
+    }));
   };
 
   const handleRemoveAttempt = (idxToRemove: number) => {
@@ -314,6 +333,7 @@ export const TermoNaoComparecimentoModal: React.FC<TermoNaoComparecimentoModalPr
         dateFormatted: att.dateFormatted,
         timeFormatted: att.timeFormatted,
         description: att.description,
+        observation: att.observation?.trim() || undefined,
         isCurrent: att.isCurrent
       })),
       termoDateFormatted: formatDateExtenso(termoDate),
@@ -364,8 +384,8 @@ export const TermoNaoComparecimentoModal: React.FC<TermoNaoComparecimentoModalPr
     const data = buildPdfData();
     const attemptsSummary = scheduleAttempts.length > 1
       ? `DATAS E HORÁRIOS DESIGNADOS (${scheduleAttempts.length} tentativas de notificação/agendamento):\n` +
-        scheduleAttempts.map(a => `• ${a.label}: ${a.dateFormatted} às ${a.timeFormatted}${a.description ? ` (${a.description})` : ''}`).join('\n')
-      : `Data e Horário Designados: ${data.dateFormatted} às ${data.timeFormatted}h`;
+        scheduleAttempts.map(a => `• ${a.label}: ${a.dateFormatted} às ${a.timeFormatted}${a.observation && a.observation.trim() ? ` - ${a.observation.trim()}` : ''}`).join('\n')
+      : `Data e Horário Designados: ${data.dateFormatted} às ${data.timeFormatted}h${scheduleAttempts[0]?.observation && scheduleAttempts[0].observation.trim() ? ` - ${scheduleAttempts[0].observation.trim()}` : ''}`;
 
     const textToCopy = `POLÍCIA CIVIL DO ESTADO DO CEARÁ
 1ª DELEGACIA METROPOLITANA DE MARACANAÚ
@@ -373,12 +393,12 @@ export const TermoNaoComparecimentoModal: React.FC<TermoNaoComparecimentoModalPr
 TERMO DE NÃO COMPARECIMENTO
 Procedimento: ${data.procedureRef}
 
-Aos ${data.termoDateFormatted}, nesta cidade de Maracanaú/CE, no Cartório da 1ª Delegacia Metropolitana de Maracanaú, sob a presidência do(a) Delegado(a) de Polícia Civil ${data.dpcName.toUpperCase()} (${data.dpcMatricula || 'DPC'}), com a presença do(a) Oficial de Investigação Policial (OIP) adiante assinado(a), foi formalmente CERTIFICADA A AUSÊNCIA E NÃO COMPARECIMENTO da pessoa de ${data.personName.toUpperCase()}, CPF: ${data.cpf || 'Não informado'}, qualificada como ${data.role}.
+Aos ${data.termoDateFormatted}, nesta cidade de Maracanaú/CE, no Cartório da 1ª Delegacia Metropolitana de MaracanaÚ, sob a presidência do(a) Delegado(a) de Polícia Civil ${data.dpcName.toUpperCase()} (${data.dpcMatricula || 'DPC'}), com a presença do(a) Oficial de Investigação Policial (OIP) adiante assinado(a), foi formalmente CERTIFICADA A AUSÊNCIA E NÃO COMPARECIMENTO da pessoa de ${data.personName.toUpperCase()}, CPF: ${data.cpf || 'Não informado'}, qualificada como ${data.role}.
 
 ${scheduleAttempts.length > 1
   ? `DATAS DESIGNADAS (${scheduleAttempts.length} Notificações):\n` +
-    scheduleAttempts.map(a => `• ${a.label}: ${a.dateFormatted} às ${a.timeFormatted}`).join('\n')
-  : `Data e Horário Designados: ${data.dateFormatted} às ${data.timeFormatted}h`}
+    scheduleAttempts.map(a => `• ${a.label}: ${a.dateFormatted} às ${a.timeFormatted}${a.observation && a.observation.trim() ? ` - ${a.observation.trim()}` : ''}`).join('\n')
+  : `Data e Horário Designados: ${data.dateFormatted} às ${data.timeFormatted}h${scheduleAttempts[0]?.observation && scheduleAttempts[0].observation.trim() ? ` - ${scheduleAttempts[0].observation.trim()}` : ''}`}
 
 MOTIVO / CIRCUNSTÂNCIAS:
 ${data.motivoCategoria}
@@ -486,33 +506,54 @@ ${data.dpcMatricula ? `Mat. ${data.dpcMatricula}` : ''}                     ${da
                 </span>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 {scheduleAttempts.map((att, idx) => (
                   <div 
                     key={idx}
-                    className="flex items-center justify-between p-2.5 rounded-xl border bg-[#120d20] border-purple-900/30 transition-all"
+                    className="p-3 rounded-xl border bg-[#120d20] border-purple-900/40 hover:border-purple-700/60 transition-all space-y-2"
                   >
-                    <div className="flex items-center gap-2.5">
-                      <span className="w-6 h-6 rounded-lg flex items-center justify-center font-black text-[10px] bg-purple-600/30 text-purple-200 border border-purple-500/30">
-                        {att.order}ª
-                      </span>
-                      <div>
-                        <span className="font-bold text-white text-xs">
-                          {att.label}: {att.dateFormatted} às {att.timeFormatted}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <span className="w-6 h-6 rounded-lg flex items-center justify-center font-black text-[10px] bg-purple-600/30 text-purple-200 border border-purple-500/30">
+                          {att.order}ª
                         </span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-white text-xs">
+                            {att.label}: {att.dateFormatted} às {att.timeFormatted}
+                          </span>
+                          {att.isCurrent && (
+                            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-500/40">
+                              Atual
+                            </span>
+                          )}
+                        </div>
                       </div>
+
+                      {scheduleAttempts.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveAttempt(idx)}
+                          className="p-1.5 text-zinc-400 hover:text-rose-300 hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer"
+                          title="Remover esta data do termo"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
 
-                    {scheduleAttempts.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveAttempt(idx)}
-                        className="p-1.5 text-zinc-400 hover:text-rose-300 hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer"
-                        title="Remover esta data do termo"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
+                    {/* Input de Observação para esta notificação designada */}
+                    <div className="flex items-center gap-2 pt-1 border-t border-purple-900/30">
+                      <label className="text-[10px] font-bold text-purple-300 uppercase tracking-wider shrink-0 flex items-center gap-1">
+                        <span>Observação:</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={att.observation || ''}
+                        onChange={(e) => handleUpdateAttemptObservation(idx, e.target.value)}
+                        placeholder="Ex: Mandado entregue via WhatsApp, ausente sem justificativa, viagem informada..."
+                        className="w-full bg-[#0a0714] border border-purple-800/40 hover:border-purple-600/70 focus:border-purple-400 rounded-lg px-2.5 py-1 text-xs text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-purple-400/50 transition-all"
+                      />
+                    </div>
                   </div>
                 ))}
               </div>
@@ -528,7 +569,7 @@ ${data.dpcMatricula ? `Mat. ${data.dpcMatricula}` : ''}                     ${da
                   <span>Adicionar Data de Notificação</span>
                 </button>
               ) : (
-                <div className="bg-[#120d20] p-3 rounded-xl border border-purple-700/60 space-y-2 mt-2">
+                <div className="bg-[#120d20] p-3 rounded-xl border border-purple-700/60 space-y-2.5 mt-2">
                   <span className="text-[10px] font-bold text-purple-300 block uppercase">
                     Adicionar Data de Notificação:
                   </span>
@@ -552,11 +593,24 @@ ${data.dpcMatricula ? `Mat. ${data.dpcMatricula}` : ''}                     ${da
                       />
                     </div>
                   </div>
+                  <div>
+                    <label className="block text-[9px] text-zinc-400 mb-0.5">Observação (opcional):</label>
+                    <input 
+                      type="text"
+                      value={newAttemptObservation}
+                      onChange={(e) => setNewAttemptObservation(e.target.value)}
+                      placeholder="Ex: Mandado entregue à genitora, 1ª tentativa frustrada..."
+                      className="w-full bg-[#0a0714] border border-purple-700/70 rounded-lg px-2.5 py-1 text-xs text-white placeholder-zinc-500"
+                    />
+                  </div>
                   <div className="flex items-center gap-2 justify-end pt-1">
                     <button
                       type="button"
-                      onClick={() => setShowAddAttemptForm(false)}
-                      className="px-2.5 py-1 text-[11px] text-zinc-400 hover:text-zinc-200"
+                      onClick={() => {
+                        setShowAddAttemptForm(false);
+                        setNewAttemptObservation('');
+                      }}
+                      className="px-2.5 py-1 text-[11px] text-zinc-400 hover:text-zinc-200 cursor-pointer"
                     >
                       Cancelar
                     </button>
@@ -836,6 +890,9 @@ ${data.dpcMatricula ? `Mat. ${data.dpcMatricula}` : ''}                     ${da
                           <span>
                             • <strong className="font-semibold">{att.label}: </strong>
                             {att.dateFormatted} às {att.timeFormatted}
+                            {att.observation && att.observation.trim() ? (
+                              <span className="text-zinc-800 font-normal"> - {att.observation.trim()}</span>
+                            ) : null}
                           </span>
                         </div>
                       ))}
@@ -843,6 +900,9 @@ ${data.dpcMatricula ? `Mat. ${data.dpcMatricula}` : ''}                     ${da
                   ) : (
                     <div className="text-[9.5px] text-black">
                       <span className="font-bold">{formatDateExtenso(oitiva.date)}</span> às <span className="font-bold">{oitiva.time ? `${oitiva.time}h` : 'horário aprazado'}</span>
+                      {scheduleAttempts[0]?.observation && scheduleAttempts[0].observation.trim() ? (
+                        <span className="text-zinc-800 font-normal"> - {scheduleAttempts[0].observation.trim()}</span>
+                      ) : null}
                     </div>
                   )}
                 </div>
