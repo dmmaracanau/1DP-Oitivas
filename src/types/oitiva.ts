@@ -97,6 +97,7 @@ export interface UserProfile {
   updatedAt?: number;
   passwordHash?: string;
   oitivasCount?: number; // Contagem estimada de oitivas vinculadas
+  preferredTheme?: 'dark' | 'light'; // Preferência de tema sincronizada entre dispositivos na nuvem
 }
 
 export interface DuplicateUserGroup {

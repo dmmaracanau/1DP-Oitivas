@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { UserProfile, DuplicateUserGroup, MergeUsersResult } from '../types/oitiva';
 import { authService } from '../services/authService';
+import { ConfirmModal } from './ConfirmModal';
 
 interface UnifyDuplicatesModalProps {
   isOpen: boolean;
@@ -44,6 +45,8 @@ export const UnifyDuplicatesModal: React.FC<UnifyDuplicatesModalProps> = ({
   const [loadingCounts, setLoadingCounts] = useState<boolean>(false);
   const [merging, setMerging] = useState<boolean>(false);
   const [batchMerging, setBatchMerging] = useState<boolean>(false);
+  const [confirmBatchModal, setConfirmBatchModal] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [customOptions, setCustomOptions] = useState<{
     customDisplayName?: string;
     customUsername?: string;
@@ -106,11 +109,12 @@ export const UnifyDuplicatesModal: React.FC<UnifyDuplicatesModalProps> = ({
     if (!primaryUser) return;
     const secondaryUids = secondaryUsers.map(u => u.uid);
     if (secondaryUids.length === 0) {
-      alert("Selecione ao menos uma conta secundária para unificação.");
+      setErrorMessage("Selecione ao menos uma conta secundária para unificação.");
       return;
     }
 
     setMerging(true);
+    setErrorMessage(null);
     try {
       const result: MergeUsersResult = await authService.mergeDuplicateUsers(
         primaryUser.uid, 
@@ -127,19 +131,21 @@ export const UnifyDuplicatesModal: React.FC<UnifyDuplicatesModalProps> = ({
         setSelectedGroupIndex(0);
       }
     } catch (err: any) {
-      alert("Erro durante a unificação: " + (err.message || 'Erro desconhecido'));
+      setErrorMessage("Erro durante a unificação: " + (err.message || 'Erro desconhecido'));
     } finally {
       setMerging(false);
     }
   };
 
-  // Executar unificação de TODOS os grupos duplicados automaticamente
-  const handleBatchMergeAll = async () => {
-    if (!window.confirm(`Deseja unificar automaticamente todos os ${duplicateGroups.length} grupos de usuários duplicados identificados? Todas as oitivas serão preservadas nas contas principais.`)) {
-      return;
-    }
+  // Abrir confirmação in-app para unificação de TODOS os grupos duplicados
+  const handleBatchMergeAll = () => {
+    setConfirmBatchModal(true);
+  };
 
+  const confirmAndExecuteBatchMerge = async () => {
+    setConfirmBatchModal(false);
     setBatchMerging(true);
+    setErrorMessage(null);
     try {
       const res = await authService.unifyAllDuplicates(duplicateGroups);
       onUnificationComplete(
@@ -147,7 +153,7 @@ export const UnifyDuplicatesModal: React.FC<UnifyDuplicatesModalProps> = ({
       );
       onClose();
     } catch (err: any) {
-      alert("Erro na unificação em lote: " + (err.message || 'Erro desconhecido'));
+      setErrorMessage("Erro na unificação em lote: " + (err.message || 'Erro desconhecido'));
     } finally {
       setBatchMerging(false);
     }
@@ -218,6 +224,21 @@ export const UnifyDuplicatesModal: React.FC<UnifyDuplicatesModalProps> = ({
 
         {/* Modal Body */}
         <div className="p-5 sm:p-6 space-y-6 overflow-y-auto flex-1">
+          {errorMessage && (
+            <div className="p-3.5 bg-rose-500/15 border border-rose-500/40 rounded-xl flex items-center justify-between text-rose-300 text-xs">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                <span>{errorMessage}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setErrorMessage(null)}
+                className="text-rose-400 hover:text-rose-200 ml-2"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
           
           {/* Group Match Summary Card */}
           <div className="bg-[#18122d] border border-amber-500/40 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -446,6 +467,17 @@ export const UnifyDuplicatesModal: React.FC<UnifyDuplicatesModalProps> = ({
         </div>
 
       </div>
+
+      <ConfirmModal
+        isOpen={confirmBatchModal}
+        title="Unificar Todas as Contas Duplicadas?"
+        message={`Deseja unificar automaticamente todos os ${duplicateGroups.length} grupos de usuários duplicados identificados? Todas as oitivas serão preservadas nas contas principais.`}
+        confirmText="Sim, Unificar Todos"
+        cancelText="Voltar"
+        type="warning"
+        onConfirm={confirmAndExecuteBatchMerge}
+        onCancel={() => setConfirmBatchModal(false)}
+      />
     </div>
   );
 };

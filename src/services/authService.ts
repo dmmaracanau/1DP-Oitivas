@@ -445,6 +445,40 @@ export const authService = {
     return updatedProfile;
   },
 
+  // Sincroniza a preferência de tema (escuro/claro) do usuário na nuvem (Firestore e RTDB)
+  async updateUserThemePreference(theme: 'dark' | 'light'): Promise<void> {
+    const current = this.getCurrentUser();
+    if (!current?.uid) return;
+
+    current.preferredTheme = theme;
+    current.updatedAt = Date.now();
+
+    // 1. Atualiza cache local
+    try {
+      localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(current));
+    } catch (e) {
+      console.warn("Aviso ao salvar preferência de tema no cache local:", e);
+    }
+
+    // 2. Salva no Firestore
+    try {
+      const userRef = doc(db, USERS_COLLECTION, current.uid);
+      await setDoc(userRef, { preferredTheme: theme, updatedAt: Date.now() }, { merge: true });
+    } catch (err) {
+      console.warn("Aviso ao salvar preferência de tema no Firestore:", err);
+    }
+
+    // 3. Salva no RTDB
+    try {
+      if (rtdb && current.uid) {
+        const rRef = rtdbRef(rtdb, `users/${current.uid}/preferredTheme`);
+        await rtdbSet(rRef, theme);
+      }
+    } catch (err) {
+      console.warn("Aviso ao salvar preferência de tema no RTDB:", err);
+    }
+  },
+
   // Atualizar senha de acesso da conta
   async updateUserPassword(newPassword: string): Promise<void> {
     if (!newPassword) {
@@ -560,6 +594,7 @@ export const authService = {
       phone: existingData.phone || '(85) 3101-2830',
       department: existingData.department || 'Cartório de Oitivas',
       authProvider: 'google',
+      preferredTheme: (existingData.preferredTheme === 'light' || existingData.preferredTheme === 'dark') ? existingData.preferredTheme : undefined,
       updatedAt: Date.now()
     };
 
@@ -735,6 +770,7 @@ export const authService = {
           department: userDocData.department || 'Cartório de Oitivas',
           delegados: userDocData.delegados,
           authProvider: 'password',
+          preferredTheme: (userDocData.preferredTheme === 'light' || userDocData.preferredTheme === 'dark') ? userDocData.preferredTheme : undefined,
           updatedAt: Date.now()
         };
 

@@ -918,7 +918,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     }}
                     className={`flex items-center gap-2 p-2.5 rounded-xl border-2 transition-all text-left cursor-pointer ${
                       !isDark
-                        ? 'bg-purple-600 border-purple-300 text-white font-black shadow-md shadow-purple-950'
+                        ? 'bg-purple-200 border-purple-500 text-purple-950 font-black shadow-sm'
                         : 'bg-[#15112e] border-purple-700/60 text-purple-200 hover:text-white'
                     }`}
                   >

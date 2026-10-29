@@ -29,7 +29,9 @@ import {
   FileText,
   GitMerge,
   Layers,
-  HardDriveDownload
+  HardDriveDownload,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { UserProfile, DuplicateUserGroup, Oitiva, CalendarSpecialDate } from '../types/oitiva';
 import { authService } from '../services/authService';
@@ -80,7 +82,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   specialDates = [],
   onDataRestored
 }) => {
-  const { isDark } = useTheme();
+  const { isDark, theme, setTheme } = useTheme();
   const isAdminUser = user?.role === 'admin' || Boolean(user?.isAdmin);
 
   const [activeTab, setActiveTab] = useState<'functional' | 'account' | 'security' | 'backup_data' | 'admin_users'>('functional');
@@ -848,6 +850,54 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 </button>
               </div>
             )}
+
+            {/* Tema Visual Sincronizado na Nuvem */}
+            <div className={`p-4 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition-colors ${
+              isDark ? 'bg-[#181328] border-purple-900/40' : 'bg-slate-50 border-slate-200'
+            }`}>
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 ${
+                  isDark ? 'bg-purple-950/80 border-purple-500/40 text-purple-300' : 'bg-purple-100 border-purple-300 text-purple-950'
+                }`}>
+                  {isDark ? <Moon className="w-5 h-5 text-purple-400" /> : <Sun className="w-5 h-5 text-amber-500" />}
+                </div>
+                <div>
+                  <h3 className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    Identidade Visual (Tema Noturno / Modo Claro)
+                  </h3>
+                  <p className={`text-xs mt-0.5 ${isDark ? 'text-zinc-300' : 'text-slate-600'}`}>
+                    Sincronizado automaticamente com sua conta na nuvem. Sua escolha será lembrada em qualquer celular, computador ou navegador.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setTheme('dark')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                    theme === 'dark'
+                      ? 'bg-purple-900 text-white border-purple-400 shadow-md'
+                      : (isDark ? 'bg-[#100d1e] text-zinc-400 border-purple-900/40 hover:text-white' : 'bg-white text-slate-600 border-slate-300 hover:text-slate-900')
+                  }`}
+                >
+                  <Moon className="w-3.5 h-3.5 text-purple-400" />
+                  <span>Modo Noturno</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTheme('light')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                    theme === 'light'
+                      ? 'bg-amber-100 text-amber-950 border-amber-400 shadow-sm font-black'
+                      : (isDark ? 'bg-[#100d1e] text-zinc-400 border-purple-900/40 hover:text-white' : 'bg-white text-slate-600 border-slate-300 hover:text-slate-900')
+                  }`}
+                >
+                  <Sun className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Modo Claro</span>
+                </button>
+              </div>
+            </div>
 
             {/* Bottom Actions */}
             <div className="flex items-center justify-between pt-2">
