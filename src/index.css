@@ -148,3 +148,1018 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
 .mb-safe {
   margin-bottom: env(safe-area-inset-bottom, 0px);
 }
+
+/* ========================================================================= */
+/* MODO CLARO (LIGHT MODE) - POLÍCIA CIVIL / CARTÓRIO DIGITAL INSTITUCIONAL  */
+/* Arquitetura: Fundos pasteis suaves correspondentes + Texto 100% escuro   */
+/* ========================================================================= */
+
+html.light,
+body.light {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+  color-scheme: light !important;
+}
+
+/* Base borders and scrollbars */
+html.light * {
+  border-color: #cbd5e1;
+  scrollbar-color: #cbd5e1 #f1f5f9;
+}
+
+/* Scrollbars for Light Mode */
+html.light ::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+html.light ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+html.light ::-webkit-scrollbar-thumb:hover {
+  background: #a855f7;
+}
+
+/* Light Mode Date & Time Pickers */
+html.light input[type="date"],
+html.light input[type="time"],
+html.light input[type="datetime-local"] {
+  color-scheme: light !important;
+}
+
+html.light input[type="date"]::-webkit-calendar-picker-indicator,
+html.light input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: none !important;
+  opacity: 0.85;
+}
+
+html.light input[type="date"]::-webkit-calendar-picker-indicator:hover,
+html.light input[type="time"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+  filter: drop-shadow(0 0 2px rgba(124, 58, 237, 0.5)) !important;
+}
+
+/* 1. APP CANVAS, CONTAINERS & MAIN BACKGROUNDS */
+.light .min-h-screen.bg-\[\#09080E\],
+.light .bg-\[\#09080E\],
+.light .bg-\[\#0b0914\],
+.light .bg-\[\#0c0a14\],
+.light .bg-\[\#0c0a14\]\/98,
+.light .bg-\[\#0d091b\],
+.light .bg-\[\#0d091b\]\/98,
+.light .bg-\[\#0e0a1d\],
+.light .bg-\[\#0e0b17\],
+.light .bg-\[\#0d0b16\],
+.light .bg-\[\#0e0a1b\],
+.light .bg-\[\#0e0a1a\],
+.light .bg-\[\#0c0817\] {
+  background-color: #ffffff !important;
+}
+
+.light main {
+  background-color: #f8fafc !important;
+}
+
+/* 2. TOP HEADER AND MOBILE NAV */
+.light header {
+  background-color: #ffffff !important;
+  border-bottom: 2px solid #e2e8f0 !important;
+  box-shadow: 0 4px 14px -2px rgba(15, 23, 42, 0.05) !important;
+}
+
+.light header h1 {
+  color: #0f172a !important;
+}
+
+.light #mobile-bottom-nav-bar {
+  background-color: #ffffff !important;
+  border-top: 2px solid #e2e8f0 !important;
+  box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.06) !important;
+}
+
+/* User profile button in Navbar */
+.light #btn-open-my-profile {
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+}
+
+.light #btn-open-my-profile:hover {
+  background-color: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+}
+
+/* Theme Toggle Buttons */
+.light #theme-toggle-btn {
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #3b0764 !important;
+}
+
+.light #theme-toggle-btn:hover {
+  background-color: #ede9fe !important;
+  border-color: #a855f7 !important;
+}
+
+.light #mobile-theme-toggle-btn {
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #3b0764 !important;
+}
+
+/* Search bar in Navbar */
+.light #desktop-search-input,
+.light #mobile-search-bar,
+.light .bg-\[\#16102a\] {
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+/* Action buttons in Navbar (Workspace, Delegados, Pauta, Backup) */
+.light #google-workspace-nav-btn,
+.light #delegados-nav-btn,
+.light #print-pauta-btn,
+.light #export-backup-nav-btn {
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+.light #google-workspace-nav-btn *,
+.light #delegados-nav-btn *,
+.light #print-pauta-btn *,
+.light #export-backup-nav-btn * {
+  color: #0f172a !important;
+}
+
+.light #admin-holidays-nav-btn {
+  background-color: #fee2e2 !important;
+  border-color: #ef4444 !important;
+  color: #991b1b !important;
+}
+
+.light #admin-holidays-nav-btn * {
+  color: #991b1b !important;
+}
+
+/* 3. OITIVA CARDS (AGENDADA, REALIZADA, REMARCADA, NÃO COMPARECEU, CANCELADA, FERIADOS) */
+
+/* Agendada (Padrão) */
+.light .bg-\[\#1e1338\],
+.light .bg-\[\#19112e\],
+.light .bg-\[\#281a4b\],
+.light .hover\:bg-\[\#281a4b\]:hover {
+  background-color: #ffffff !important;
+  border-color: #c084fc !important;
+  color: #0f172a !important;
+  box-shadow: 0 2px 8px rgba(147, 51, 234, 0.08) !important;
+}
+
+/* Realizada (Concluída) */
+.light .bg-\[\#082216\],
+.light .bg-\[\#062417\],
+.light .bg-\[\#0c3624\],
+.light .hover\:bg-\[\#0c3624\]:hover {
+  background-color: #f0fdf4 !important;
+  border-color: #34d399 !important;
+  color: #064e3b !important;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.08) !important;
+}
+
+/* Remarcada */
+.light .bg-\[\#261906\],
+.light .bg-\[\#291b05\],
+.light .bg-\[\#3d2908\],
+.light .hover\:bg-\[\#3d2908\]:hover {
+  background-color: #fefce8 !important;
+  border-color: #facc15 !important;
+  color: #713f12 !important;
+  box-shadow: 0 2px 8px rgba(234, 179, 8, 0.08) !important;
+}
+
+/* Não Compareceu (Falta) */
+.light .bg-\[\#291008\],
+.light .bg-\[\#2f1007\],
+.light .bg-\[\#43170a\],
+.light .hover\:bg-\[\#43170a\]:hover {
+  background-color: #fff7ed !important;
+  border-color: #fb923c !important;
+  color: #7c2d12 !important;
+  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.08) !important;
+}
+
+/* Cancelada */
+.light .bg-\[\#250811\],
+.light .bg-\[\#290812\],
+.light .bg-\[\#3d0c1b\],
+.light .hover\:bg-\[\#3d0c1b\]:hover {
+  background-color: #fff1f2 !important;
+  border-color: #f43f5e !important;
+  color: #881337 !important;
+  box-shadow: 0 2px 8px rgba(244, 63, 94, 0.08) !important;
+}
+
+/* Feriados & Datas Especiais */
+.light .bg-\[\#240810\],
+.light .bg-\[\#340c18\],
+.light .bg-\[\#380b19\],
+.light .bg-\[\#2b0c16\],
+.light .bg-\[\#3d1220\],
+.light .hover\:bg-\[\#340c18\]:hover,
+.light .hover\:bg-\[\#380b19\]:hover,
+.light .hover\:bg-\[\#3d1220\]:hover {
+  background-color: #fef2f2 !important;
+  border-color: #f87171 !important;
+  color: #991b1b !important;
+}
+
+/* 4. ELEMENTOS INTERNOS DOS CARDS DE OITIVAS */
+
+/* Nome da pessoa no card (100% escuro e nítido) */
+.light .bg-\[\#1e1338\] h3,
+.light .bg-\[\#1e1338\] h4,
+.light .bg-\[\#1e1338\] p,
+.light .bg-\[\#19112e\] h3,
+.light .bg-\[\#19112e\] h4,
+.light .bg-\[\#19112e\] p {
+  color: #0f172a !important;
+}
+
+.light .bg-\[\#082216\] h3,
+.light .bg-\[\#082216\] h4,
+.light .bg-\[\#082216\] p,
+.light .bg-\[\#062417\] h3,
+.light .bg-\[\#062417\] h4,
+.light .bg-\[\#062417\] p {
+  color: #064e3b !important;
+}
+
+.light .bg-\[\#261906\] h3,
+.light .bg-\[\#261906\] h4,
+.light .bg-\[\#261906\] p,
+.light .bg-\[\#291b05\] h3,
+.light .bg-\[\#291b05\] h4,
+.light .bg-\[\#291b05\] p {
+  color: #713f12 !important;
+}
+
+.light .bg-\[\#291008\] h3,
+.light .bg-\[\#291008\] h4,
+.light .bg-\[\#291008\] p,
+.light .bg-\[\#2f1007\] h3,
+.light .bg-\[\#2f1007\] h4,
+.light .bg-\[\#2f1007\] p {
+  color: #7c2d12 !important;
+}
+
+.light .bg-\[\#250811\] h3,
+.light .bg-\[\#250811\] h4,
+.light .bg-\[\#250811\] p,
+.light .bg-\[\#290812\] h3,
+.light .bg-\[\#290812\] h4,
+.light .bg-\[\#290812\] p {
+  color: #881337 !important;
+}
+
+/* Badge de Horário (Clock) nos cards */
+.light .bg-black\/85,
+.light .bg-black\/80,
+.light .bg-black\/70,
+.light .bg-black\/60 {
+  background-color: #fef3c7 !important;
+  color: #78350f !important;
+  border: 1.5px solid #f59e0b !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+.light .bg-black\/85 span,
+.light .bg-black\/80 span,
+.light .bg-black\/85 svg,
+.light .bg-black\/80 svg,
+.light .bg-black\/70 span,
+.light .bg-black\/70 svg {
+  color: #78350f !important;
+}
+
+/* Chips de informação secundária no card (Procedimento, Modalidade, etc) */
+.light .bg-black\/50 {
+  background-color: #f1f5f9 !important;
+  color: #1e293b !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+.light .bg-black\/50 span,
+.light .bg-black\/50 svg {
+  color: #1e293b !important;
+}
+
+.light .bg-black\/60.text-white\/90 {
+  background-color: #f1f5f9 !important;
+  color: #1e293b !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+/* 5. FORMULÁRIO DE OITIVA (OITIVAMODAL) & MODAL DE DETALHES */
+
+/* Container dos Modais */
+.light .bg-\[\#120f1e\],
+.light .bg-\[\#110d1e\],
+.light .bg-\[\#161226\],
+.light .bg-\[\#161026\],
+.light .bg-\[\#161128\],
+.light .bg-\[\#161129\],
+.light .bg-\[\#16102b\],
+.light .bg-\[\#151025\],
+.light .bg-\[\#151124\],
+.light .bg-\[\#151024\],
+.light .bg-\[\#181328\],
+.light .bg-\[\#181329\],
+.light .bg-\[\#1a142c\],
+.light .bg-\[\#120d22\],
+.light .bg-\[\#100d1e\],
+.light .bg-\[\#130f22\],
+.light .bg-\[\#140f23\],
+.light .bg-\[\#161228\],
+.light .bg-\[\#171228\],
+.light .bg-\[\#18122d\],
+.light .bg-\[\#20173d\],
+.light .bg-\[\#1f183d\],
+.light .bg-\[\#120a24\],
+.light .bg-\[\#180810\],
+.light .bg-\[\#1b152d\],
+.light .bg-\[\#100D1B\],
+.light .bg-\[\#1a1230\],
+.light .bg-\[\#150f28\],
+.light .bg-\[\#1e1638\],
+.light .bg-\[\#221740\],
+.light .bg-\[\#151028\],
+.light .bg-\[\#18112e\],
+.light .bg-\[\#110c22\],
+.light .bg-\[\#160f2a\],
+.light .bg-\[\#140f26\],
+.light .bg-\[\#0b141a\],
+.light .bg-\[\#0e0a19\],
+.light .bg-\[\#171229\],
+.light .bg-\[\#151f28\] {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+/* Header dos modais */
+.light .bg-\[\#161226\],
+.light .bg-\[\#161026\],
+.light .bg-\[\#161128\],
+.light .bg-\[\#161129\],
+.light .bg-\[\#16102b\] {
+  background-color: #f8fafc !important;
+  border-bottom: 2px solid #e2e8f0 !important;
+}
+
+/* Navegador de seções (OitivaModal) */
+.light .bg-\[\#140f23\] {
+  background-color: #f1f5f9 !important;
+  border-bottom: 2px solid #e2e8f0 !important;
+}
+
+.light .bg-\[\#1d1633\] {
+  background-color: #faf5ff !important;
+  border-color: #d8b4fe !important;
+  color: #4c1d95 !important;
+}
+
+.light .bg-\[\#11241f\] {
+  background-color: #f0fdf4 !important;
+  border-color: #a7f3d0 !important;
+  color: #064e3b !important;
+}
+
+.light .bg-\[\#261d11\] {
+  background-color: #fffbeb !important;
+  border-color: #fde68a !important;
+  color: #78350f !important;
+}
+
+/* BLOCO 1: DEPOENTE / PESSOA (TEMA ROXO/VIOLETA SUAVE) */
+.light .bg-\[\#15102a\]\/85,
+.light .bg-\[\#15102a\] {
+  background-color: #faf5ff !important;
+  border: 2px solid #d8b4fe !important;
+  box-shadow: 0 4px 14px rgba(147, 51, 234, 0.05) !important;
+}
+
+/* BLOCO 2: DATA, HORA & LOCAL (TEMA VERDE/ESMERALDA SUAVE) */
+.light .bg-\[\#0c1e19\]\/85,
+.light .bg-\[\#0c1e19\],
+.light .bg-\[\#0f1f1a\] {
+  background-color: #f0fdf4 !important;
+  border: 2px solid #86efac !important;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.05) !important;
+}
+
+/* BLOCO 3: PROCEDIMENTO POLICIAL & DPC (TEMA ÂMBAR/DOURADO SUAVE) */
+.light .bg-\[\#1f170b\]\/85,
+.light .bg-\[\#1f170b\],
+.light .bg-\[\#1f170e\] {
+  background-color: #fffbeb !important;
+  border: 2px solid #fde68a !important;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.05) !important;
+}
+
+/* Demais blocos de detalhes e cards internos */
+.light .bg-\[\#151128\],
+.light .bg-\[\#171326\],
+.light .bg-\[\#1a142e\],
+.light .bg-\[\#1c1232\] {
+  background-color: #f8fafc !important;
+  border: 2px solid #e2e8f0 !important;
+}
+
+.light .bg-\[\#100d1e\],
+.light .bg-\[\#110d1e\],
+.light .bg-\[\#100c1e\],
+.light .bg-\[\#110b20\] {
+  background-color: #ffffff !important;
+  border: 1.5px solid #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+/* Inputs, Textareas e Selects em Todo o Sistema (Fundo Branco, Texto Preto, Borda Cinza) */
+.light input[type="text"],
+.light input[type="email"],
+.light input[type="password"],
+.light input[type="number"],
+.light input[type="tel"],
+.light input[type="date"],
+.light input[type="time"],
+.light input[type="datetime-local"],
+.light textarea,
+.light select,
+.light .bg-\[\#0d091d\],
+.light .bg-\[\#081512\],
+.light .bg-\[\#130e06\],
+.light .bg-\[\#100b22\],
+.light .bg-\[\#110d1e\],
+.light .bg-\[\#110b20\] {
+  background-color: #ffffff !important;
+  border: 2px solid #cbd5e1 !important;
+  color: #0f172a !important;
+  font-weight: 600 !important;
+}
+
+.light input::placeholder,
+.light textarea::placeholder {
+  color: #64748b !important;
+  font-weight: 400 !important;
+}
+
+.light input:focus,
+.light textarea:focus,
+.light select:focus {
+  border-color: #7c3aed !important;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.18) !important;
+}
+
+/* Botões de Condição / Papel (Testemunha, Vítima, etc.) */
+.light .bg-\[\#100b22\] {
+  background-color: #f8fafc !important;
+  color: #1e293b !important;
+  border: 1.5px solid #cbd5e1 !important;
+}
+
+.light .bg-\[\#100b22\]:hover {
+  background-color: #ede9fe !important;
+  border-color: #a855f7 !important;
+  color: #3b0764 !important;
+}
+
+/* 6. HIERARQUIA TIPOGRÁFICA E TEXTO 100% ESCURO NO MODO CLARO */
+
+/* REGRA UNIVERSAL: No modo claro TODO texto é escuro, sem exceções */
+.light .text-white,
+.light .text-white-force,
+.light .text-zinc-100,
+.light .text-zinc-200 {
+  color: #0f172a !important;
+}
+
+.light label {
+  color: #0f172a !important;
+  font-weight: 700 !important;
+}
+
+.light h1,
+.light h2,
+.light h3,
+.light h4,
+.light h5,
+.light h6 {
+  color: #0f172a !important;
+}
+
+.light .text-zinc-300,
+.light .text-zinc-400 {
+  color: #334155 !important;
+}
+
+.light .text-zinc-500,
+.light .text-zinc-600 {
+  color: #475569 !important;
+}
+
+/* Cores de texto semânticas convertidas para tons escuros e de alto contraste */
+.light .text-purple-100,
+.light .text-purple-200,
+.light .text-purple-300,
+.light .text-purple-300\/80,
+.light .text-purple-300\/70,
+.light .text-purple-300\/90,
+.light .text-purple-400 {
+  color: #4c1d95 !important;
+  font-weight: 700 !important;
+}
+
+.light .text-purple-500,
+.light .text-purple-600 {
+  color: #581c87 !important;
+}
+
+/* ÂMBAR / AMARELO / DOURADO: Nunca amarelo claro; 100% castanho escuro / preto com contraste total */
+.light .text-amber-100,
+.light .text-amber-200,
+.light .text-amber-300,
+.light .text-amber-400,
+.light .text-amber-500,
+.light .text-amber-600,
+.light .text-yellow-100,
+.light .text-yellow-200,
+.light .text-yellow-300,
+.light .text-yellow-400,
+.light .text-yellow-500,
+.light .text-yellow-600 {
+  color: #451a03 !important;
+  font-weight: 800 !important;
+}
+
+/* LARANJA: Castanho alaranjado profundo / escuro */
+.light .text-orange-100,
+.light .text-orange-200,
+.light .text-orange-300,
+.light .text-orange-400,
+.light .text-orange-500,
+.light .text-orange-600 {
+  color: #7c2d12 !important;
+  font-weight: 800 !important;
+}
+
+/* VERDE ESMERALDA */
+.light .text-emerald-100,
+.light .text-emerald-200,
+.light .text-emerald-300,
+.light .text-emerald-400,
+.light .text-emerald-500 {
+  color: #064e3b !important;
+  font-weight: 700 !important;
+}
+
+/* VERMELHO / ROSE */
+.light .text-rose-100,
+.light .text-rose-200,
+.light .text-rose-300,
+.light .text-rose-400,
+.light .text-red-100,
+.light .text-red-200,
+.light .text-red-300,
+.light .text-red-400,
+.light .text-red-500 {
+  color: #881337 !important;
+  font-weight: 700 !important;
+}
+
+/* AZUL */
+.light .text-blue-100,
+.light .text-blue-200,
+.light .text-blue-300,
+.light .text-blue-400,
+.light .text-blue-500 {
+  color: #1e3a8a !important;
+  font-weight: 700 !important;
+}
+
+/* CIANO */
+.light .text-cyan-100,
+.light .text-cyan-200,
+.light .text-cyan-300,
+.light .text-cyan-400 {
+  color: #0e7490 !important;
+  font-weight: 700 !important;
+}
+
+/* 7. BOTÕES DE AÇÃO: FUNDOS PASTÉIS SUAVES + TEXTO ESCURO NÍTIDO */
+
+/* "Salvar Alterações" / "Salvar Oitiva" / "Salvar Perfil" */
+.light #btn-save-oitiva-header,
+.light #btn-save-oitiva-footer,
+.light #btn-save-profile,
+.light button[id*="save"],
+.light button[id*="salvar"] {
+  background: #bbf7d0 !important;
+  background-image: none !important;
+  border: 2px solid #16a34a !important;
+  color: #022c22 !important;
+  font-weight: 900 !important;
+  box-shadow: 0 2px 6px rgba(22, 163, 74, 0.2) !important;
+}
+
+.light #btn-save-oitiva-header *,
+.light #btn-save-oitiva-footer *,
+.light #btn-save-profile *,
+.light button[id*="save"] *,
+.light button[id*="salvar"] * {
+  color: #022c22 !important;
+  font-weight: 900 !important;
+}
+
+.light #btn-save-oitiva-header:hover,
+.light #btn-save-oitiva-footer:hover,
+.light #btn-save-profile:hover,
+.light button[id*="save"]:hover,
+.light button[id*="salvar"]:hover {
+  background: #86efac !important;
+  border-color: #15803d !important;
+}
+
+/* Botões com gradiente roxo/índigo adaptados para pastel */
+.light button.bg-gradient-to-r.from-purple-600,
+.light button.bg-gradient-to-r.from-purple-700,
+.light button.bg-gradient-to-r.from-indigo-600,
+.light button[class*="from-purple-600"],
+.light button[class*="from-indigo-600"] {
+  background: #ede9fe !important;
+  background-image: none !important;
+  border: 2px solid #a855f7 !important;
+  color: #3b0764 !important;
+  font-weight: 800 !important;
+}
+
+.light button.bg-gradient-to-r.from-purple-600 *,
+.light button.bg-gradient-to-r.from-purple-700 *,
+.light button.bg-gradient-to-r.from-indigo-600 *,
+.light button[class*="from-purple-600"] *,
+.light button[class*="from-indigo-600"] * {
+  color: #3b0764 !important;
+  font-weight: 800 !important;
+}
+
+/* "Nova Oitiva" */
+.light #header-new-oitiva-btn,
+.light #mobile-btn-nova-oitiva,
+.light [id*="nova-oitiva"] {
+  background: #ede9fe !important;
+  background-image: none !important;
+  border: 2px solid #a855f7 !important;
+  color: #3b0764 !important;
+  box-shadow: 0 2px 6px rgba(168, 85, 247, 0.2) !important;
+}
+
+.light #header-new-oitiva-btn *,
+.light #mobile-btn-nova-oitiva *,
+.light [id*="nova-oitiva"] * {
+  color: #3b0764 !important;
+  font-weight: 800 !important;
+}
+
+.light #header-new-oitiva-btn:hover,
+.light #mobile-btn-nova-oitiva:hover,
+.light [id*="nova-oitiva"]:hover {
+  background: #ddd6fe !important;
+  border-color: #9333ea !important;
+}
+
+/* WhatsApp */
+.light button[class*="from-emerald-"],
+.light [id*="whatsapp"] {
+  background: #d1fae5 !important;
+  background-image: none !important;
+  border: 2px solid #10b981 !important;
+  color: #064e3b !important;
+}
+
+.light button[class*="from-emerald-"] *,
+.light [id*="whatsapp"] * {
+  color: #064e3b !important;
+}
+
+/* Termo de Não Comparecimento / Botões Vermelhos */
+.light button[class*="from-rose-"],
+.light button[class*="from-red-"] {
+  background: #fee2e2 !important;
+  background-image: none !important;
+  border: 2px solid #ef4444 !important;
+  color: #991b1b !important;
+}
+
+.light button[class*="from-rose-"] *,
+.light button[class*="from-red-"] * {
+  color: #991b1b !important;
+}
+
+/* Remarcar / Pauta */
+.light button[class*="from-amber-"] {
+  background: #fef3c7 !important;
+  background-image: none !important;
+  border: 2px solid #f59e0b !important;
+  color: #78350f !important;
+}
+
+.light button[class*="from-amber-"] * {
+  color: #78350f !important;
+}
+
+/* Botões Secundários / Cancelar / Fechar */
+.light .bg-zinc-800,
+.light .bg-zinc-700,
+.light .bg-zinc-900 {
+  background: #f1f5f9 !important;
+  border: 2px solid #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+.light .bg-zinc-800 *,
+.light .bg-zinc-700 *,
+.light .bg-zinc-900 * {
+  color: #0f172a !important;
+}
+
+.light .bg-zinc-800:hover,
+.light .bg-zinc-700:hover,
+.light .bg-zinc-900:hover {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+/* 8. BADGES DE STATUS E PILLS (FUNDOS SUAVES + TEXTO ESCURO) */
+
+/* Agendada */
+.light .bg-purple-950\/60,
+.light .bg-purple-950\/80,
+.light .bg-purple-950\/90,
+.light .bg-purple-950 {
+  background-color: #f3e8ff !important;
+  border: 1.5px solid #c084fc !important;
+  color: #4c1d95 !important;
+  font-weight: 800 !important;
+}
+
+/* Realizada */
+.light .bg-emerald-950\/60,
+.light .bg-emerald-950\/80,
+.light .bg-emerald-950 {
+  background-color: #dcfce7 !important;
+  border: 1.5px solid #86efac !important;
+  color: #064e3b !important;
+  font-weight: 800 !important;
+}
+
+/* Remarcada */
+.light .bg-amber-950\/60,
+.light .bg-amber-950\/80,
+.light .bg-amber-950 {
+  background-color: #fef3c7 !important;
+  border: 1.5px solid #fcd34d !important;
+  color: #78350f !important;
+  font-weight: 800 !important;
+}
+
+/* Não Compareceu (Falta) */
+.light .bg-orange-950\/60,
+.light .bg-orange-950\/80,
+.light .bg-orange-950 {
+  background-color: #ffedd5 !important;
+  border: 1.5px solid #fdba74 !important;
+  color: #7c2d12 !important;
+  font-weight: 800 !important;
+}
+
+/* Cancelada */
+.light .bg-rose-950\/60,
+.light .bg-rose-950\/80,
+.light .bg-rose-950,
+.light .bg-red-950 {
+  background-color: #ffe4e6 !important;
+  border: 1.5px solid #fda4af !important;
+  color: #881337 !important;
+  font-weight: 800 !important;
+}
+
+/* Online / Videoconferência */
+.light .bg-cyan-950 {
+  background-color: #ecfeff !important;
+  border: 1.5px solid #67e8f9 !important;
+  color: #0e7490 !important;
+  font-weight: 800 !important;
+}
+
+/* 9. BARRA DE MÉTRICAS (STATSBAR) */
+
+.light #filter-btn-todas-mes,
+.light .bg-\[\#0f244c\],
+.light .bg-\[\#0b172e\] {
+  background-color: #eff6ff !important;
+  border-color: #93c5fd !important;
+  color: #1e40af !important;
+}
+
+.light .bg-\[\#312007\],
+.light .bg-\[\#181105\] {
+  background-color: #fffbeb !important;
+  border-color: #fcd34d !important;
+  color: #78350f !important;
+}
+
+.light #filter-btn-agendadas-mes,
+.light .bg-\[\#2f1556\],
+.light .bg-\[\#190d30\] {
+  background-color: #faf5ff !important;
+  border-color: #d8b4fe !important;
+  color: #4c1d95 !important;
+}
+
+.light .bg-\[\#042a1b\],
+.light .bg-\[\#041d13\] {
+  background-color: #f0fdf4 !important;
+  border-color: #86efac !important;
+  color: #064e3b !important;
+}
+
+.light .bg-\[\#461223\],
+.light .bg-\[\#240a13\],
+.light .bg-\[\#380c18\],
+.light .bg-\[\#22070e\] {
+  background-color: #fff1f2 !important;
+  border-color: #fda4af !important;
+  color: #881337 !important;
+}
+
+/* 10. GRADE DO CALENDÁRIO MENSAL (CALENDARMONTHVIEW) */
+
+.light .bg-\[\#130d22\],
+.light .bg-\[\#151026\] {
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+}
+
+.light .divide-purple-700\/50 > * {
+  border-color: #e2e8f0 !important;
+}
+
+/* Células de Dias Úteis */
+.light .bg-\[\#141026\] {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
+.light .hover\:bg-\[\#1a1432\]:hover {
+  background-color: #f8fafc !important;
+}
+
+/* Células de Fim de Semana */
+.light .bg-\[\#220710\],
+.light .bg-\[\#18080f\],
+.light .bg-\[\#15040a\]\/90 {
+  background-color: #fff1f2 !important;
+  border-color: #fecdd3 !important;
+}
+
+.light .hover\:bg-\[\#2c0a15\]:hover {
+  background-color: #ffe4e6 !important;
+}
+
+/* Badges de Número do Dia */
+.light .bg-\[\#1e163b\] {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+.light .bg-\[\#3b0d1a\] {
+  background-color: #ffe4e6 !important;
+  border-color: #fca5a5 !important;
+  color: #9f1239 !important;
+}
+
+/* Dia Atual no Calendário (Hoje) */
+.light .bg-gradient-to-r.from-purple-600.to-indigo-600 {
+  background: #ede9fe !important;
+  background-image: none !important;
+  border: 2px solid #a855f7 !important;
+  color: #3b0764 !important;
+}
+
+.light .bg-gradient-to-r.from-purple-600.to-indigo-600 * {
+  color: #3b0764 !important;
+}
+
+/* Botões de Navegação (Hoje, Ant, Próx) */
+.light #month-prev-btn,
+.light #month-today-btn,
+.light #month-next-btn {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+.light #month-prev-btn:hover,
+.light #month-today-btn:hover,
+.light #month-next-btn:hover {
+  background-color: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+}
+
+/* 11. TABELA / LISTAGEM GERAL (OITIVALISTVIEW) */
+
+.light .hover\:bg-\[\#1f1538\]:hover {
+  background-color: #f8fafc !important;
+}
+
+.light table th {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+  border-bottom: 2px solid #cbd5e1 !important;
+  font-weight: 800 !important;
+}
+
+.light table td {
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+/* 12. PILL DE SELEÇÃO DE MODO DE VISUALIZAÇÃO (MÊS | SEMANA | DIA | LISTA) */
+
+.light .bg-\[\#130e24\].border-2.border-purple-400 {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+.light .bg-\[\#130e24\].border-2.border-purple-400 button:not(.bg-gradient-to-r) {
+  color: #334155 !important;
+}
+
+.light .bg-\[\#130e24\].border-2.border-purple-400 button:not(.bg-gradient-to-r):hover {
+  background-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+.light .bg-\[\#130e24\].border-2.border-purple-400 button.bg-gradient-to-r {
+  background: #ede9fe !important;
+  background-image: none !important;
+  border-color: #a855f7 !important;
+  color: #3b0764 !important;
+  box-shadow: 0 2px 4px rgba(168, 85, 247, 0.15) !important;
+}
+
+.light .bg-\[\#130e24\].border-2.border-purple-400 button.bg-gradient-to-r * {
+  color: #3b0764 !important;
+}
+
+/* Backdrop dos Modais */
+.light .bg-black\/85,
+.light .bg-black\/80,
+.light .bg-black\/75 {
+  background-color: rgba(15, 23, 42, 0.45) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+/* Divisores internos nos cards */
+.light .border-white\/10,
+.light .border-white\/20,
+.light .border-white\/30 {
+  border-color: #e2e8f0 !important;
+}
+
+/* Swipe action under-reveal background */
+.light .bg-\[\#140b24\] {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* Backup export button and blue utility cards */
+.light .bg-\[\#121b3b\] {
+  background-color: #eff6ff !important;
+  border-color: #93c5fd !important;
+  color: #1e40af !important;
+}
+
+.light .bg-\[\#121b3b\] * {
+  color: #1e40af !important;
+}
+
+/* Rings in day view */
+.light .ring-black\/40 {
+  --tw-ring-color: transparent !important;
+}
+
+
+
+

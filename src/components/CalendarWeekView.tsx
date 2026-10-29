@@ -18,6 +18,7 @@ import { HolidayTooltip } from './HolidayTooltip';
 import { SwipeableOitivaCard } from './SwipeableOitivaCard';
 import { useSwipeGesture } from '../utils/useSwipeGesture';
 import { hapticSelection, hapticSwipe, hapticStatusChange, hapticToggle } from '../utils/haptics';
+import { useTheme } from '../context/ThemeContext';
 
 const cycleHearingStatus = (current: HearingStatus): HearingStatus => {
   const cycle: HearingStatus[] = ['Agendada', 'Realizada', 'Remarcada', 'Não Compareceu', 'Cancelada'];
@@ -61,6 +62,7 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
   onOpenHolidaysModal,
   isAdmin = false
 }) => {
+  const { isDark } = useTheme();
   const [draggedOitivaId, setDraggedOitivaId] = React.useState<string | null>(null);
   const [dragOverDay, setDragOverDay] = React.useState<string | null>(null);
 
@@ -94,19 +96,33 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
       className="w-full max-w-[98.5%] 2xl:max-w-[1920px] mx-auto px-1 sm:px-2.5 lg:px-4 pb-10 touch-pan-y select-none"
       {...mobileSwipeHandlers}
     >
-      <div className="bg-[#0e0a1b] border-2 border-purple-600/70 rounded-3xl overflow-hidden shadow-2xl shadow-purple-950/80 transition-all">
+      <div className={`border-2 rounded-3xl overflow-hidden shadow-2xl transition-all ${
+        isDark 
+          ? 'bg-[#0e0a1b] border-purple-600/70 shadow-purple-950/80' 
+          : 'bg-white border-purple-200 shadow-slate-200'
+      }`}>
         
         {/* Header */}
-        <div className="flex flex-col sm:flex-row items-center justify-between p-4 sm:p-5 border-b-2 border-purple-700/60 bg-[#151026] gap-3">
+        <div className={`flex flex-col sm:flex-row items-center justify-between p-4 sm:p-5 border-b-2 gap-3 ${
+          isDark 
+            ? 'border-purple-700/60 bg-[#151026]' 
+            : 'border-slate-200 bg-slate-50'
+        }`}>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-purple-950 border-2 border-purple-400/80 flex items-center justify-center text-purple-200 shadow-md">
+            <div className={`w-10 h-10 rounded-2xl border-2 flex items-center justify-center shadow-md ${
+              isDark 
+                ? 'bg-purple-950 border-purple-400/80 text-purple-200' 
+                : 'bg-purple-100 border-purple-300 text-purple-800'
+            }`}>
               <CalendarIcon className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg sm:text-xl font-black text-white tracking-tight">
+              <h2 className={`text-lg sm:text-xl font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
                 Semana de {format(start, "dd 'de' MMMM", { locale: ptBR })} a {format(end, "dd 'de' MMMM", { locale: ptBR })}
               </h2>
-              <p className="text-[11px] sm:text-xs text-purple-300 font-medium">Visão Semanal • Pautas, Feriados e Fins de Semana</p>
+              <p className={`text-[11px] sm:text-xs font-medium ${isDark ? 'text-purple-300' : 'text-slate-600'}`}>
+                Visão Semanal • Pautas, Feriados e Fins de Semana
+              </p>
             </div>
           </div>
 
@@ -115,7 +131,11 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
               <button
                 type="button"
                 onClick={() => onOpenHolidaysModal && onOpenHolidaysModal()}
-                className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#2b0c16] hover:bg-[#3d1220] text-red-300 hover:text-white text-xs font-black border-2 border-red-500/70 hover:border-red-400 transition-all cursor-pointer shadow-sm"
+                className={`hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black border-2 transition-all cursor-pointer shadow-sm ${
+                  isDark 
+                    ? 'bg-[#2b0c16] hover:bg-[#3d1220] text-red-300 hover:text-white border-red-500/70 hover:border-red-400' 
+                    : 'bg-rose-50 hover:bg-rose-100 text-rose-950 border-rose-300 hover:border-rose-400'
+                }`}
                 title="Gerenciar Feriados e Fins de Semana"
               >
                 <Sparkles className="w-3.5 h-3.5 text-red-400" />
@@ -125,20 +145,32 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
 
             <button
               onClick={prevWeek}
-              className="p-2 rounded-xl bg-[#1d1633] hover:bg-[#2a204a] text-zinc-200 hover:text-white border-2 border-purple-700/60 hover:border-purple-400 transition-all cursor-pointer shadow-sm"
+              className={`p-2 rounded-xl border-2 transition-all cursor-pointer shadow-sm ${
+                isDark 
+                  ? 'bg-[#1d1633] hover:bg-[#2a204a] text-zinc-200 hover:text-white border-purple-700/60 hover:border-purple-400' 
+                  : 'bg-white hover:bg-slate-100 text-slate-800 border-slate-300 hover:border-purple-300'
+              }`}
               title="Semana anterior"
             >
               <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
             <button
               onClick={() => onDateChange(new Date())}
-              className="px-3.5 py-2 rounded-xl bg-[#1d1633] hover:bg-[#2a204a] text-white text-xs font-bold border-2 border-purple-700/60 hover:border-purple-400 transition-all cursor-pointer shadow-sm"
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold border-2 transition-all cursor-pointer shadow-sm ${
+                isDark 
+                  ? 'bg-[#1d1633] hover:bg-[#2a204a] text-white border-purple-700/60 hover:border-purple-400' 
+                  : 'bg-purple-100 hover:bg-purple-200 text-purple-950 border-purple-300 hover:border-purple-400 font-black'
+              }`}
             >
               Hoje
             </button>
             <button
               onClick={nextWeek}
-              className="p-2 rounded-xl bg-[#1d1633] hover:bg-[#2a204a] text-zinc-200 hover:text-white border-2 border-purple-700/60 hover:border-purple-400 transition-all cursor-pointer shadow-sm"
+              className={`p-2 rounded-xl border-2 transition-all cursor-pointer shadow-sm ${
+                isDark 
+                  ? 'bg-[#1d1633] hover:bg-[#2a204a] text-zinc-200 hover:text-white border-purple-700/60 hover:border-purple-400' 
+                  : 'bg-white hover:bg-slate-100 text-slate-800 border-slate-300 hover:border-purple-300'
+              }`}
               title="Próxima semana"
             >
               <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -147,7 +179,11 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
         </div>
 
         {/* 7 Columns Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-7 divide-y-2 md:divide-y-0 md:divide-x-2 divide-purple-700/50 bg-[#0c0817] min-h-[420px]">
+        <div className={`grid grid-cols-1 md:grid-cols-7 divide-y-2 md:divide-y-0 md:divide-x-2 min-h-[420px] ${
+          isDark 
+            ? 'divide-purple-700/50 bg-[#0c0817]' 
+            : 'divide-slate-200 bg-slate-200'
+        }`}>
           {days.map((day) => {
             const dayStr = format(day, 'yyyy-MM-dd');
             const dayOitivas = filteredOitivas.filter(o => o.date === dayStr).sort((a, b) => (a.time || '').localeCompare(b.time || ''));
@@ -185,12 +221,12 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
                 }}
                 className={`p-2.5 sm:p-3 flex flex-col justify-between transition-all relative ${
                   isDragTarget
-                    ? 'ring-4 ring-purple-400 bg-purple-900/60 shadow-2xl scale-[1.01] z-20'
+                    ? (isDark ? 'ring-4 ring-purple-400 bg-purple-900/60 shadow-2xl scale-[1.01] z-20' : 'ring-4 ring-purple-500 bg-purple-100 shadow-xl scale-[1.01] z-20')
                     : isCurrentDay 
-                    ? 'bg-purple-950/40 ring-2 ring-purple-400 z-10' 
+                    ? (isDark ? 'bg-purple-950/40 ring-2 ring-purple-400 z-10' : 'bg-purple-50 ring-2 ring-purple-500 z-10') 
                     : isWeekendDay 
-                    ? 'bg-[#220710] hover:bg-[#2c0a15]' 
-                    : 'bg-[#141026] hover:bg-[#1a1432]'
+                    ? (isDark ? 'bg-[#220710] hover:bg-[#2c0a15]' : 'bg-rose-50/70 hover:bg-rose-100/80') 
+                    : (isDark ? 'bg-[#141026] hover:bg-[#1a1432]' : 'bg-white hover:bg-purple-50/40')
                 }`}
               >
                 {isDragTarget && (
@@ -201,12 +237,24 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
                   </div>
                 )}
                 <div>
-                  <div className="flex items-center justify-between pb-2 mb-2 border-b-2 border-purple-700/40">
+                  <div className={`flex items-center justify-between pb-2 mb-2 border-b-2 ${
+                    isDark ? 'border-purple-700/40' : 'border-slate-200'
+                  }`}>
                     <div>
-                      <p className={`text-[11px] font-black uppercase tracking-wider ${isWeekendDay ? 'text-red-400' : 'text-purple-300'}`}>
+                      <p className={`text-[11px] font-black uppercase tracking-wider ${
+                        isWeekendDay 
+                          ? (isDark ? 'text-red-400' : 'text-rose-700') 
+                          : (isDark ? 'text-purple-300' : 'text-purple-800')
+                      }`}>
                         {format(day, 'EEE', { locale: ptBR })}
                       </p>
-                      <p className={`text-base font-black ${isCurrentDay ? 'text-purple-200' : isWeekendDay ? 'text-red-300' : 'text-white'}`}>
+                      <p className={`text-base font-black ${
+                        isCurrentDay 
+                          ? (isDark ? 'text-purple-200' : 'text-purple-950') 
+                          : isWeekendDay 
+                          ? (isDark ? 'text-red-300' : 'text-rose-950') 
+                          : (isDark ? 'text-white' : 'text-slate-900')
+                      }`}>
                         {format(day, 'dd/MM')}
                       </p>
                     </div>
@@ -214,7 +262,11 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => onAddOitivaForDate(dayStr)}
-                        className="p-1 text-purple-300 hover:text-white hover:bg-purple-600 rounded-lg transition-colors cursor-pointer border border-purple-400/50"
+                        className={`p-1 rounded-lg transition-colors cursor-pointer border ${
+                          isDark 
+                            ? 'text-purple-300 hover:text-white hover:bg-purple-600 border-purple-400/50' 
+                            : 'text-purple-900 hover:bg-purple-100 border-purple-300'
+                        }`}
                         title="Adicionar oitiva neste dia"
                       >
                         <Plus className="w-3.5 h-3.5" />
@@ -223,10 +275,10 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
                       <span
                         className={`inline-flex items-center justify-center font-mono font-black text-[10px] sm:text-xs px-2 py-0.5 rounded-md transition-all ${
                           dayOitivas.length > 0
-                            ? 'bg-purple-900 text-white border-2 border-purple-400 shadow-sm'
+                            ? (isDark ? 'bg-purple-900 text-white border-2 border-purple-400 shadow-sm' : 'bg-purple-100 text-purple-950 border-2 border-purple-400 font-black shadow-sm')
                             : isWeekendDay
-                            ? 'text-red-400/80 bg-[#340b17]/60 border border-red-900/60'
-                            : 'text-zinc-400 bg-purple-950/40 border border-purple-900/60'
+                            ? (isDark ? 'text-red-400/80 bg-[#340b17]/60 border border-red-900/60' : 'text-rose-700 bg-rose-100/60 border border-rose-300')
+                            : (isDark ? 'text-zinc-400 bg-purple-950/40 border border-purple-900/60' : 'text-slate-500 bg-slate-100 border border-slate-300')
                         }`}
                         title={`${dayOitivas.length} oitiva(s) agendada(s)`}
                       >
@@ -253,24 +305,36 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
                               onOpenHolidaysModal(dayStr);
                             }
                           }}
-                          className={`p-1.5 sm:p-2 rounded-xl text-left border-2 transition-all shadow-md bg-[#240810] border-red-500 text-white ${
-                            isAdmin ? 'cursor-pointer hover:scale-[1.02] hover:border-red-300 hover:bg-[#340c18]' : 'cursor-default'
+                          className={`p-1.5 sm:p-2 rounded-xl text-left border-2 transition-all shadow-md ${
+                            isDark 
+                              ? 'bg-[#240810] border-red-500 text-white' 
+                              : 'bg-rose-50 border-rose-300 text-rose-950'
+                          } ${
+                            isAdmin ? 'cursor-pointer hover:scale-[1.02]' : 'cursor-default'
                           }`}
                         >
                           {/* CARDS DE FERIADOS (EM VERMELHO) */}
                           <div className="flex items-center justify-between gap-1 text-[10px] leading-none mb-1">
-                            <span className="font-black text-red-300 flex items-center gap-1 font-mono shrink-0">
-                              <Sparkles className="w-2.5 h-2.5 text-red-400" />
+                            <span className={`font-black flex items-center gap-1 font-mono shrink-0 ${
+                              isDark ? 'text-red-300' : 'text-rose-800'
+                            }`}>
+                              <Sparkles className={`w-2.5 h-2.5 ${isDark ? 'text-red-400' : 'text-rose-600'}`} />
                               Feriado
                             </span>
-                            <span className="text-[8px] sm:text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider shrink-0 bg-red-950 text-red-300 border-2 border-red-500/80">
+                            <span className={`text-[8px] sm:text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider shrink-0 ${
+                              isDark 
+                                ? 'bg-red-950 text-red-300 border-2 border-red-500/80' 
+                                : 'bg-rose-100 text-rose-900 border border-rose-300'
+                            }`}>
                               {sp.type === 'ponto_facultativo' ? 'facultativo' : 'feriado'}
                             </span>
                           </div>
 
                           {/* Nome do Feriado em Vermelho */}
                           <div className="pt-0.5">
-                            <p className="text-xs font-black text-red-400 tracking-tight leading-tight break-words">
+                            <p className={`text-xs font-black tracking-tight leading-tight break-words ${
+                              isDark ? 'text-red-400' : 'text-rose-950'
+                            }`}>
                               {sp.title}
                             </p>
                           </div>
@@ -284,31 +348,41 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
                       const firstName = getFirstName(oitiva.personName) || oitiva.personName || 'Depoente';
 
                       // Definir estilo de cor de fundo e borda destacada conforme o status
-                      let cardClasses = 'bg-[#1e1338] border-2 border-purple-400 text-white hover:border-purple-200 hover:bg-[#281a4b]';
-                      let statusBadgeClasses = 'bg-purple-950 text-purple-200 border-2 border-purple-400/80';
-                      let mobileCardBg = 'bg-[#19112e] border-purple-500/70';
-                      let mobileStatusPill = 'bg-purple-950 text-purple-200 border-purple-400';
+                      let cardClasses = isDark 
+                        ? 'bg-[#1e1338] border-2 border-purple-400 text-white hover:border-purple-200 hover:bg-[#281a4b]'
+                        : 'bg-white border-2 border-purple-400 text-slate-900 hover:border-purple-600 hover:bg-purple-50/70 shadow-sm';
+                      let statusBadgeClasses = isDark 
+                        ? 'bg-purple-950 text-purple-200 border-2 border-purple-400/80'
+                        : 'bg-purple-100 text-purple-950 border border-purple-300 font-bold';
 
                       if (status === 'Realizada') {
-                        cardClasses = 'bg-[#062417] border-2 border-emerald-400 text-white hover:border-emerald-200 hover:bg-[#0c3624]';
-                        statusBadgeClasses = 'bg-emerald-950 text-emerald-200 border-2 border-emerald-400/80';
-                        mobileCardBg = 'bg-[#082216] border-emerald-500/70';
-                        mobileStatusPill = 'bg-emerald-950 text-emerald-200 border-emerald-400';
+                        cardClasses = isDark 
+                          ? 'bg-[#062417] border-2 border-emerald-400 text-white hover:border-emerald-200 hover:bg-[#0c3624]'
+                          : 'bg-emerald-50 border-2 border-emerald-400 text-emerald-950 hover:border-emerald-600 hover:bg-emerald-100/80 shadow-sm';
+                        statusBadgeClasses = isDark 
+                          ? 'bg-emerald-950 text-emerald-200 border-2 border-emerald-400/80'
+                          : 'bg-emerald-100 text-emerald-950 border border-emerald-300 font-bold';
                       } else if (status === 'Não Compareceu') {
-                        cardClasses = 'bg-[#2f1007] border-2 border-orange-400 text-white hover:border-orange-200 hover:bg-[#43170a]';
-                        statusBadgeClasses = 'bg-orange-950 text-orange-200 border-2 border-orange-400/80';
-                        mobileCardBg = 'bg-[#291008] border-orange-500/70';
-                        mobileStatusPill = 'bg-orange-950 text-orange-200 border-orange-400';
+                        cardClasses = isDark 
+                          ? 'bg-[#2f1007] border-2 border-orange-400 text-white hover:border-orange-200 hover:bg-[#43170a]'
+                          : 'bg-orange-50 border-2 border-orange-400 text-orange-950 hover:border-orange-600 hover:bg-orange-100/80 shadow-sm';
+                        statusBadgeClasses = isDark 
+                          ? 'bg-orange-950 text-orange-200 border-2 border-orange-400/80'
+                          : 'bg-orange-100 text-orange-950 border border-orange-300 font-bold';
                       } else if (status === 'Cancelada') {
-                        cardClasses = 'bg-[#290812] border-2 border-rose-400 text-white line-through opacity-90 hover:border-rose-200 hover:bg-[#3d0c1b]';
-                        statusBadgeClasses = 'bg-rose-950 text-rose-200 border-2 border-rose-400/80 no-underline';
-                        mobileCardBg = 'bg-[#250811] border-rose-500/70';
-                        mobileStatusPill = 'bg-rose-950 text-rose-200 border-rose-400';
+                        cardClasses = isDark 
+                          ? 'bg-[#290812] border-2 border-rose-400 text-white line-through opacity-90 hover:border-rose-200 hover:bg-[#3d0c1b]'
+                          : 'bg-rose-50 border-2 border-rose-300 text-rose-950 line-through opacity-85 hover:bg-rose-100 shadow-sm';
+                        statusBadgeClasses = isDark 
+                          ? 'bg-rose-950 text-rose-200 border-2 border-rose-400/80 no-underline'
+                          : 'bg-rose-100 text-rose-950 border border-rose-300 font-bold no-underline';
                       } else if (status === 'Remarcada') {
-                        cardClasses = 'bg-[#291b05] border-2 border-amber-400 text-white hover:border-amber-200 hover:bg-[#3d2908]';
-                        statusBadgeClasses = 'bg-amber-950 text-amber-200 border-2 border-amber-400/80';
-                        mobileCardBg = 'bg-[#261906] border-amber-500/70';
-                        mobileStatusPill = 'bg-amber-950 text-amber-200 border-amber-400';
+                        cardClasses = isDark 
+                          ? 'bg-[#291b05] border-2 border-amber-400 text-white hover:border-amber-200 hover:bg-[#3d2908]'
+                          : 'bg-amber-50 border-2 border-amber-400 text-amber-950 hover:border-amber-600 hover:bg-amber-100/80 shadow-sm';
+                        statusBadgeClasses = isDark 
+                          ? 'bg-amber-950 text-amber-200 border-2 border-amber-400/80'
+                          : 'bg-amber-100 text-amber-950 border border-amber-300 font-bold';
                       }
 
                       const isBeingDragged = draggedOitivaId === oitiva.id;
@@ -359,21 +433,25 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
                                 }}
                                 className={`p-1.5 sm:p-2 rounded-xl text-left border-2 cursor-grab active:cursor-grabbing transition-all hover:scale-[1.02] shadow-md select-none ${
                                   isBeingDragged ? 'opacity-40 ring-2 ring-purple-300 scale-95' : ''
-                                } ${cardClasses}`}
+                               } ${cardClasses}`}
                                 title="Clique para detalhes ou arraste para outro dia"
                               >
                                 {/* Linha Superior: Horário com Grande Destaque Visual + Modalidade + Status Badge */}
                                 <div className="flex items-center justify-between gap-1 mb-1">
                                   <span 
-                                    className="inline-flex items-center gap-1 font-mono font-black text-[11px] sm:text-xs px-2 py-0.5 rounded-lg bg-black/85 text-amber-300 border border-amber-400/80 shadow-md shrink-0 tracking-tight"
+                                    className={`inline-flex items-center gap-1 font-mono font-black text-[11px] sm:text-xs px-2 py-0.5 rounded-lg shadow-md shrink-0 tracking-tight ${
+                                      isDark 
+                                        ? 'bg-black/85 text-amber-300 border border-amber-400/80' 
+                                        : 'bg-amber-100 text-amber-950 border border-amber-400 font-bold'
+                                    }`}
                                     title={`Horário marcado: ${oitiva.time || 'Não definido'}`}
                                   >
-                                    <Clock className="w-3 h-3 text-amber-400 shrink-0" />
+                                    <Clock className={`w-3 h-3 shrink-0 ${isDark ? 'text-amber-400' : 'text-amber-800'}`} />
                                     {oitiva.time || '--:--'}
                                   </span>
                                   <div className="flex items-center gap-1 min-w-0">
                                     {oitiva.modality === 'Videoconferência' && (
-                                      <Video className="w-3 h-3 text-cyan-300 shrink-0" title="Videoconferência" />
+                                      <Video className={`w-3 h-3 shrink-0 ${isDark ? 'text-cyan-300' : 'text-cyan-700'}`} title="Videoconferência" />
                                     )}
                                     <span className={`text-[8px] sm:text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider shrink-0 ${statusBadgeClasses}`}>
                                       {status.toLowerCase()}
@@ -383,11 +461,15 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
 
                                 {/* Linha Principal: Primeiro Nome (Sem truncar, quebrando linhas se necessário) e Tag de Papel */}
                                 <div className="flex items-center justify-between gap-1 pt-0.5 min-w-0">
-                                  <p className="text-xs font-black text-white tracking-tight leading-tight break-words min-w-0 flex-1">
+                                  <p className={`text-xs font-black tracking-tight leading-tight break-words min-w-0 flex-1 ${
+                                    isDark ? 'text-white' : 'text-slate-900'
+                                  }`}>
                                     {firstName}
                                   </p>
                                   {oitiva.role && (
-                                    <span className="text-[8px] font-bold px-1 py-0.2 rounded bg-black/60 text-white/90 border border-white/30 shrink-0 max-w-[65px] truncate" title={oitiva.role}>
+                                    <span className={`text-[8px] font-bold px-1 py-0.2 rounded shrink-0 max-w-[65px] truncate ${
+                                      isDark ? 'bg-black/60 text-white/90 border border-white/30' : 'bg-slate-200 text-slate-900 border border-slate-300 font-bold'
+                                    }`} title={oitiva.role}>
                                       {oitiva.role}
                                     </span>
                                   )}
@@ -402,7 +484,11 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
                     {dayOitivas.length === 0 && daySpecialDates.length === 0 && (
                       <div 
                         onClick={() => onAddOitivaForDate(dayStr)}
-                        className="py-6 text-center text-purple-300 font-bold hover:text-white text-xs border-2 border-dashed border-purple-700/50 hover:border-purple-400 bg-purple-950/20 hover:bg-purple-950/40 rounded-xl cursor-pointer transition-all"
+                        className={`py-6 text-center text-xs border-2 border-dashed rounded-xl cursor-pointer transition-all ${
+                          isDark 
+                            ? 'text-purple-300 font-bold hover:text-white border-purple-700/50 hover:border-purple-400 bg-purple-950/20 hover:bg-purple-950/40' 
+                            : 'text-purple-950 font-black hover:bg-purple-100 border-purple-300 bg-purple-50'
+                        }`}
                       >
                         + Agendar
                       </div>
@@ -410,13 +496,13 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
                   </div>
                 </div>
 
-                <div className="pt-2 flex items-center justify-between text-[10px]">
+                <div className={`pt-2 flex items-center justify-between text-[10px] ${isDark ? 'text-zinc-400' : 'text-slate-600'}`}>
                   {daySpecialDates.length > 0 ? (
-                    <span className="text-red-400 font-bold">
+                    <span className={`font-bold ${isDark ? 'text-red-400' : 'text-rose-700'}`}>
                       {daySpecialDates.length === 1 ? daySpecialDates[0].title : `${daySpecialDates.length} marcas`}
                     </span>
                   ) : <span></span>}
-                  <span className="text-zinc-400 font-bold">
+                  <span className="font-bold">
                     {dayOitivas.length} {dayOitivas.length === 1 ? 'oitiva' : 'oitivas'}
                   </span>
                 </div>

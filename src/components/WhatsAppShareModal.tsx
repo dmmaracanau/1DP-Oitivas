@@ -34,6 +34,7 @@ import { DelegadoSelectorModal } from './DelegadoSelectorModal';
 import { IntimationNumberPromptModal } from './IntimationNumberPromptModal';
 import { DelegadoInfo, delegadoService } from '../services/delegadoService';
 import { oitivaService, DEFAULT_SHARED_GUEST_UID } from '../services/oitivaService';
+import { useTheme } from '../context/ThemeContext';
 
 interface WhatsAppShareModalProps {
   isOpen: boolean;
@@ -50,6 +51,7 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
   user,
   onMarkIntimationSent
 }) => {
+  const { isDark } = useTheme();
   const currentYear = new Date().getFullYear();
 
   const [personName, setPersonName] = useState('');
@@ -280,27 +282,37 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
         className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm no-print overflow-y-auto"
         // Note: Backdrop click close removed per explicit user requirement - closes only via X or button
       >
-        <div className="bg-[#120f1e] border-2 border-emerald-500/60 rounded-3xl w-[95vw] max-w-[95vw] h-[95vh] max-h-[95vh] overflow-hidden shadow-2xl shadow-emerald-950/80 flex flex-col my-auto">
+        <div className={`border-2 rounded-3xl w-[95vw] max-w-[95vw] h-[95vh] max-h-[95vh] overflow-hidden shadow-2xl flex flex-col my-auto transition-colors ${
+          isDark ? 'bg-[#120f1e] border-emerald-500/60 shadow-emerald-950/80' : 'bg-white border-slate-300 shadow-2xl'
+        }`}>
           
           {/* Header Compacto */}
-          <div className="p-4 sm:p-5 border-b-2 border-purple-900/50 bg-[#161226] flex items-center justify-between shrink-0">
+          <div className={`p-4 sm:p-5 border-b-2 flex items-center justify-between shrink-0 transition-colors ${
+            isDark ? 'bg-[#161226] border-purple-900/50' : 'bg-slate-50 border-slate-200'
+          }`}>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-900 border-2 border-emerald-400/60 flex items-center justify-center text-emerald-200 shadow-md">
+              <div className={`w-10 h-10 rounded-2xl border-2 flex items-center justify-center shadow-md ${
+                isDark ? 'bg-gradient-to-br from-emerald-600 to-teal-900 border-emerald-400/60 text-emerald-200' : 'bg-emerald-100 border-emerald-300 text-emerald-950'
+              }`}>
                 <Phone className="w-5 h-5" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-base font-bold text-white tracking-tight">
+                  <h2 className={`text-base font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
                     Notificação Oficial de Intimação via WhatsApp Web
                   </h2>
-                  <span className="px-2.5 py-0.5 text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40 rounded-full font-mono">
+                  <span className={`px-2.5 py-0.5 text-[10px] font-bold border rounded-full font-mono ${
+                    isDark ? 'bg-purple-500/20 text-purple-300 border-purple-500/40' : 'bg-purple-100 text-purple-950 border-purple-300 font-bold'
+                  }`}>
                     INTIMAÇÃO {intimationNumber}
                   </span>
-                  <span className="px-2.5 py-0.5 text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded-full">
+                  <span className={`px-2.5 py-0.5 text-[10px] font-bold border rounded-full ${
+                    isDark ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' : 'bg-amber-100 text-amber-950 border-amber-300 font-bold'
+                  }`}>
                     {attemptNumber}ª Tentativa
                   </span>
                 </div>
-                <p className="text-xs text-zinc-300">
+                <p className={`text-xs ${isDark ? 'text-zinc-300' : 'text-slate-600'}`}>
                   1ª Delegacia de Polícia de Maracanaú • PCCE • Envio Direto via WhatsApp Web
                 </p>
               </div>
@@ -313,7 +325,9 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
                   setPendingAction('both');
                   setIsPromptModalOpen(true);
                 }}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-950/80 hover:bg-purple-900 text-purple-300 border border-purple-500/40 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                  isDark ? 'bg-purple-950/80 hover:bg-purple-900 text-purple-300 border-purple-500/40' : 'bg-purple-100 hover:bg-purple-200 text-purple-950 border-purple-300'
+                }`}
                 title="Ajustar Número da Intimação"
               >
                 <Hash className="w-3.5 h-3.5" />
@@ -323,7 +337,9 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="p-2 text-zinc-300 hover:text-white rounded-xl hover:bg-purple-950/60 border border-purple-900/40 transition-colors cursor-pointer"
+                className={`p-2 rounded-xl border transition-colors cursor-pointer ${
+                  isDark ? 'text-zinc-300 hover:text-white hover:bg-purple-950/60 border-purple-900/40' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200 border-slate-300'
+                }`}
               >
                 <X className="w-5 h-5" />
               </button>

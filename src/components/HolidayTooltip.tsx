@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { CalendarSpecialDate } from '../types/oitiva';
 import { formatDateBR } from '../utils/formatters';
+import { useTheme } from '../context/ThemeContext';
 
 interface HolidayTooltipProps {
   specialDate: CalendarSpecialDate;
@@ -30,6 +31,7 @@ export const HolidayTooltip: React.FC<HolidayTooltipProps> = ({
   onOpenHolidaysModal,
   disabled = false
 }) => {
+  const { isDark } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
   const [coords, setCoords] = useState<{ top?: number; bottom?: number; left: number; placement: 'top' | 'bottom' }>({
     left: 0,
@@ -183,26 +185,42 @@ export const HolidayTooltip: React.FC<HolidayTooltipProps> = ({
           className="animate-in fade-in zoom-in-95 duration-150 ease-out select-none"
         >
           {/* Tooltip Card */}
-          <div className="bg-[#180810] border-2 border-red-500/90 rounded-2xl p-4 shadow-2xl shadow-red-950/90 text-white backdrop-blur-xl ring-1 ring-white/10 relative overflow-hidden">
+          <div className={`border-2 rounded-2xl p-4 shadow-2xl backdrop-blur-xl relative overflow-hidden ${
+            isDark 
+              ? 'bg-[#180810] border-red-500/90 shadow-red-950/90 text-white ring-1 ring-white/10' 
+              : 'bg-white border-rose-300 shadow-slate-300/80 text-slate-900 ring-1 ring-slate-200'
+          }`}>
             
             {/* Ambient Background Glow */}
-            <div className="absolute -top-12 -right-12 w-28 h-28 bg-red-600/25 rounded-full blur-2xl pointer-events-none" />
-            <div className="absolute -bottom-12 -left-12 w-28 h-28 bg-amber-600/15 rounded-full blur-2xl pointer-events-none" />
+            <div className={`absolute -top-12 -right-12 w-28 h-28 rounded-full blur-2xl pointer-events-none ${
+              isDark ? 'bg-red-600/25' : 'bg-rose-200/50'
+            }`} />
+            <div className={`absolute -bottom-12 -left-12 w-28 h-28 rounded-full blur-2xl pointer-events-none ${
+              isDark ? 'bg-amber-600/15' : 'bg-amber-100/50'
+            }`} />
 
             {/* Header: Type and Date */}
-            <div className="flex items-center justify-between gap-2 pb-2.5 mb-2.5 border-b border-red-700/60">
-              <div className="flex items-center gap-1.5 text-xs font-black text-red-300 font-mono">
-                <Sparkles className="w-3.5 h-3.5 text-red-400" />
+            <div className={`flex items-center justify-between gap-2 pb-2.5 mb-2.5 border-b ${
+              isDark ? 'border-red-700/60' : 'border-rose-200'
+            }`}>
+              <div className={`flex items-center gap-1.5 text-xs font-black font-mono ${
+                isDark ? 'text-red-300' : 'text-rose-950'
+              }`}>
+                <Sparkles className="w-3.5 h-3.5 text-rose-500" />
                 <span>{getTypeBadgeLabel()}</span>
               </div>
 
               <div className="flex items-center gap-1">
                 {specialDate.isRecurringAnnual !== false && !specialDate.isRecurringWeekend && (
-                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-emerald-950 text-emerald-300 border border-emerald-500/50 uppercase tracking-wider">
+                  <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md border uppercase tracking-wider ${
+                    isDark ? 'bg-emerald-950 text-emerald-300 border-emerald-500/50' : 'bg-emerald-100 text-emerald-950 border-emerald-300'
+                  }`}>
                     Anual
                   </span>
                 )}
-                <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-red-950 text-red-200 border border-red-500/60 uppercase tracking-wider">
+                <span className={`text-[10px] font-black px-2 py-0.5 rounded-md border uppercase tracking-wider ${
+                  isDark ? 'bg-red-950 text-red-200 border-red-500/60' : 'bg-rose-100 text-rose-950 border-rose-300'
+                }`}>
                   {specialDate.isRecurringWeekend 
                     ? 'Recorrente' 
                     : (dateStr ? formatDateBR(dateStr) : (specialDate.date ? formatDateBR(specialDate.date) : 'Data Especial'))
@@ -213,19 +231,25 @@ export const HolidayTooltip: React.FC<HolidayTooltipProps> = ({
 
             {/* Title */}
             <div className="mb-2">
-              <h4 className="text-sm font-black text-white tracking-tight leading-snug">
+              <h4 className={`text-sm font-black tracking-tight leading-snug ${
+                isDark ? 'text-white' : 'text-rose-950'
+              }`}>
                 {specialDate.title}
               </h4>
             </div>
 
             {/* Detailed Description */}
-            <div className="bg-[#240c16] p-2.5 rounded-xl border border-red-700/50 mb-3 text-[11px] leading-relaxed text-red-100/90">
+            <div className={`p-2.5 rounded-xl border mb-3 text-[11px] leading-relaxed ${
+              isDark ? 'bg-[#240c16] border-red-700/50 text-red-100/90' : 'bg-rose-50 border-rose-200 text-slate-800'
+            }`}>
               <p>{getDetailedDescription()}</p>
             </div>
 
             {/* Notification Alert / Guideline */}
-            <div className="flex items-start gap-2 text-[10px] text-zinc-300 bg-black/40 p-2 rounded-lg border border-red-900/50 mb-2.5">
-              <Info className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" />
+            <div className={`flex items-start gap-2 text-[10px] p-2 rounded-lg border mb-2.5 ${
+              isDark ? 'text-zinc-300 bg-black/40 border-red-900/50' : 'text-slate-700 bg-slate-50 border-slate-200'
+            }`}>
+              <Info className="w-3.5 h-3.5 text-rose-500 shrink-0 mt-0.5" />
               <span>
                 Feriados e fins de semana são aplicados para todos os usuários para sinalizar ausência de expediente ordinário.
               </span>
@@ -233,8 +257,10 @@ export const HolidayTooltip: React.FC<HolidayTooltipProps> = ({
 
             {/* Footer / Admin Shortcut */}
             {isAdmin && onOpenHolidaysModal && (
-              <div className="pt-2 border-t border-red-700/50 flex items-center justify-between">
-                <span className="text-[10px] font-bold text-red-300">
+              <div className={`pt-2 border-t flex items-center justify-between ${
+                isDark ? 'border-red-700/50' : 'border-rose-200'
+              }`}>
+                <span className={`text-[10px] font-bold ${isDark ? 'text-red-300' : 'text-slate-600'}`}>
                   Acesso de Administrador
                 </span>
                 <button
@@ -244,9 +270,13 @@ export const HolidayTooltip: React.FC<HolidayTooltipProps> = ({
                     setIsOpen(false);
                     onOpenHolidaysModal(dateStr || specialDate.date);
                   }}
-                  className="flex items-center gap-1 text-[11px] font-black text-white bg-red-900 hover:bg-red-800 border border-red-400/80 px-2.5 py-1 rounded-lg shadow-sm transition-all cursor-pointer"
+                  className={`flex items-center gap-1 text-[11px] font-black border px-2.5 py-1 rounded-lg shadow-sm transition-all cursor-pointer ${
+                    isDark 
+                      ? 'text-white bg-red-900 hover:bg-red-800 border-red-400/80' 
+                      : 'text-rose-950 bg-rose-100 hover:bg-rose-200 border-rose-300'
+                  }`}
                 >
-                  <Settings className="w-3 h-3 text-red-300" />
+                  <Settings className={`w-3 h-3 ${isDark ? 'text-red-300' : 'text-rose-700'}`} />
                   <span>Gerenciar Feriados</span>
                 </button>
               </div>

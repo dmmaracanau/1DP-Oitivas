@@ -51,7 +51,24 @@ export function formatDateShort(dateStr: string): string {
   }
 }
 
-export function getStatusBadgeClasses(status: HearingStatus): string {
+export function getStatusBadgeClasses(status: HearingStatus, isDark: boolean = true): string {
+  if (!isDark) {
+    switch (status) {
+      case 'Agendada':
+        return 'bg-purple-100 text-purple-950 border-purple-300 font-bold';
+      case 'Realizada':
+        return 'bg-emerald-100 text-emerald-950 border-emerald-300 font-bold';
+      case 'Remarcada':
+        return 'bg-amber-100 text-amber-950 border-amber-300 font-bold';
+      case 'Cancelada':
+        return 'bg-rose-100 text-rose-950 border-rose-300 font-bold';
+      case 'Não Compareceu':
+        return 'bg-orange-100 text-orange-950 border-orange-300 font-bold';
+      default:
+        return 'bg-slate-100 text-slate-800 border-slate-300 font-bold';
+    }
+  }
+
   switch (status) {
     case 'Agendada':
       return 'bg-purple-950/60 text-purple-300 border-purple-500/40';
@@ -68,7 +85,22 @@ export function getStatusBadgeClasses(status: HearingStatus): string {
   }
 }
 
-export function getRoleBadgeClasses(role?: HearingRole | string): string {
+export function getRoleBadgeClasses(role?: HearingRole | string, isDark: boolean = true): string {
+  if (!isDark) {
+    switch (role) {
+      case 'Testemunha':
+        return 'bg-blue-100 text-blue-950 border-blue-300 font-bold';
+      case 'Vítima':
+        return 'bg-teal-100 text-teal-950 border-teal-300 font-bold';
+      case 'Investigado':
+        return 'bg-rose-100 text-rose-950 border-rose-300 font-bold';
+      case 'Declarante':
+        return 'bg-purple-100 text-purple-950 border-purple-300 font-bold';
+      default:
+        return 'bg-slate-100 text-slate-800 border-slate-300 font-bold';
+    }
+  }
+
   switch (role) {
     case 'Testemunha':
       return 'bg-blue-950/50 text-blue-300 border-blue-500/30';

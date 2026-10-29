@@ -35,6 +35,7 @@ import { UserProfile, DuplicateUserGroup, Oitiva, CalendarSpecialDate } from '..
 import { authService } from '../services/authService';
 import { UnifyDuplicatesModal } from './UnifyDuplicatesModal';
 import { UserBackupPanel } from './UserBackupPanel';
+import { useTheme } from '../context/ThemeContext';
 
 interface UserProfileModalProps {
   isOpen: boolean;
@@ -79,6 +80,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   specialDates = [],
   onDataRestored
 }) => {
+  const { isDark } = useTheme();
   const isAdminUser = user?.role === 'admin' || Boolean(user?.isAdmin);
 
   const [activeTab, setActiveTab] = useState<'functional' | 'account' | 'security' | 'backup_data' | 'admin_users'>('functional');
@@ -446,35 +448,43 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
       className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto no-print"
       // Note: Backdrop click close removed per user specification
     >
-      <div className="bg-[#110d1e] border-2 border-purple-600/60 rounded-3xl w-[95vw] max-w-[95vw] h-[95vh] max-h-[95vh] overflow-hidden shadow-2xl shadow-purple-950/80 my-auto flex flex-col">
+      <div className={`border-2 rounded-3xl w-[95vw] max-w-[95vw] h-[95vh] max-h-[95vh] overflow-hidden shadow-2xl my-auto flex flex-col transition-colors ${
+        isDark ? 'bg-[#110d1e] border-purple-600/60 shadow-purple-950/80' : 'bg-white border-slate-300 shadow-2xl'
+      }`}>
         
         {/* Header */}
-        <div className="p-5 border-b-2 border-purple-900/50 bg-[#161128] flex items-center justify-between shrink-0">
+        <div className={`p-5 border-b-2 flex items-center justify-between shrink-0 transition-colors ${
+          isDark ? 'bg-[#161128] border-purple-900/50' : 'bg-slate-50 border-slate-200'
+        }`}>
           <div className="flex items-center gap-3">
             <div className={`w-11 h-11 rounded-2xl border-2 flex items-center justify-center shadow-md ${
               isAdminUser 
-                ? 'bg-gradient-to-br from-amber-500 to-purple-950 border-amber-400/60 text-amber-300'
-                : 'bg-gradient-to-br from-purple-600 to-purple-950 border-purple-400/60 text-purple-200'
+                ? (isDark ? 'bg-gradient-to-br from-amber-500 to-purple-950 border-amber-400/60 text-amber-300' : 'bg-amber-100 border-amber-300 text-amber-900')
+                : (isDark ? 'bg-gradient-to-br from-purple-600 to-purple-950 border-purple-400/60 text-purple-200' : 'bg-purple-100 border-purple-300 text-purple-950')
             }`}>
               <Shield className="w-6 h-6" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold text-white tracking-tight">
+                <h2 className={`text-lg font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   {isAdminUser ? 'Painel de Gestão & Perfil Policial' : 'Gerenciamento de Perfil & Segurança'}
                 </h2>
                 {isAdminUser ? (
-                  <span className="px-2.5 py-0.5 text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded-full flex items-center gap-1">
+                  <span className={`px-2.5 py-0.5 text-[10px] font-bold border rounded-full flex items-center gap-1 ${
+                    isDark ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' : 'bg-amber-100 text-amber-950 border-amber-300 font-bold'
+                  }`}>
                     <ShieldCheck className="w-3 h-3" />
                     ADMINISTRADOR
                   </span>
                 ) : (
-                  <span className="px-2.5 py-0.5 text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40 rounded-full">
+                  <span className={`px-2.5 py-0.5 text-[10px] font-bold border rounded-full ${
+                    isDark ? 'bg-purple-500/20 text-purple-300 border-purple-500/40' : 'bg-purple-100 text-purple-950 border-purple-300 font-bold'
+                  }`}>
                     PCCE
                   </span>
                 )}
               </div>
-              <p className="text-xs text-zinc-300">
+              <p className={`text-xs ${isDark ? 'text-zinc-300' : 'text-slate-600'}`}>
                 {unitName || '1ª Delegacia Metropolitana de Maracanaú'} • {cargo || 'Servidor'}
               </p>
             </div>
@@ -483,25 +493,31 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 text-zinc-300 hover:text-white rounded-xl transition-colors hover:bg-purple-950/60 border border-purple-900/40 cursor-pointer"
+            className={`p-2 rounded-xl transition-colors border cursor-pointer ${
+              isDark 
+                ? 'text-zinc-300 hover:text-white hover:bg-purple-950/60 border-purple-900/40' 
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200 border-slate-300'
+            }`}
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex items-center border-b border-purple-900/30 bg-[#130f22] px-6 overflow-x-auto shrink-0">
+        <div className={`flex items-center border-b px-6 overflow-x-auto shrink-0 transition-colors ${
+          isDark ? 'border-purple-900/30 bg-[#130f22]' : 'border-slate-200 bg-slate-100'
+        }`}>
           <button
             id="tab-functional-profile"
             type="button"
             onClick={() => setActiveTab('functional')}
             className={`flex items-center gap-2 py-3.5 px-4 text-xs font-semibold border-b-2 transition-colors shrink-0 cursor-pointer ${
               activeTab === 'functional'
-                ? 'border-purple-500 text-purple-200 bg-purple-950/20'
-                : 'border-transparent text-zinc-400 hover:text-zinc-200'
+                ? (isDark ? 'border-purple-500 text-purple-200 bg-purple-950/20 font-bold' : 'border-purple-600 text-purple-950 bg-white shadow-sm font-black')
+                : (isDark ? 'border-transparent text-zinc-400 hover:text-zinc-200' : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-200/60')
             }`}
           >
-            <BadgeCheck className="w-4 h-4 text-purple-400" />
+            <BadgeCheck className={`w-4 h-4 ${isDark ? 'text-purple-400' : 'text-purple-700'}`} />
             <span>Dados Funcionais</span>
           </button>
 
@@ -511,11 +527,11 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             onClick={() => setActiveTab('account')}
             className={`flex items-center gap-2 py-3.5 px-4 text-xs font-semibold border-b-2 transition-colors shrink-0 cursor-pointer ${
               activeTab === 'account'
-                ? 'border-purple-500 text-purple-200 bg-purple-950/20'
-                : 'border-transparent text-zinc-400 hover:text-zinc-200'
+                ? (isDark ? 'border-purple-500 text-purple-200 bg-purple-950/20 font-bold' : 'border-purple-600 text-purple-950 bg-white shadow-sm font-black')
+                : (isDark ? 'border-transparent text-zinc-400 hover:text-zinc-200' : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-200/60')
             }`}
           >
-            <Mail className="w-4 h-4 text-purple-400" />
+            <Mail className={`w-4 h-4 ${isDark ? 'text-purple-400' : 'text-purple-700'}`} />
             <span>E-mail & Workspace</span>
           </button>
 
@@ -525,11 +541,11 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             onClick={() => setActiveTab('security')}
             className={`flex items-center gap-2 py-3.5 px-4 text-xs font-semibold border-b-2 transition-colors shrink-0 cursor-pointer ${
               activeTab === 'security'
-                ? 'border-purple-500 text-purple-200 bg-purple-950/20'
-                : 'border-transparent text-zinc-400 hover:text-zinc-200'
+                ? (isDark ? 'border-purple-500 text-purple-200 bg-purple-950/20 font-bold' : 'border-purple-600 text-purple-950 bg-white shadow-sm font-black')
+                : (isDark ? 'border-transparent text-zinc-400 hover:text-zinc-200' : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-200/60')
             }`}
           >
-            <KeyRound className="w-4 h-4 text-purple-400" />
+            <KeyRound className={`w-4 h-4 ${isDark ? 'text-purple-400' : 'text-purple-700'}`} />
             <span>Senha & Segurança</span>
           </button>
 
@@ -539,11 +555,11 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             onClick={() => setActiveTab('backup_data')}
             className={`flex items-center gap-2 py-3.5 px-4 text-xs font-bold border-b-2 transition-colors shrink-0 cursor-pointer ${
               activeTab === 'backup_data'
-                ? 'border-emerald-500 text-emerald-300 bg-emerald-950/20'
-                : 'border-transparent text-emerald-400/80 hover:text-emerald-300 hover:bg-emerald-950/10'
+                ? (isDark ? 'border-emerald-500 text-emerald-300 bg-emerald-950/20 font-bold' : 'border-emerald-600 text-emerald-950 bg-white shadow-sm font-black')
+                : (isDark ? 'border-transparent text-emerald-400/80 hover:text-emerald-300 hover:bg-emerald-950/10' : 'border-transparent text-emerald-800 hover:text-emerald-950 hover:bg-emerald-50')
             }`}
           >
-            <HardDriveDownload className="w-4 h-4 text-emerald-400" />
+            <HardDriveDownload className={`w-4 h-4 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`} />
             <span>Backup & Prevenção de Perdas</span>
           </button>
 
@@ -555,13 +571,15 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               onClick={() => setActiveTab('admin_users')}
               className={`flex items-center gap-2 py-3.5 px-4 text-xs font-bold border-b-2 transition-colors shrink-0 cursor-pointer ${
                 activeTab === 'admin_users'
-                  ? 'border-amber-500 text-amber-300 bg-amber-950/20'
-                  : 'border-transparent text-amber-400/70 hover:text-amber-300 hover:bg-amber-950/10'
+                  ? (isDark ? 'border-amber-500 text-amber-300 bg-amber-950/20 font-bold' : 'border-amber-600 text-amber-950 bg-white shadow-sm font-black')
+                  : (isDark ? 'border-transparent text-amber-400/70 hover:text-amber-300 hover:bg-amber-950/10' : 'border-transparent text-amber-800 hover:text-amber-950 hover:bg-amber-50')
               }`}
             >
-              <Users className="w-4 h-4 text-amber-400" />
+              <Users className={`w-4 h-4 ${isDark ? 'text-amber-400' : 'text-amber-700'}`} />
               <span>Gerenciamento de Usuários (Admin)</span>
-              <span className="ml-1 px-1.5 py-0.2 bg-amber-500/20 text-amber-300 text-[10px] rounded-md font-mono">
+              <span className={`ml-1 px-1.5 py-0.2 text-[10px] rounded-md font-mono border ${
+                isDark ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' : 'bg-amber-100 text-amber-950 border-amber-300 font-bold'
+              }`}>
                 {allUsers.length}
               </span>
             </button>
@@ -841,7 +859,9 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 rounded-xl text-xs font-medium transition-colors cursor-pointer"
+                  className={`px-4 py-2.5 rounded-xl text-xs font-medium transition-colors cursor-pointer border ${
+                    isDark ? 'bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border-zinc-700/60' : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300'
+                  }`}
                 >
                   Cancelar
                 </button>
@@ -849,7 +869,11 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   id="btn-save-profile"
                   type="submit"
                   disabled={saving}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-purple-950 transition-all cursor-pointer disabled:opacity-50"
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50 border-2 ${
+                    isDark
+                      ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-lg shadow-purple-950 border-purple-400/60'
+                      : 'bg-emerald-200 hover:bg-emerald-300 text-emerald-950 border-emerald-500 shadow-md font-black'
+                  }`}
                 >
                   <Save className="w-4 h-4" />
                   <span>{saving ? 'Salvando...' : 'Salvar Alterações'}</span>
@@ -1808,14 +1832,20 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setEditingTargetUser(null)}
-                  className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl text-xs cursor-pointer"
+                  className={`px-4 py-2 rounded-xl text-xs cursor-pointer border ${
+                    isDark ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border-zinc-700/60' : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300'
+                  }`}
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={actionInProgress}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-xl text-xs shadow-md transition-all cursor-pointer disabled:opacity-50"
+                  className={`flex items-center gap-1.5 px-4 py-2 font-bold rounded-xl text-xs transition-all cursor-pointer disabled:opacity-50 border-2 ${
+                    isDark
+                      ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-md border-purple-400/60'
+                      : 'bg-emerald-200 hover:bg-emerald-300 text-emerald-950 border-emerald-500 shadow-sm font-black'
+                  }`}
                 >
                   <Save className="w-4 h-4" />
                   <span>{actionInProgress ? 'Salvando...' : 'Salvar Alterações'}</span>

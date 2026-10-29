@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Oitiva, HearingStatus } from '../types/oitiva';
 import { hapticSelection, hapticStatusChange, hapticToggle, hapticWarning } from '../utils/haptics';
+import { useTheme } from '../context/ThemeContext';
 
 interface SwipeableOitivaCardProps {
   oitiva: Oitiva;
@@ -40,6 +41,7 @@ export const SwipeableOitivaCard: React.FC<SwipeableOitivaCardProps> = ({
   onDeleteOitiva,
   onRescheduleOitiva
 }) => {
+  const { isDark } = useTheme();
   const [translateX, setTranslateX] = useState<number>(0);
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [showRescheduleModal, setShowRescheduleModal] = useState<boolean>(false);
@@ -60,22 +62,22 @@ export const SwipeableOitivaCard: React.FC<SwipeableOitivaCardProps> = ({
 
   const status = oitiva.status || 'Agendada';
 
-  // Card theme styling according to status
-  let cardBg = 'bg-[#19112e] border-purple-500/70 text-white';
-  let statusPill = 'bg-purple-950 text-purple-200 border-purple-400';
+  // Card theme styling according to status and theme
+  let cardBg = isDark ? 'bg-[#19112e] border-purple-500/70 text-white' : 'bg-white border-purple-300 text-slate-900 shadow-sm';
+  let statusPill = isDark ? 'bg-purple-950 text-purple-200 border-purple-400' : 'bg-purple-100 text-purple-950 border-purple-300 font-bold';
 
   if (status === 'Realizada') {
-    cardBg = 'bg-[#082216] border-emerald-500/70 text-white';
-    statusPill = 'bg-emerald-950 text-emerald-200 border-emerald-400';
+    cardBg = isDark ? 'bg-[#082216] border-emerald-500/70 text-white' : 'bg-emerald-50/90 border-emerald-300 text-emerald-950 shadow-sm';
+    statusPill = isDark ? 'bg-emerald-950 text-emerald-200 border-emerald-400' : 'bg-emerald-100 text-emerald-950 border-emerald-300 font-bold';
   } else if (status === 'Não Compareceu') {
-    cardBg = 'bg-[#291008] border-orange-500/70 text-white';
-    statusPill = 'bg-orange-950 text-orange-200 border-orange-400';
+    cardBg = isDark ? 'bg-[#291008] border-orange-500/70 text-white' : 'bg-orange-50/90 border-orange-300 text-orange-950 shadow-sm';
+    statusPill = isDark ? 'bg-orange-950 text-orange-200 border-orange-400' : 'bg-orange-100 text-orange-950 border-orange-300 font-bold';
   } else if (status === 'Cancelada') {
-    cardBg = 'bg-[#250811] border-rose-500/70 text-white line-through opacity-90';
-    statusPill = 'bg-rose-950 text-rose-200 border-rose-400 no-underline';
+    cardBg = isDark ? 'bg-[#250811] border-rose-500/70 text-white line-through opacity-90' : 'bg-rose-50/90 border-rose-300 text-rose-950 line-through opacity-90 shadow-sm';
+    statusPill = isDark ? 'bg-rose-950 text-rose-200 border-rose-400 no-underline' : 'bg-rose-100 text-rose-950 border-rose-300 no-underline font-bold';
   } else if (status === 'Remarcada') {
-    cardBg = 'bg-[#261906] border-amber-500/70 text-white';
-    statusPill = 'bg-amber-950 text-amber-200 border-amber-400';
+    cardBg = isDark ? 'bg-[#261906] border-amber-500/70 text-white' : 'bg-amber-50/90 border-amber-300 text-amber-950 shadow-sm';
+    statusPill = isDark ? 'bg-amber-950 text-amber-200 border-amber-400' : 'bg-amber-100 text-amber-950 border-amber-300 font-bold';
   }
 
   // --- TOUCH HANDLERS ---
@@ -283,12 +285,20 @@ export const SwipeableOitivaCard: React.FC<SwipeableOitivaCardProps> = ({
           {/* Top line: Time + Modality + Interactive Status Badge (Cycling) */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5">
-              <span className="inline-flex items-center gap-1 font-mono font-black text-xs px-2.5 py-1 rounded-lg bg-black/80 text-amber-300 border border-amber-400/80 shadow-sm">
-                <Clock className="w-3.5 h-3.5 text-amber-400" />
+              <span className={`inline-flex items-center gap-1 font-mono font-black text-xs px-2.5 py-1 rounded-lg border shadow-sm ${
+                isDark
+                  ? 'bg-black/80 text-amber-300 border-amber-400/80'
+                  : 'bg-amber-100 text-amber-950 border-amber-400 font-bold'
+              }`}>
+                <Clock className={`w-3.5 h-3.5 ${isDark ? 'text-amber-400' : 'text-amber-800'}`} />
                 {oitiva.time || '--:--'}
               </span>
               {oitiva.modality === 'Videoconferência' && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-lg bg-cyan-950 text-cyan-300 border border-cyan-500/50">
+                <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-lg border ${
+                  isDark
+                    ? 'bg-cyan-950 text-cyan-300 border-cyan-500/50'
+                    : 'bg-cyan-100 text-cyan-950 border-cyan-300'
+                }`}>
                   <Video className="w-3 h-3" />
                   Online
                 </span>
@@ -328,22 +338,32 @@ export const SwipeableOitivaCard: React.FC<SwipeableOitivaCardProps> = ({
             title="Toque no nome para abrir os detalhes da oitiva"
           >
             <div className="min-w-0 flex-1">
-              <h4 className="text-sm font-black text-white leading-tight group-hover:text-purple-200 transition-colors">
+              <h4 className={`text-sm font-black leading-tight transition-colors ${
+                isDark ? 'text-white group-hover:text-purple-200' : 'text-slate-900 group-hover:text-purple-950'
+              }`}>
                 {oitiva.personName || 'Depoente Não Informado'}
               </h4>
-              <p className="text-[11px] text-purple-300/80 font-mono mt-0.5 truncate">
+              <p className={`text-[11px] font-mono mt-0.5 truncate ${
+                isDark ? 'text-purple-300/80' : 'text-slate-600 font-semibold'
+              }`}>
                 {oitiva.procedureNumber ? `Proc: ${oitiva.procedureNumber}` : 'Sem número de procedimento'}
               </p>
             </div>
             {oitiva.role && (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-950 text-purple-200 border border-purple-500/50 shrink-0">
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border shrink-0 ${
+                isDark
+                  ? 'bg-purple-950 text-purple-200 border-purple-500/50'
+                  : 'bg-purple-100 text-purple-950 border-purple-300'
+              }`}>
                 {oitiva.role}
               </span>
             )}
           </div>
 
           {/* Bottom Line: Quick Action Buttons */}
-          <div className="flex items-center justify-between pt-2 border-t border-white/10 mt-0.5 gap-2">
+          <div className={`flex items-center justify-between pt-2 border-t mt-0.5 gap-2 ${
+            isDark ? 'border-white/10' : 'border-slate-200'
+          }`}>
             {/* Intimation Sent Toggle */}
             <button
               type="button"
@@ -356,8 +376,12 @@ export const SwipeableOitivaCard: React.FC<SwipeableOitivaCardProps> = ({
               }}
               className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg border transition-all active:scale-95 ${
                 oitiva.intimationSent
-                  ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/60'
-                  : 'bg-zinc-900 text-zinc-400 border-zinc-700'
+                  ? (isDark
+                      ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/60'
+                      : 'bg-emerald-100 text-emerald-950 border-emerald-400')
+                  : (isDark
+                      ? 'bg-zinc-900 text-zinc-400 border-zinc-700'
+                      : 'bg-slate-100 text-slate-700 border-slate-300')
               }`}
             >
               <FileText className="w-3 h-3" />
@@ -374,7 +398,11 @@ export const SwipeableOitivaCard: React.FC<SwipeableOitivaCardProps> = ({
                     hapticSelection();
                     onOpenWhatsApp(oitiva);
                   }}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white text-[11px] font-bold shadow-sm transition-all active:scale-95 cursor-pointer"
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold shadow-sm transition-all active:scale-95 cursor-pointer ${
+                    isDark
+                      ? 'bg-emerald-700 hover:bg-emerald-600 text-white'
+                      : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-950 border border-emerald-400 font-bold'
+                  }`}
                   title="Enviar WhatsApp"
                 >
                   <MessageCircle className="w-3.5 h-3.5" />
@@ -394,7 +422,11 @@ export const SwipeableOitivaCard: React.FC<SwipeableOitivaCardProps> = ({
                   hapticSelection();
                   onSelectOitiva(oitiva);
                 }}
-                className="px-2.5 py-1 rounded-lg bg-[#2b1f4c] hover:bg-purple-700 text-white text-[11px] font-bold border border-purple-500/60 transition-all active:scale-95 cursor-pointer"
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all active:scale-95 cursor-pointer ${
+                  isDark
+                    ? 'bg-[#2b1f4c] hover:bg-purple-700 text-white border-purple-500/60'
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-900 border-slate-300'
+                }`}
               >
                 Ver Detalhes
               </button>

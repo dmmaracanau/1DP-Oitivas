@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { Oitiva, HearingStatus } from '../types/oitiva';
 import { formatDateBR, formatPhone, getRoleBadgeClasses } from '../utils/formatters';
+import { useTheme } from '../context/ThemeContext';
 
 interface OitivaTooltipProps {
   oitiva: Oitiva;
@@ -110,6 +111,7 @@ export const OitivaTooltip: React.FC<OitivaTooltipProps> = ({
   onOpenWhatsApp,
   disabled = false
 }) => {
+  const { isDark } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
   const [coords, setCoords] = useState<TooltipCoords>({
     placement: 'right'
@@ -310,20 +312,36 @@ export const OitivaTooltip: React.FC<OitivaTooltipProps> = ({
           )}
 
           {/* Tooltip Content Container */}
-          <div className="bg-[#120a24] border-2 border-purple-500/90 rounded-2xl p-3.5 shadow-2xl shadow-purple-950/90 text-white backdrop-blur-xl ring-1 ring-white/15 relative overflow-hidden">
+          <div className={`border-2 rounded-2xl p-3.5 shadow-2xl backdrop-blur-xl relative overflow-hidden ${
+            isDark 
+              ? 'bg-[#120a24] border-purple-500/90 text-white shadow-purple-950/90 ring-1 ring-white/15' 
+              : 'bg-white border-purple-300 text-slate-900 shadow-slate-300/80 ring-1 ring-slate-200'
+          }`}>
             
             {/* Background subtle glow */}
-            <div className="absolute -top-16 -right-16 w-32 h-32 bg-purple-600/20 rounded-full blur-2xl pointer-events-none" />
-            <div className="absolute -bottom-16 -left-16 w-32 h-32 bg-indigo-600/15 rounded-full blur-2xl pointer-events-none" />
+            <div className={`absolute -top-16 -right-16 w-32 h-32 rounded-full blur-2xl pointer-events-none ${
+              isDark ? 'bg-purple-600/20' : 'bg-purple-200/40'
+            }`} />
+            <div className={`absolute -bottom-16 -left-16 w-32 h-32 rounded-full blur-2xl pointer-events-none ${
+              isDark ? 'bg-indigo-600/15' : 'bg-indigo-100/40'
+            }`} />
 
             {/* Top Bar: Data, Horário & Condição */}
-            <div className="flex items-center justify-between gap-2 pb-2 mb-2 border-b border-purple-700/50">
+            <div className={`flex items-center justify-between gap-2 pb-2 mb-2 border-b ${
+              isDark ? 'border-purple-700/50' : 'border-purple-100'
+            }`}>
               <div className="flex items-center gap-1.5">
-                <span className="inline-flex items-center gap-1 font-mono font-black text-xs px-2 py-0.5 rounded-lg bg-black/85 text-amber-300 border border-amber-400/80 shadow-sm">
-                  <Clock className="w-3 h-3 text-amber-400 shrink-0" />
+                <span className={`inline-flex items-center gap-1 font-mono font-black text-xs px-2 py-0.5 rounded-lg border shadow-sm ${
+                  isDark
+                    ? 'bg-black/85 text-amber-300 border-amber-400/80'
+                    : 'bg-amber-100 text-amber-950 border-amber-300'
+                }`}>
+                  <Clock className={`w-3 h-3 shrink-0 ${isDark ? 'text-amber-400' : 'text-amber-700'}`} />
                   <span>{oitiva.time || '--:--'}</span>
                 </span>
-                <span className="text-purple-200 font-bold text-xs">{formatDateBR(oitiva.date)}</span>
+                <span className={`font-bold text-xs ${isDark ? 'text-purple-200' : 'text-slate-800'}`}>
+                  {formatDateBR(oitiva.date)}
+                </span>
               </div>
 
               <div className="flex items-center gap-1">
@@ -333,7 +351,11 @@ export const OitivaTooltip: React.FC<OitivaTooltipProps> = ({
                   </span>
                 )}
                 {oitiva.modality && (
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-950/80 text-cyan-300 border border-cyan-500/40">
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
+                    isDark 
+                      ? 'bg-purple-950/80 text-cyan-300 border-cyan-500/40' 
+                      : 'bg-cyan-50 text-cyan-950 border-cyan-300'
+                  }`}>
                     {oitiva.modality}
                   </span>
                 )}
@@ -342,36 +364,42 @@ export const OitivaTooltip: React.FC<OitivaTooltipProps> = ({
 
             {/* Person Name (Full Name) */}
             <div className="mb-2">
-              <p className="text-[9px] uppercase tracking-wider font-extrabold text-purple-300 flex items-center gap-1">
-                <User className="w-3 h-3 text-purple-400" />
+              <p className={`text-[9px] uppercase tracking-wider font-extrabold flex items-center gap-1 ${
+                isDark ? 'text-purple-300' : 'text-purple-900'
+              }`}>
+                <User className={`w-3 h-3 ${isDark ? 'text-purple-400' : 'text-purple-700'}`} />
                 Depoente / Ouvido(a)
               </p>
-              <h4 className="text-[13px] font-black text-white tracking-tight leading-snug break-words">
+              <h4 className={`text-[13px] font-black tracking-tight leading-snug break-words ${
+                isDark ? 'text-white' : 'text-slate-950'
+              }`}>
                 {oitiva.personName}
               </h4>
             </div>
 
             {/* Quick Details Grid (Phone, Procedure, Location, Delegado) */}
-            <div className="space-y-1 text-[11px] mb-2.5 bg-[#180f30] p-2 rounded-xl border border-purple-700/40">
+            <div className={`space-y-1 text-[11px] mb-2.5 p-2 rounded-xl border ${
+              isDark ? 'bg-[#180f30] border-purple-700/40' : 'bg-slate-50 border-slate-200'
+            }`}>
               {/* Telefone */}
               <div className="flex items-center justify-between gap-2">
-                <span className="text-purple-300 font-bold flex items-center gap-1">
-                  <Phone className="w-3 h-3 text-emerald-400" />
+                <span className={`font-bold flex items-center gap-1 ${isDark ? 'text-purple-300' : 'text-slate-600'}`}>
+                  <Phone className={`w-3 h-3 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`} />
                   Telefone:
                 </span>
-                <span className="font-mono font-black text-white">
-                  {oitiva.phone ? formatPhone(oitiva.phone) : <span className="text-zinc-500 font-normal italic">Não informado</span>}
+                <span className={`font-mono font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  {oitiva.phone ? formatPhone(oitiva.phone) : <span className="text-zinc-400 font-normal italic">Não informado</span>}
                 </span>
               </div>
 
               {/* Procedimento */}
               {(oitiva.procedureType || oitiva.procedureNumber) && (
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-purple-300 font-bold flex items-center gap-1">
-                    <FileText className="w-3 h-3 text-blue-400" />
+                  <span className={`font-bold flex items-center gap-1 ${isDark ? 'text-purple-300' : 'text-slate-600'}`}>
+                    <FileText className={`w-3 h-3 ${isDark ? 'text-blue-400' : 'text-blue-700'}`} />
                     Procedimento:
                   </span>
-                  <span className="font-mono font-black text-blue-200 truncate max-w-[170px]" title={oitiva.procedureNumber}>
+                  <span className={`font-mono font-black truncate max-w-[170px] ${isDark ? 'text-blue-200' : 'text-blue-950'}`} title={oitiva.procedureNumber}>
                     {oitiva.procedureNumber || oitiva.procedureType || 'Em andamento'}
                   </span>
                 </div>
@@ -380,11 +408,11 @@ export const OitivaTooltip: React.FC<OitivaTooltipProps> = ({
               {/* Local / Sala */}
               {oitiva.locationOrLink && (
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-purple-300 font-bold flex items-center gap-1">
-                    <MapPin className="w-3 h-3 text-amber-400" />
+                  <span className={`font-bold flex items-center gap-1 ${isDark ? 'text-purple-300' : 'text-slate-600'}`}>
+                    <MapPin className={`w-3 h-3 ${isDark ? 'text-amber-400' : 'text-amber-700'}`} />
                     Local:
                   </span>
-                  <span className="text-zinc-200 truncate max-w-[170px]" title={oitiva.locationOrLink}>
+                  <span className={`truncate max-w-[170px] ${isDark ? 'text-zinc-200' : 'text-slate-900'}`} title={oitiva.locationOrLink}>
                     {oitiva.locationOrLink}
                   </span>
                 </div>
@@ -393,11 +421,11 @@ export const OitivaTooltip: React.FC<OitivaTooltipProps> = ({
               {/* Delegado Responsável */}
               {oitiva.officerName && (
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-purple-300 font-bold flex items-center gap-1">
-                    <Shield className="w-3 h-3 text-purple-400" />
+                  <span className={`font-bold flex items-center gap-1 ${isDark ? 'text-purple-300' : 'text-slate-600'}`}>
+                    <Shield className={`w-3 h-3 ${isDark ? 'text-purple-400' : 'text-purple-700'}`} />
                     Delegado:
                   </span>
-                  <span className="text-zinc-200 truncate max-w-[170px]" title={oitiva.officerName}>
+                  <span className={`truncate max-w-[170px] ${isDark ? 'text-zinc-200' : 'text-slate-900 font-bold'}`} title={oitiva.officerName}>
                     {oitiva.officerName}
                   </span>
                 </div>
@@ -417,31 +445,35 @@ export const OitivaTooltip: React.FC<OitivaTooltipProps> = ({
                 }}
                 className={`w-full p-2 rounded-xl border flex items-center justify-between transition-all cursor-pointer shadow-sm ${
                   oitiva.intimationSent
-                    ? 'bg-emerald-950/90 hover:bg-emerald-900 border-emerald-500/70 text-emerald-200'
-                    : 'bg-amber-950/70 hover:bg-amber-900/80 border-amber-500/60 text-amber-200'
+                    ? isDark
+                      ? 'bg-emerald-950/90 hover:bg-emerald-900 border-emerald-500/70 text-emerald-200'
+                      : 'bg-emerald-100 hover:bg-emerald-200 border-emerald-300 text-emerald-950 font-bold'
+                    : isDark
+                      ? 'bg-amber-950/70 hover:bg-amber-900/80 border-amber-500/60 text-amber-200'
+                      : 'bg-amber-100 hover:bg-amber-200 border-amber-300 text-amber-950 font-bold'
                 }`}
                 title="Clique para alternar o status da intimação manualmente"
               >
                 <div className="flex items-center gap-2 min-w-0">
                   {oitiva.intimationSent ? (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <CheckCircle2 className={`w-4 h-4 shrink-0 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`} />
                   ) : (
-                    <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+                    <AlertCircle className={`w-4 h-4 shrink-0 ${isDark ? 'text-amber-400' : 'text-amber-700'}`} />
                   )}
                   <div className="text-left truncate">
                     <span className="text-[9px] uppercase font-extrabold tracking-wider block opacity-80 leading-tight">
                       Intimação:
                     </span>
-                    <span className="text-[11px] font-black text-white truncate block leading-tight">
+                    <span className={`text-[11px] font-black truncate block leading-tight ${isDark ? 'text-white' : 'text-slate-950'}`}>
                       {oitiva.intimationSent ? 'ENVIADA / EMITIDA' : 'PENDENTE DE ENVIO'}
                     </span>
                   </div>
                 </div>
 
-                <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-wider shrink-0 ${
+                <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-wider shrink-0 border ${
                   oitiva.intimationSent
-                    ? 'bg-emerald-500 text-emerald-950'
-                    : 'bg-amber-500/30 text-amber-300 border border-amber-500/50'
+                    ? isDark ? 'bg-emerald-500 text-emerald-950' : 'bg-emerald-200 text-emerald-950 border-emerald-400'
+                    : isDark ? 'bg-amber-500/30 text-amber-300 border-amber-500/50' : 'bg-amber-200 text-amber-950 border-amber-400'
                 }`}>
                   {oitiva.intimationSent ? 'Enviada' : 'Mudar'}
                 </span>
@@ -450,10 +482,22 @@ export const OitivaTooltip: React.FC<OitivaTooltipProps> = ({
 
             {/* Current Status Display */}
             <div className="flex items-center justify-between gap-2 mb-1.5 px-0.5">
-              <span className="text-[10px] font-extrabold text-zinc-300 uppercase tracking-wider">
+              <span className={`text-[10px] font-extrabold uppercase tracking-wider ${isDark ? 'text-zinc-300' : 'text-slate-700'}`}>
                 Status Atual:
               </span>
-              <span className={`inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-lg border uppercase tracking-wider ${currentStatusConfig.badgeBg}`}>
+              <span className={`inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-lg border uppercase tracking-wider ${
+                isDark 
+                  ? currentStatusConfig.badgeBg 
+                  : oitiva.status === 'Realizada'
+                    ? 'bg-emerald-100 text-emerald-950 border-emerald-300'
+                    : oitiva.status === 'Remarcada'
+                    ? 'bg-amber-100 text-amber-950 border-amber-300'
+                    : oitiva.status === 'Não Compareceu'
+                    ? 'bg-orange-100 text-orange-950 border-orange-300'
+                    : oitiva.status === 'Cancelada'
+                    ? 'bg-rose-100 text-rose-950 border-rose-300'
+                    : 'bg-purple-100 text-purple-950 border-purple-300'
+              }`}>
                 <CurrentIcon className="w-3 h-3" />
                 {oitiva.status}
               </span>
@@ -461,10 +505,12 @@ export const OitivaTooltip: React.FC<OitivaTooltipProps> = ({
 
             {/* Status Change Shortcut Buttons */}
             {onQuickStatusChange && (
-              <div className="pt-1.5 border-t border-purple-700/50">
-                <p className="text-[9px] font-black uppercase tracking-wider text-purple-300 mb-1 flex items-center justify-between">
+              <div className={`pt-1.5 border-t ${isDark ? 'border-purple-700/50' : 'border-purple-200'}`}>
+                <p className={`text-[9px] font-black uppercase tracking-wider mb-1 flex items-center justify-between ${
+                  isDark ? 'text-purple-300' : 'text-purple-900'
+                }`}>
                   <span>Atalho Rápido de Status:</span>
-                  <span className="text-[8px] text-zinc-400 normal-case font-medium">1-clique</span>
+                  <span className={`text-[8px] normal-case font-medium ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>1-clique</span>
                 </p>
                 
                 <div className="grid grid-cols-5 gap-1">
@@ -480,15 +526,19 @@ export const OitivaTooltip: React.FC<OitivaTooltipProps> = ({
                         onClick={(e) => handleQuickStatus(e, item.status)}
                         className={`py-1.5 px-0.5 rounded-lg text-[9px] font-black transition-all flex flex-col items-center justify-center gap-0.5 border cursor-pointer ${
                           isCurrent
-                            ? `${item.activeBg} ${item.activeBorder} shadow-md ring-1 ring-white/50 scale-[1.03]`
-                            : `bg-[#1a1136] text-zinc-300 border-purple-800/80 ${item.hoverBg}`
+                            ? isDark
+                              ? `${item.activeBg} ${item.activeBorder} shadow-md ring-1 ring-white/50 scale-[1.03]`
+                              : 'bg-purple-600 text-white border-purple-700 shadow-md ring-1 ring-purple-300 scale-[1.03]'
+                            : isDark
+                              ? `bg-[#1a1136] text-zinc-300 border-purple-800/80 ${item.hoverBg}`
+                              : 'bg-slate-100 text-slate-800 border-slate-300 hover:bg-slate-200'
                         }`}
                         title={`Alterar para ${item.label}`}
                       >
                         {isPendingThis ? (
                           <Check className="w-3 h-3 text-white animate-bounce" />
                         ) : (
-                          <ItemIcon className={`w-3 h-3 ${isCurrent ? 'text-white' : ''}`} />
+                          <ItemIcon className={`w-3 h-3 ${isCurrent ? 'text-white' : isDark ? '' : 'text-slate-600'}`} />
                         )}
                         <span className="truncate w-full text-center leading-tight">
                           {item.label === 'Não Compareceu' ? 'Faltou' : item.label}
@@ -501,7 +551,9 @@ export const OitivaTooltip: React.FC<OitivaTooltipProps> = ({
             )}
 
             {/* Footer Action Links */}
-            <div className="mt-2.5 pt-2 border-t border-purple-700/50 flex items-center justify-between gap-2">
+            <div className={`mt-2.5 pt-2 border-t flex items-center justify-between gap-2 ${
+              isDark ? 'border-purple-700/50' : 'border-purple-200'
+            }`}>
               {oitiva.phone && onOpenWhatsApp && (
                 <button
                   type="button"
@@ -510,7 +562,11 @@ export const OitivaTooltip: React.FC<OitivaTooltipProps> = ({
                     setIsOpen(false);
                     onOpenWhatsApp(oitiva);
                   }}
-                  className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer py-1 px-2 rounded-lg hover:bg-emerald-950/40 border border-emerald-500/30"
+                  className={`flex items-center gap-1 text-[10px] font-bold transition-colors cursor-pointer py-1 px-2 rounded-lg border ${
+                    isDark
+                      ? 'text-emerald-400 hover:text-emerald-300 hover:bg-emerald-950/40 border-emerald-500/30'
+                      : 'text-emerald-950 hover:bg-emerald-100 border-emerald-300 bg-emerald-50'
+                  }`}
                 >
                   <MessageSquare className="w-3 h-3" />
                   <span>WhatsApp</span>
@@ -525,7 +581,11 @@ export const OitivaTooltip: React.FC<OitivaTooltipProps> = ({
                     setIsOpen(false);
                     onSelectOitiva(oitiva);
                   }}
-                  className="ml-auto flex items-center gap-1 text-[10px] font-black text-purple-300 hover:text-white transition-colors cursor-pointer py-1 px-2.5 rounded-lg bg-purple-950/80 hover:bg-purple-900 border border-purple-500/60 shadow-sm"
+                  className={`ml-auto flex items-center gap-1 text-[10px] font-black transition-colors cursor-pointer py-1 px-2.5 rounded-lg border shadow-sm ${
+                    isDark
+                      ? 'text-purple-300 hover:text-white bg-purple-950/80 hover:bg-purple-900 border-purple-500/60'
+                      : 'text-purple-950 hover:text-purple-900 bg-purple-100 hover:bg-purple-200 border-purple-300'
+                  }`}
                 >
                   <span>Ver Detalhes</span>
                   <ExternalLink className="w-3 h-3" />

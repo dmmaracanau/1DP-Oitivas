@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { Oitiva, HearingStatus, HearingRole } from '../types/oitiva';
 import { formatDateBR, getRoleBadgeClasses, getStatusBadgeClasses, generateWhatsAppReminder } from '../utils/formatters';
+import { useTheme } from '../context/ThemeContext';
 
 interface OitivaListViewProps {
   oitivas: Oitiva[];
@@ -47,6 +48,7 @@ export const OitivaListView: React.FC<OitivaListViewProps> = ({
   onAddOitiva,
   onExportBackup
 }) => {
+  const { isDark } = useTheme();
   const [roleFilter, setRoleFilter] = useState<string>('TODOS');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
@@ -72,15 +74,23 @@ export const OitivaListView: React.FC<OitivaListViewProps> = ({
 
   return (
     <div className="w-full max-w-[98.5%] 2xl:max-w-[1920px] mx-auto px-1 sm:px-2.5 lg:px-4 pb-10">
-      <div className="bg-[#0e0a1a] border-2 border-purple-700/60 rounded-3xl overflow-hidden shadow-2xl shadow-purple-950/60">
+      <div className={`border-2 rounded-3xl overflow-hidden shadow-2xl transition-all ${
+        isDark 
+          ? 'bg-[#0e0a1a] border-purple-700/60 shadow-purple-950/60' 
+          : 'bg-white border-purple-200 shadow-slate-200'
+      }`}>
         
         {/* Table Toolbar */}
-        <div className="p-4 sm:p-5 border-b-2 border-purple-700/60 bg-[#161026] flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className={`p-4 sm:p-5 border-b-2 flex flex-col md:flex-row items-center justify-between gap-4 ${
+          isDark 
+            ? 'border-purple-700/60 bg-[#161026]' 
+            : 'border-slate-200 bg-slate-50'
+        }`}>
           <div>
-            <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+            <h2 className={`text-xl sm:text-2xl font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
               Listagem Geral de Oitivas
             </h2>
-            <p className="text-xs font-bold text-purple-200 mt-0.5">
+            <p className={`text-xs font-bold mt-0.5 ${isDark ? 'text-purple-200' : 'text-slate-600'}`}>
               {filtered.length} {filtered.length === 1 ? 'registro encontrado' : 'registros encontrados'}
             </p>
           </div>
@@ -90,7 +100,11 @@ export const OitivaListView: React.FC<OitivaListViewProps> = ({
             <select
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
-              className="bg-[#1f1638] border-2 border-purple-600/70 text-xs font-bold text-white rounded-xl px-3 py-2 focus:outline-none focus:border-purple-400 shadow-sm cursor-pointer"
+              className={`border-2 text-xs font-bold rounded-xl px-3 py-2 focus:outline-none shadow-sm cursor-pointer ${
+                isDark 
+                  ? 'bg-[#1f1638] border-purple-600/70 text-white focus:border-purple-400' 
+                  : 'bg-white border-slate-300 text-slate-900 focus:border-purple-500'
+              }`}
             >
               <option value="TODOS">Todas as Condições</option>
               <option value="Testemunha">Testemunha</option>
@@ -104,17 +118,25 @@ export const OitivaListView: React.FC<OitivaListViewProps> = ({
               <button
                 type="button"
                 onClick={onExportBackup}
-                className="flex items-center gap-1.5 px-3.5 py-2 bg-[#121b3b] hover:bg-[#1a2856] text-blue-200 hover:text-white border-2 border-blue-500/70 hover:border-blue-400 rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
+                className={`flex items-center gap-1.5 px-3.5 py-2 border-2 rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer ${
+                  isDark 
+                    ? 'bg-[#121b3b] hover:bg-[#1a2856] text-blue-200 hover:text-white border-blue-500/70 hover:border-blue-400' 
+                    : 'bg-blue-50 hover:bg-blue-100 text-blue-950 border-blue-300 hover:border-blue-400 font-bold'
+                }`}
                 title="Exportar Backup das oitivas cadastradas em arquivo JSON"
               >
-                <Download className="w-3.5 h-3.5 text-blue-300" />
+                <Download className="w-3.5 h-3.5 text-blue-500" />
                 <span>Exportar Backup</span>
               </button>
             )}
 
             <button
               onClick={onAddOitiva}
-              className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white border-2 border-purple-300 rounded-xl text-xs font-black shadow-md shadow-purple-950/80 transition-all cursor-pointer"
+              className={`px-4 py-2 border-2 rounded-xl text-xs font-black shadow-md transition-all cursor-pointer ${
+                isDark 
+                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white border-purple-300 shadow-purple-950/80' 
+                  : 'bg-purple-600 hover:bg-purple-700 text-white border-purple-700 shadow-sm'
+              }`}
             >
               + Nova Oitiva
             </button>
@@ -123,8 +145,12 @@ export const OitivaListView: React.FC<OitivaListViewProps> = ({
 
         {/* Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-zinc-200">
-            <thead className="bg-[#120d22] text-purple-200 font-black border-b-2 border-purple-700/60 uppercase tracking-wider text-[11px]">
+          <table className={`w-full text-left text-xs ${isDark ? 'text-zinc-200' : 'text-slate-800'}`}>
+            <thead className={`font-black border-b-2 uppercase tracking-wider text-[11px] ${
+              isDark 
+                ? 'bg-[#120d22] text-purple-200 border-purple-700/60' 
+                : 'bg-slate-100 text-slate-800 border-slate-200'
+            }`}>
               <tr>
                 <th className="py-3.5 px-4">Depoente / Pessoa Ouvida</th>
                 <th className="py-3.5 px-4">Data & Horário</th>
@@ -135,21 +161,25 @@ export const OitivaListView: React.FC<OitivaListViewProps> = ({
                 <th className="py-3.5 px-4 text-right">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y-2 divide-purple-900/30">
+            <tbody className={`divide-y-2 ${isDark ? 'divide-purple-900/30' : 'divide-slate-200'}`}>
               {filtered.length > 0 ? (
                 filtered.map((oitiva) => (
                   <tr 
                     key={oitiva.id}
-                    className="hover:bg-[#1f1538] transition-colors cursor-pointer group"
+                    className={`transition-colors cursor-pointer group ${
+                      isDark ? 'hover:bg-[#1f1538]' : 'hover:bg-purple-50/60'
+                    }`}
                     onClick={() => onSelectOitiva(oitiva)}
                   >
                     {/* Person Name (Primary Column) */}
                     <td className="py-3.5 px-4">
-                      <div className="font-black text-sm text-white group-hover:text-purple-300 transition-colors">
+                      <div className={`font-black text-sm transition-colors ${
+                        isDark ? 'text-white group-hover:text-purple-300' : 'text-slate-900 group-hover:text-purple-950'
+                      }`}>
                         {oitiva.personName}
                       </div>
                       {oitiva.cpf && (
-                        <div className="text-[11px] text-purple-300/80 font-mono font-medium">
+                        <div className={`text-[11px] font-mono font-medium ${isDark ? 'text-purple-300/80' : 'text-slate-500'}`}>
                           CPF: {oitiva.cpf}
                         </div>
                       )}
@@ -157,23 +187,27 @@ export const OitivaListView: React.FC<OitivaListViewProps> = ({
 
                     {/* Date and Time */}
                     <td className="py-3.5 px-4 whitespace-nowrap">
-                      <div className="flex items-center gap-1.5 font-bold text-zinc-100">
-                        <CalendarIcon className="w-4 h-4 text-purple-300" />
+                      <div className={`flex items-center gap-1.5 font-bold ${isDark ? 'text-zinc-100' : 'text-slate-800'}`}>
+                        <CalendarIcon className={`w-4 h-4 ${isDark ? 'text-purple-300' : 'text-purple-600'}`} />
                         <span>{formatDateBR(oitiva.date)}</span>
                       </div>
-                      <div className="inline-flex items-center gap-1 font-mono font-black text-xs px-2 py-0.5 rounded-lg bg-black/85 text-amber-300 border border-amber-400/80 shadow-sm mt-1">
-                        <Clock className="w-3 h-3 text-amber-400 shrink-0" />
+                      <div className={`inline-flex items-center gap-1 font-mono font-black text-xs px-2 py-0.5 rounded-lg shadow-sm mt-1 ${
+                        isDark 
+                          ? 'bg-black/85 text-amber-300 border border-amber-400/80' 
+                          : 'bg-amber-100 text-amber-950 border border-amber-400 font-bold'
+                      }`}>
+                        <Clock className={`w-3 h-3 shrink-0 ${isDark ? 'text-amber-400' : 'text-amber-800'}`} />
                         <span>{oitiva.time || '--:--'}</span>
                       </div>
                     </td>
 
                     {/* Procedure */}
                     <td className="py-3.5 px-4">
-                      <div className="font-bold text-zinc-100">
+                      <div className={`font-bold ${isDark ? 'text-zinc-100' : 'text-slate-900'}`}>
                         {oitiva.procedureNumber || 'Não informado'}
                       </div>
                       {oitiva.procedureType && (
-                        <div className="text-[11px] text-purple-300/70 font-medium truncate max-w-[140px]">
+                        <div className={`text-[11px] font-medium truncate max-w-[140px] ${isDark ? 'text-purple-300/70' : 'text-slate-500'}`}>
                           {oitiva.procedureType}
                         </div>
                       )}
@@ -196,12 +230,12 @@ export const OitivaListView: React.FC<OitivaListViewProps> = ({
                     {/* Contact & Location */}
                     <td className="py-3.5 px-4">
                       {oitiva.phone && (
-                        <div className="flex items-center gap-1 text-xs font-bold text-emerald-300">
-                          <Phone className="w-3.5 h-3.5 text-emerald-400" />
+                        <div className={`flex items-center gap-1 text-xs font-bold ${isDark ? 'text-emerald-300' : 'text-emerald-800'}`}>
+                          <Phone className={`w-3.5 h-3.5 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`} />
                           <span>{oitiva.phone}</span>
                         </div>
                       )}
-                      <div className="text-xs text-zinc-300 font-medium truncate max-w-[160px]">
+                      <div className={`text-xs font-medium truncate max-w-[160px] ${isDark ? 'text-zinc-300' : 'text-slate-600'}`}>
                         {oitiva.locationOrLink || oitiva.modality || 'Presencial'}
                       </div>
                     </td>
@@ -210,8 +244,10 @@ export const OitivaListView: React.FC<OitivaListViewProps> = ({
                     <td className="py-3.5 px-4 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-1.5">
                         {confirmDeleteId === oitiva.id ? (
-                          <div className="flex items-center gap-1.5 bg-rose-950 p-1 rounded-xl border-2 border-rose-500">
-                            <span className="text-[10px] font-black text-rose-200 pl-1">Excluir?</span>
+                          <div className={`flex items-center gap-1.5 p-1 rounded-xl border-2 ${
+                            isDark ? 'bg-rose-950 border-rose-500' : 'bg-rose-50 border-rose-400'
+                          }`}>
+                            <span className={`text-[10px] font-black pl-1 ${isDark ? 'text-rose-200' : 'text-rose-950'}`}>Excluir?</span>
                             <button
                               type="button"
                               onClick={() => {
@@ -225,7 +261,9 @@ export const OitivaListView: React.FC<OitivaListViewProps> = ({
                             <button
                               type="button"
                               onClick={() => setConfirmDeleteId(null)}
-                              className="px-1.5 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded text-[10px] font-bold transition-colors"
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                                isDark ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200' : 'bg-slate-200 hover:bg-slate-300 text-slate-800'
+                              }`}
                             >
                               Não
                             </button>
@@ -236,7 +274,11 @@ export const OitivaListView: React.FC<OitivaListViewProps> = ({
                               <button
                                 type="button"
                                 onClick={() => onOpenWhatsApp(oitiva)}
-                                className="p-2 text-emerald-300 hover:text-white hover:bg-emerald-900 border-2 border-emerald-700/60 rounded-xl transition-all cursor-pointer shadow-sm"
+                                className={`p-2 border-2 rounded-xl transition-all cursor-pointer shadow-sm ${
+                                  isDark 
+                                    ? 'text-emerald-300 hover:text-white hover:bg-emerald-900 border-emerald-700/60' 
+                                    : 'text-emerald-950 bg-emerald-50 hover:bg-emerald-100 border-emerald-300'
+                                }`}
                                 title="Notificar via WhatsApp (Texto + PDF)"
                               >
                                 <Phone className="w-4 h-4" />
@@ -246,7 +288,11 @@ export const OitivaListView: React.FC<OitivaListViewProps> = ({
                                 href={generateWhatsAppReminder(oitiva)}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="p-2 text-emerald-300 hover:text-white hover:bg-emerald-900 border-2 border-emerald-700/60 rounded-xl transition-all shadow-sm"
+                                className={`p-2 border-2 rounded-xl transition-all shadow-sm ${
+                                  isDark 
+                                    ? 'text-emerald-300 hover:text-white hover:bg-emerald-900 border-emerald-700/60' 
+                                    : 'text-emerald-950 bg-emerald-50 hover:bg-emerald-100 border-emerald-300'
+                                }`}
                                 title="Notificar via WhatsApp"
                               >
                                 <Phone className="w-4 h-4" />
@@ -256,7 +302,11 @@ export const OitivaListView: React.FC<OitivaListViewProps> = ({
                             <button
                               type="button"
                               onClick={() => onPrintIntimacao(oitiva)}
-                              className="p-2 text-purple-200 hover:text-white bg-purple-950 hover:bg-purple-900 border-2 border-purple-400 rounded-xl transition-all shadow-sm"
+                              className={`p-2 border-2 rounded-xl transition-all shadow-sm ${
+                                isDark 
+                                  ? 'text-purple-200 hover:text-white bg-purple-950 hover:bg-purple-900 border-purple-400' 
+                                  : 'text-purple-950 bg-purple-100 hover:bg-purple-200 border-purple-300 font-bold'
+                              }`}
                               title="Fazer Download da Intimação (PDF)"
                             >
                               <FileText className="w-4 h-4" />
@@ -265,7 +315,11 @@ export const OitivaListView: React.FC<OitivaListViewProps> = ({
                             <button
                               type="button"
                               onClick={() => onEditOitiva(oitiva)}
-                              className="p-2 text-zinc-300 hover:text-white hover:bg-purple-900 border-2 border-purple-700/60 rounded-xl transition-all"
+                              className={`p-2 border-2 rounded-xl transition-all ${
+                                isDark 
+                                  ? 'text-zinc-300 hover:text-white hover:bg-purple-900 border-purple-700/60' 
+                                  : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100 border-slate-300'
+                              }`}
                               title="Editar"
                             >
                               <Edit3 className="w-4 h-4" />
@@ -274,7 +328,11 @@ export const OitivaListView: React.FC<OitivaListViewProps> = ({
                             <button
                               type="button"
                               onClick={() => setConfirmDeleteId(oitiva.id)}
-                              className="p-2 text-rose-300 hover:text-white hover:bg-rose-900 border-2 border-rose-700/60 rounded-xl transition-all"
+                              className={`p-2 border-2 rounded-xl transition-all ${
+                                isDark 
+                                  ? 'text-rose-300 hover:text-white hover:bg-rose-900 border-rose-700/60' 
+                                  : 'text-rose-950 bg-rose-50 hover:bg-rose-100 border-rose-300'
+                              }`}
                               title="Excluir"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -287,7 +345,7 @@ export const OitivaListView: React.FC<OitivaListViewProps> = ({
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-zinc-400 font-bold">
+                  <td colSpan={7} className={`py-12 text-center font-bold ${isDark ? 'text-zinc-400' : 'text-slate-600'}`}>
                     Nenhuma oitiva encontrada com os filtros selecionados.
                   </td>
                 </tr>

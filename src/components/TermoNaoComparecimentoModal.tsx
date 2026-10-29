@@ -33,6 +33,7 @@ import {
   downloadTermoNaoComparecimentoPdf 
 } from '../utils/pdfGenerator';
 import { OfficialCeHeader } from './OfficialCeHeader';
+import { useTheme } from '../context/ThemeContext';
 
 interface TermoNaoComparecimentoModalProps {
   isOpen: boolean;
@@ -89,6 +90,7 @@ export const TermoNaoComparecimentoModal: React.FC<TermoNaoComparecimentoModalPr
   user,
   onMarkStatusAsAbsent
 }) => {
+  const { isDark } = useTheme();
   const [delegadosList, setDelegadosList] = useState<DelegadoInfo[]>([]);
 
   // Histórico consolidado de agendamentos e notificações tentadas
@@ -424,24 +426,32 @@ ${data.dpcMatricula ? `Mat. ${data.dpcMatricula}` : ''}                     ${da
       className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-sm overflow-y-auto no-print"
       // Closes only via close buttons (X or Fechar)
     >
-      <div className="bg-[#120f1e] border-2 border-purple-600/70 rounded-3xl w-[95vw] max-w-[95vw] h-[95vh] max-h-[95vh] flex flex-col shadow-2xl shadow-purple-950/90 my-auto overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      <div className={`border-2 rounded-3xl w-[95vw] max-w-[95vw] h-[95vh] max-h-[95vh] flex flex-col shadow-2xl my-auto overflow-hidden animate-in fade-in zoom-in-95 duration-150 transition-colors ${
+        isDark ? 'bg-[#120f1e] border-purple-600/70 shadow-purple-950/90' : 'bg-white border-slate-300 shadow-2xl'
+      }`}>
         
         {/* Header */}
-        <div className="flex items-center justify-between p-4 sm:p-5 border-b-2 border-purple-900/60 bg-[#161226] shrink-0">
+        <div className={`flex items-center justify-between p-4 sm:p-5 border-b-2 shrink-0 transition-colors ${
+          isDark ? 'border-purple-900/60 bg-[#161226]' : 'border-slate-200 bg-slate-50'
+        }`}>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-rose-950/90 border-2 border-rose-500/80 flex items-center justify-center text-rose-300 shadow-md shrink-0">
+            <div className={`w-10 h-10 rounded-2xl border-2 flex items-center justify-center shadow-md shrink-0 ${
+              isDark ? 'bg-rose-950/90 border-rose-500/80 text-rose-300' : 'bg-rose-100 border-rose-300 text-rose-900'
+            }`}>
               <UserX className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black uppercase tracking-wider bg-rose-950 text-rose-300 px-2 py-0.5 rounded-full border border-rose-500/50">
+                <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                  isDark ? 'bg-rose-950 text-rose-300 border-rose-500/50' : 'bg-rose-100 text-rose-950 border-rose-300'
+                }`}>
                   Documento Oficial PCCE
                 </span>
-                <span className="text-[10px] text-zinc-400 font-medium">
+                <span className={`text-[10px] font-medium ${isDark ? 'text-zinc-400' : 'text-slate-600'}`}>
                   Ofício & Termo de Ausência
                 </span>
               </div>
-              <h2 className="text-base sm:text-lg font-bold text-white tracking-tight mt-0.5">
+              <h2 className={`text-base sm:text-lg font-bold tracking-tight mt-0.5 ${isDark ? 'text-white' : 'text-slate-900'}`}>
                 Gerar Termo de Não Comparecimento
               </h2>
             </div>
@@ -451,7 +461,9 @@ ${data.dpcMatricula ? `Mat. ${data.dpcMatricula}` : ''}                     ${da
             id="btn-close-termo-modal"
             type="button"
             onClick={onClose}
-            className="p-2 text-zinc-400 hover:text-white hover:bg-purple-950/60 border border-purple-900/40 rounded-xl transition-colors cursor-pointer"
+            className={`p-2 rounded-xl transition-colors border cursor-pointer ${
+              isDark ? 'text-zinc-400 hover:text-white hover:bg-purple-950/60 border-purple-900/40' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200 border-slate-300'
+            }`}
             title="Fechar Janela"
           >
             <X className="w-5 h-5" />
